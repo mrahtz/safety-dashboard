@@ -58,6 +58,28 @@ network. Filter by status, search, sort, and hover any crop to enlarge it.
 the verification protocol — including the P4 case that a **deliberately wrong
 bounding box is caught by the OCR-presence check**.
 
+## Live deployment (GitHub Pages + Supabase)
+
+The dashboard can run as a static page backed by an external DB instead of a
+baked export:
+
+- **Postgres (Supabase)** holds `sources`/`candidates`; **Storage** holds the
+  crops (public bucket, keyed by sha256 — immutable, deduplicated provenance).
+- **RLS**: anonymous users get read-only access; status changes require an
+  authenticated reviewer. The frontend ships only the public **anon** key.
+- `scripts/publish.sh` (`llm_metrics/publish.py`) pushes the local SQLite +
+  crops up: it uploads each crop to Storage and upserts the rows via PostgREST,
+  rewriting `crop_path` → public `crop_url`. Needs `var/supabase.env` (gitignored)
+  with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE`.
+- `web/index.html` is the static frontend: it reads candidates from PostgREST
+  and crops from Storage entirely client-side. Open it directly, or serve it on
+  GitHub Pages (point Pages at the repo / `web/`). The ingest runs in CI or
+  locally and publishes; Pages just serves the static file.
+
+The split: **ingest is a backend batch job** (Actions/local, holds the secrets);
+**serving is static** (Pages, anon read-only). Re-run `scripts/ingest.sh` then
+`scripts/publish.sh` to refresh.
+
 ## Known limits
 
 - HTML crops render from the **live page** (faithful layout); the raw bytes are
