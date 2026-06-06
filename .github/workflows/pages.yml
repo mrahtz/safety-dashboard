@@ -1,0 +1,36 @@
+name: deploy-pages
+
+# Publish the static frontend (web/) to GitHub Pages. The page reads data from
+# Supabase at runtime, so this just serves the HTML shell. Enable once via
+# Settings -> Pages -> Source: GitHub Actions (configure-pages auto-enables it
+# where the plan allows). Requires the repo to be public, or a plan that
+# supports Pages on private repos.
+on:
+  push:
+    branches: ["claude/llm-metrics-ingestion-frdmg"]
+    paths: ["web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deploy
+        uses: actions/deploy-pages@v4

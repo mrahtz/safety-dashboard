@@ -32,7 +32,7 @@ _PROMPT = ("This image is a tight crop from a model card, with one value outline
 def _api_key() -> str:
     key = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise RuntimeError("no CLAUDE_API_KEY / ANTHROPIC_API_KEY in environment")
+        raise VlmUnavailable("no CLAUDE_API_KEY / ANTHROPIC_API_KEY in environment")
     return key
 
 
