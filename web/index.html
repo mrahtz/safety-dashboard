@@ -48,30 +48,49 @@ const SEP = "\u0000";
 const ck = (m, b) => m + SEP + b;
 const rank = c => STATUS_ORDER[effectiveStatus(c, REVIEWS)] ?? 9;
 
+// Tidy an axis label: collapse whitespace/newlines, drop trailing footnote marks.
+const cleanLabel = s => (s || "").replace(/\s+/g, " ").trim()
+  .replace(/ *- */g, "-")            // merge line-wrap dupes: "gpt-5.2- codex" == "gpt-5.2-codex"
+  .replace(/[*†‡§¶]+$/, "").trim();
+// A real matrix cell is model(column) × benchmark(row). Reject labels that are
+// actually values/param-counts/blanks — extraction leakage or non-model tables
+// (e.g. parameter-count tables) that otherwise pollute the axes with "65.4%",
+// "120b", "1135", "∅", "—".
+const isJunkAxis = raw => {
+  const t = cleanLabel(raw);
+  if (!t || t === "—" || t === "-" || t === "–" || t === "∅") return true;
+  if (/^[-+]?\$?\d[\d.,]*\s*%?$/.test(t)) return true;     // 1135, 65.4%, 13.2%, $5
+  if (/^\d+(\.\d+)?\s*[bBmMkK]$/.test(t)) return true;     // 20b, 120b, 7M
+  return false;
+};
+
 async function load() {
   mountChrome("index.html");
   [DATA, REVIEWS] = await Promise.all([loadCandidates(), loadReviews()]);
   const benchGroup = new Map();             // benchmark -> group label (first seen)
   const modelSet = new Set(), benchSet = new Set(), groupSet = new Set();
+  const KEPT = [];
   for (const c of DATA) {
     const ctx = c.context || {};
-    const model = (ctx.column_header || "(unlabeled)").trim();
-    const bench = (ctx.row_label || "(unlabeled)").trim();
-    const group = (ctx.caption || ctx.section_title || sourceLabel(c.sources?.origin_url) || "—").trim();
+    if (isJunkAxis(ctx.column_header) || isJunkAxis(ctx.row_label)) continue;
+    const model = cleanLabel(ctx.column_header);
+    const bench = cleanLabel(ctx.row_label);
+    const group = sourceLabel(c.sources?.origin_url) || "—";   // group columns by source card
     modelSet.add(model); benchSet.add(bench); groupSet.add(group);
     if (!benchGroup.has(bench)) benchGroup.set(bench, group);
     const k = ck(model, bench);
     if (!CELL.has(k)) CELL.set(k, []);
     CELL.get(k).push(c);
+    KEPT.push(c);
   }
   MODELS = [...modelSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   BENCHES = [...benchSet].map(b => ({ name: b, group: benchGroup.get(b) }))
     .sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
   GROUPS = [...groupSet].sort();
-  document.getElementById("k-n").textContent = DATA.length;
+  document.getElementById("k-n").textContent = KEPT.length;
   document.getElementById("k-m").textContent = MODELS.length;
   document.getElementById("k-b").textContent = BENCHES.length;
-  document.getElementById("k-v").textContent = DATA.filter(c => TRUST.includes(effectiveStatus(c, REVIEWS))).length;
+  document.getElementById("k-v").textContent = KEPT.filter(c => TRUST.includes(effectiveStatus(c, REVIEWS))).length;
   const sel = document.getElementById("grp");
   sel.innerHTML = `<option value="">All groups (${GROUPS.length})</option>` +
     GROUPS.map(g => `<option>${esc(g)}</option>`).join("");
