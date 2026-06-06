@@ -15,6 +15,7 @@ import json
 import pathlib
 import sqlite3
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -31,10 +32,21 @@ def _env() -> dict[str, str]:
     return out
 
 
-def _req(method: str, url: str, headers: dict, data: bytes | None = None) -> bytes:
-    req = urllib.request.Request(url, data=data, method=method, headers=headers)
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read()
+def _req(method: str, url: str, headers: dict, data: bytes | None = None, tries: int = 4) -> bytes:
+    for attempt in range(tries):
+        req = urllib.request.Request(url, data=data, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=90) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < tries - 1:
+                time.sleep(2 ** attempt); continue   # transient gateway/rate errors
+            raise
+        except urllib.error.URLError:
+            if attempt < tries - 1:
+                time.sleep(2 ** attempt); continue
+            raise
+    raise RuntimeError("unreachable")
 
 
 def upload_crop(env: dict, path: pathlib.Path) -> str:
@@ -76,18 +88,23 @@ def publish() -> None:
                  ("id", "kind", "origin_url", "sha256", "retrieved_at", "blob_path")} for s in sources])
     print(f"upserted {len(sources)} sources", flush=True)
     rows = []
-    section_urls: dict[str, str] = {}  # local section-crop path -> public url (dedup uploads)
+    uploaded: dict[str, str] = {}      # local path -> public url; dedup so each image uploads once
+
+    def up(path: str) -> str:
+        if path not in uploaded:
+            uploaded[path] = upload_crop(env, pathlib.Path(path))
+        return uploaded[path]
+
     cands = conn.execute("SELECT * FROM candidates ORDER BY id").fetchall()
     for i, r in enumerate(cands):
-        crop_url = upload_crop(env, pathlib.Path(r["crop_path"]))
+        # In the VLM-transcription pipeline every cell of a table shares ONE
+        # whole-table screenshot, so the same image recurs across many rows --
+        # dedup by path or we'd PUT it hundreds of times (and trip a 504).
+        crop_url = up(r["crop_path"])
         context = json.loads(r["context_json"])
-        # Replace the local section-crop path with a public Storage URL (one
-        # upload per table; many candidates share the same section image).
         sec_path = context.pop("section_crop_path", "")
         if sec_path and pathlib.Path(sec_path).exists():
-            if sec_path not in section_urls:
-                section_urls[sec_path] = upload_crop(env, pathlib.Path(sec_path))
-            context["section_crop_url"] = section_urls[sec_path]
+            context["section_crop_url"] = up(sec_path)
         rows.append({"id": r["id"], "source_id": r["source_id"], "value_string": r["value_string"],
                      "kind": r["kind"], "page": r["page"], "selector": r["selector"],
                      "bbox": json.loads(r["bbox"]), "crop_url": crop_url,
