@@ -42,6 +42,7 @@ def upload_crop(env: dict, path: pathlib.Path) -> str:
     key = f"{hashlib.sha256(data).hexdigest()}.png"
     url = f"{env['SUPABASE_URL']}/storage/v1/object/crops/{key}"
     headers = {"Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
+               "apikey": env["SUPABASE_SERVICE_ROLE"],
                "Content-Type": "image/png", "x-upsert": "true"}
     try:
         _req("POST", url, headers, data)
