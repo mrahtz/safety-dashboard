@@ -3,8 +3,9 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
-# Frozen blobs / crops / databases land here in P1+; never commit them.
-/blobs/
-/crops/
+# Run-time artifacts (frozen blobs, crops, db, static export) live under var/.
+# Regenerate with scripts/ingest.sh + scripts/export.sh; never commit them.
+/var/
 *.sqlite
 *.db
+*.zip

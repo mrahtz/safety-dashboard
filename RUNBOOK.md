@@ -1,77 +1,84 @@
-# Phase 0 runbook — frozen contracts + eval fixtures
+# Runbook
 
-Per the review-gate workflow (brief §7.0), a prototype is *done* only when it
-passes its own tests, ships this runbook, and a human signs off. Phase 0 is
-"reviewed once, before P1": confirm the contracts, and confirm the fixtures
-match what's actually in the two cards.
+## What this is
 
-## Two-minute demo path
+An end-to-end pipeline that pulls LLM safety/benchmark numbers out of published
+system cards and into a reviewable dashboard, where **every number is bound to a
+bounding box** in its source and shown next to a tight, highlighted crop of
+exactly that spot. Structural extraction is the source of truth; an independent
+VLM read cross-checks it; an OCR-presence check guards against wrong-region
+bounding boxes.
 
-```bash
-pip install pytest
-pytest -q                 # expect: 21 passed
-```
+## Two-minute demo (offline)
 
-Then eyeball the three artifacts under review:
+The delivered `safety-dashboard-offline.zip` is self-contained:
 
-1. **IR contract** — `src/llm_metrics/ir.py`. Confirm `Context`, `SourceRef`,
-   `Candidate` match brief §5.1 verbatim. `test_ir.py` pins the field names.
-2. **DB schema** — `src/llm_metrics/schema.py`. Confirm the three tables and the
-   `status` / `attempts.kind` / `kind` enums match brief §5.2. `test_schema.py`
-   proves an out-of-domain `status` is *rejected* by the DB (fails loudly, §9).
-3. **Eval fixtures** — `fixtures/eval_fixtures.json`. This is the regression set
-   for every later prototype. Spot-check a few rows against the cards (below).
+1. Unzip it.
+2. Open `index.html` in any browser — no server, no network.
+3. KPIs show 473 numbers across 12 system cards. Use the **filter** buttons
+   (verified+accepted / all / needs_review), the **search** box, click a column
+   header to **sort**, and **hover any crop** to enlarge it and see the red box
+   framing the exact number.
 
-## How the fixtures were built (and how to re-verify)
+Spot-check provenance: pick any row, hover its crop, and confirm the red box
+frames the number in the `raw` column. The `0.868*` row (GPT-5.5, "hate") is a
+good one — the footnote mark is captured and the crop proves where it came from.
 
-Numbers were hand-transcribed from the two §6 test sources, captured 2026-06-06.
-The exact bytes transcribed from are pinned by sha256 in the fixtures file
-(reproducible/diffable once the P3 freezer exists):
-
-- **GPT-5.5** — HTML, Deployment Safety Hub: `https://deploymentsafety.openai.com/gpt-5-5`
-  (benchmark tables are real `<table>` elements in the static DOM).
-- **Gemini 3 Pro** — PDF model card:
-  `https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-3-Pro-Model-Card.pdf`
-
-To re-verify a couple of rows by hand:
+## Run it yourself
 
 ```bash
-# GPT-5.5 table 0 (refusal/safety scores) — e.g. hate/gpt-5.5 = "0.868*"
-curl -sL https://deploymentsafety.openai.com/gpt-5-5 -o /tmp/hub.html
-python3 - <<'PY'
-import html.parser, pathlib
-# (parse <table> elements; table index 0 is the designated HTML acceptance table)
-PY
-
-# Gemini page 8 (0-indexed 7) safety eval table — e.g. Text to Text Safety = "-10.4%"
-curl -sL "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-3-Pro-Model-Card.pdf" -o /tmp/g.pdf
-python3 -c "import pdfplumber; print(pdfplumber.open('/tmp/g.pdf').pages[7].extract_tables())"
+pip install flask pymupdf pdfplumber playwright pytesseract markupsafe
+python -m playwright install chromium && apt-get install -y tesseract-ocr
+./scripts/ingest.sh     # freeze + extract + verify all 12 cards -> var/metrics.sqlite
+./scripts/export.sh     # regenerate var/export/index.html (the offline dashboard)
+./scripts/serve.sh      # live UI at http://localhost:8000 : Dashboard / Review / Extract
+pytest -q               # 36 contract + pipeline tests
 ```
 
-## Why these specific numbers (the stress cases to check)
+`scripts/ingest.sh` runs the whole corpus in one process. To reproduce the
+build exactly (one short, isolated process per card — robust on constrained
+hosts), loop `python -m llm_metrics.pipeline <model_id>` over the ids in
+`corpus.py`.
 
-The fixtures deliberately include the hard cases the brief calls out, so later
-prototypes are forced to handle them:
+## What each prototype delivers
 
-- **Footnote glued onto a number**: `0.868*` → normalized `0.868` (§4.2, §4.4).
-- **Mixed `%` inside/outside parentheses**: `51.8% (57.2%, 3818)` (§4.4).
-- **Parenthetical deltas**: `32.32% (+1.35%)`, and every Gemini row is a delta
-  vs. Gemini 2.5 Pro (`-10.4%`, `+0.2% (non-egregious)`) (§6 stress notes).
-- **Trailing-zero precision**: `0.810` must compare equal to `0.81`.
-- **Prose numbers, not tables**: Gemini `1M` context / `64K` output (§4.3).
-- **Fractions with no single float**: Gemini `11/12`, `0/13` (normalized `null`).
+- **P1 HTML / P2 PDF** — paste a URL/PDF on the *Extract* page; get each numeric
+  cell beside its highlighted crop, its context, and the OCR-presence check.
+- **P3** — `freeze.py` snapshots each source by sha256; `db.py` persists
+  candidates; the *Review* page accepts/rejects and logs to `attempts`.
+- **P4** — `vlm.py` + `verify.py`: an independent VLM reads one crop and the
+  result is compared to the structural value after normalization, plus the
+  OCR-presence check. Agreement -> `verified`.
+- **P5** — the *Dashboard* / static export renders only trustworthy rows by
+  default, each cell linking to its crop.
+- **P6a** — `normalize.py` strips %/marks and parses a typed float.
 
-## Known gaps / coverage notes
+## Important caveat on verification status (read this)
 
-- Fixtures are **live captures** (pre-freeze). Source freezing is P3; until then
-  a re-fetch may return a different sha256 — for the GPT-5.5 hub that is expected
-  (system cards get silently revised, §4.1) and is itself a signal to record.
-- **Gemini capabilities benchmark table (PDF page 5) is an embedded image** with
-  no text layer → out of scope (§3.3). Gemini fixtures therefore come from the
-  text-layer tables (pages 8 and 10) and prose (page 2). This caps the clean
-  Gemini set at ~13 rather than a full 15 — flagged here for the reviewer.
+The VLM cross-check (P4) is implemented and unit-tested, and it ran
+successfully on Gemini 3 Pro (5/5 `verified`) — but the shared Anthropic API
+key's **credit balance was exhausted partway through the build**. So the full
+corpus was verified with the VLM disabled, falling back to the
+**structural + OCR-presence** signal:
 
-## Sign-off gate
+- `accepted` = a scalar value that is provably present in the OCR text of its
+  own crop (structural extraction self-confirmed). 408 of 473.
+- `needs_review` = no single scalar (fractions, multi-value cells) or the
+  OCR-presence check did not find it. 65 of 473.
+- `verified` (structural *and* independent VLM agree + OCR-present) requires API
+  credit; re-run `./scripts/ingest.sh` with a funded `CLAUDE_API_KEY` to upgrade
+  `accepted` rows to `verified`.
 
-Do **not** start P1 (HTML extraction) until a human confirms: the two contracts
-are correct and frozen, and the fixtures match the cards.
+Nothing is shown as more trustworthy than it is, and every number — whatever its
+status — carries its provenance crop.
+
+## Other known limits
+
+- HTML crops render from the **live page** (faithful layout); raw bytes are
+  frozen by sha256 for provenance. Full HTML asset-bundle freezing is out of
+  scope this milestone.
+- Image-only PDF tables (no text layer) are out of scope (§3.3).
+- This managed environment firewalls all egress except TLS/443, so a public
+  **Cloudflare tunnel cannot be established** (the edge needs port 7844). The
+  dashboard is therefore delivered as the offline export; run it locally with
+  `scripts/serve.sh`.

@@ -1,46 +1,70 @@
 # safety-dashboard — LLM-metrics ingestion with screenshot provenance
 
-A pipeline that extracts LLM benchmark numbers from published system cards into
-a database, plus a UI to review them. The one load-bearing property: **every
-stored number is provable** — each is bound to a bounding box in the source's
-own coordinate system, so its screenshot is a tight crop of exactly that spot,
-by construction rather than by luck.
+A pipeline that extracts LLM benchmark/safety numbers from published system cards
+into a database, and a dashboard to review them. The one load-bearing property:
+**every stored number is provable.** Each number is bound to a *bounding box* in
+the source's own coordinate system, so its screenshot is a tight crop of exactly
+that spot — provenance by construction, not by luck.
 
 Design in one line: a deterministic **structural extractor** is the source of
-truth (it gives real coordinates); a **VLM** is only an independent cross-check
-of the number, never the extractor. See the project brief for the full rationale.
+truth (it gives real coordinates); an independent **VLM** only cross-checks the
+number it reads (it never produces the record). A number is `verified` only when
+both agree *and* the value is found in the OCR text of its own crop.
 
-## Status: Phase 0 (frozen contracts + eval fixtures)
+## What works end to end
 
-This branch delivers **Phase 0 only** — the prerequisites that must be reviewed
-and committed before any extractor is written. The build proceeds as a sequence
-of human-reviewed prototypes (P1…P7); no prototype starts before the prior one
-has sign-off. See [`RUNBOOK.md`](RUNBOOK.md) for the review/demo path.
+| Stage | What it does | Module(s) |
+|------|---------------|-----------|
+| Contracts | Frozen IR + DB schema everything codes against | `ir.py`, `schema.py` |
+| P1 HTML | Playwright reads DOM cells + `getBoundingClientRect`, renders tight highlighted crops | `extract_html.py` |
+| P2 PDF | `pdfplumber` cells + PyMuPDF rasterize/crop — identical IR | `extract_pdf.py`, `crop.py` |
+| P3 freeze+DB | Content-addressed freezer + SQLite persistence + accept/reject UI | `freeze.py`, `db.py`, `app.py` |
+| P4 VLM verify | Independent VLM read + normalize-compare + OCR-presence check | `vlm.py`, `verify.py`, `ocr.py` |
+| P5 dashboard | Render-from-DB dashboard; status filter so only verified rows show | `app.py`, `export_static.py` |
+| P6a normalize | Strip %/marks, parse typed float, record precision | `normalize.py` |
 
-What's here:
+Orchestration (`pipeline.py`) freezes → extracts → persists → verifies each card
+in `corpus.py`. Failures degrade gracefully: a source it can't parse is skipped,
+a number it can't auto-verify becomes `needs_review` — it never writes a guessed
+record (brief §9).
 
-| Path | What it is | Frozen? |
-|------|------------|---------|
-| `src/llm_metrics/ir.py` | The intermediate representation both extractors emit (brief §5.1) | **yes** |
-| `src/llm_metrics/schema.py` | SQLite schema: `sources`, `candidates`, `attempts` + enum CHECKs (brief §5.2) | **yes** |
-| `fixtures/eval_fixtures.json` | ~26 numbers hand-transcribed from the two test sources, with location + context | data |
-| `src/llm_metrics/fixtures.py` | Typed, validating loader for the fixtures | — |
-| `tests/` | Contract + fixture self-tests (`pytest`) | — |
+## Corpus
 
-The two contracts are **single-owner** (brief §5, §8): propose changes to the
-orchestrator, don't edit them unilaterally.
+12 real system/model cards from two families discovered at build time:
+- **OpenAI Deployment Safety Hub** (HTML): gpt-5.5, gpt-5.2, gpt-5.1, gpt-5, o3, sora-2, gpt-oss.
+- **Google DeepMind model cards** (PDF): Gemini 3 Pro, 3.1 Pro, 2.5 Pro, 2.5 Flash, 2.0 Flash.
 
-## Quickstart
+## Run it
 
 ```bash
-pip install pytest      # the only Phase 0 dependency beyond the stdlib
-pytest -q               # 21 tests
+pip install flask pymupdf pdfplumber playwright pytesseract markupsafe
+python -m playwright install chromium
+apt-get install -y tesseract-ocr
+export CLAUDE_API_KEY=sk-ant-...        # for the VLM verifier (P4)
+
+./scripts/ingest.sh        # freeze + extract + verify the whole corpus -> var/metrics.sqlite
+./scripts/serve.sh         # interactive UI at http://localhost:8000  (Dashboard / Review / Extract)
+./scripts/export.sh        # self-contained offline dashboard -> var/export/index.html
+pytest -q                  # contract + pipeline self-tests
 ```
 
-## What's deliberately NOT here yet
+The **offline export** (`var/export/`) is a single `index.html` plus a `crops/`
+folder, fully self-contained: open it in any browser with no server and no
+network. Filter by status, search, sort, and hover any crop to enlarge it.
 
-Extractors, the crop renderer, the source freezer, the VLM verifier, and the UI
-all arrive with their prototypes (P1+). Scanned/image-only PDFs are out of scope
-(no text layer — brief §3.3). The Gemini capabilities table on PDF page 5 is an
-embedded image with no text layer and is likewise out of scope; see the
-coverage note in the fixtures file.
+## Tests
+
+`pytest` covers the frozen contracts, normalization, persistence/idempotency, and
+the verification protocol — including the P4 case that a **deliberately wrong
+bounding box is caught by the OCR-presence check**.
+
+## Known limits
+
+- HTML crops render from the **live page** (faithful layout); the raw bytes are
+  still frozen by sha256 for provenance/diffing. Freezing a full HTML asset
+  bundle is out of scope for this milestone.
+- Image-only PDF tables (no text layer) are out of scope (brief §3.3) — e.g. the
+  Gemini capabilities table on page 5, which is a figure.
+- This managed environment firewalls all egress except TLS/443, so a public
+  Cloudflare tunnel (edge port 7844) cannot be established here; the dashboard is
+  delivered as the offline export above and runs locally via `scripts/serve.sh`.

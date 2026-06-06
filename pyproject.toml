@@ -4,9 +4,18 @@ version = "0.0.0"
 description = "LLM-metrics ingestion pipeline with screenshot provenance"
 requires-python = ">=3.11"
 
-# Phase 0 needs nothing beyond the standard library + pytest. The extractor
-# dependencies arrive with the prototypes that use them (P1+):
-#   playwright (HTML), pdfplumber + pymupdf (PDF).
+dependencies = [
+    "playwright>=1.40",   # HTML extraction + crop rendering (getBoundingClientRect)
+    "pdfplumber>=0.11",   # PDF text-layer cells + bounding boxes
+    "pymupdf>=1.24",      # PDF rasterize/crop (imported as fitz)
+    "pytesseract>=0.3",   # OCR-presence self-check (needs system tesseract-ocr)
+    "Pillow>=10",
+    "flask>=3",
+    "markupsafe>=2",
+]
+# The VLM verifier (P4) calls the Anthropic API over the standard library, so it
+# needs no extra package -- only a funded CLAUDE_API_KEY in the environment.
+
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 
