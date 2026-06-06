@@ -1,0 +1,95 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>LLM safety-metrics — sources</title>
+<style>
+ .layout{display:grid;grid-template-columns:260px 1fr;gap:14px}
+ .side{align-self:start;position:sticky;top:14px;max-height:84vh;overflow:auto}
+ .src{display:block;width:100%;text-align:left;border:1px solid #d7dee8;background:#fff;border-radius:8px;
+   padding:8px 10px;margin:6px 0;cursor:pointer}
+ .src.on{background:#1565d8;color:#fff;border-color:#1565d8}
+ .src .n{float:right;opacity:.7;font-size:12px}
+ .section{margin:16px 0;border-top:1px solid #e3e8ef;padding-top:14px}
+ .section h3{margin:0 0 2px;font-size:15px}
+ .shot{border:1px solid #c9d2df;border-radius:8px;max-width:100%;margin:8px 0;background:#fff}
+ table.nums{border-collapse:collapse;width:100%;font-size:13px}
+ table.nums th,table.nums td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
+ table.nums th{background:#f3f6fb}
+ td.raw{font-weight:700;white-space:nowrap}
+</style></head><body>
+<main>
+ <div class=card>
+   <div style="font-size:18px;font-weight:700">Numbers by source</div>
+   <div class=muted>Pick a card on the left. Each table in it is shown as a <b>screenshot of the whole
+     table/section</b> where the numbers live, followed by every number extracted from it with its own
+     tight provenance crop.</div>
+ </div>
+ <div class=layout>
+   <div class=side id=side></div>
+   <div id=content class=card>Loading from Supabase…</div>
+ </div>
+</main>
+<div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
+  <div class=modal id=modalBody></div></div>
+<script src=common.js></script>
+<script>
+let SRC = [], REVIEWS = {}, current = null;
+
+async function load() {
+  mountChrome("sources.html");
+  const [data, reviews] = await Promise.all([loadCandidates(), loadReviews()]);
+  REVIEWS = reviews;
+  const bySource = new Map();
+  for (const c of data) {
+    const url = c.sources?.origin_url || "?";
+    if (!bySource.has(url)) bySource.set(url, { url, label: sourceLabel(url), sections: new Map() });
+    const s = bySource.get(url);
+    const ctx = c.context || {};
+    const skey = ctx.section_key || "_";
+    if (!s.sections.has(skey))
+      s.sections.set(skey, { key: skey, title: ctx.section_title || "Table", page: c.page,
+                             shot: ctx.section_crop_url || "", items: [] });
+    s.sections.get(skey).items.push(c);
+  }
+  SRC = [...bySource.values()].sort((a, b) => a.label.localeCompare(b.label));
+  document.getElementById("side").innerHTML = SRC.map((s, i) => {
+    const n = [...s.sections.values()].reduce((t, x) => t + x.items.length, 0);
+    return `<button class=src id=src${i} onclick=pick(${i})>${esc(s.label)}<span class=n>${n}</span></button>`;
+  }).join("");
+  pick(0);
+}
+
+function pick(i) {
+  current = i;
+  SRC.forEach((_, j) => document.getElementById("src" + j).classList.toggle("on", j === i));
+  const s = SRC[i];
+  const sections = [...s.sections.values()].sort((a, b) =>
+    (a.key).localeCompare(b.key, undefined, { numeric: true }));
+  let html = `<div style="font-size:17px;font-weight:700">${esc(s.label)}</div>
+    <div class=muted><a href="${esc(s.url)}" target=_blank>${esc(s.url)}</a> — ${sections.length} table(s)</div>`;
+  for (const sec of sections) {
+    const tk = tableKey(s.url, sec.key);
+    const rv = REVIEWS[tk];
+    const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
+    html += `<div class=section><h3>${esc(sec.title)} ${badge}</h3>
+      <div class=muted>${sec.page != null ? "page " + (sec.page + 1) + " · " : ""}${sec.items.length} numbers</div>`;
+    html += sec.shot
+      ? `<img class=shot loading=lazy src="${esc(sec.shot)}" alt="section screenshot">`
+      : `<div class=muted style="padding:8px 0">(section screenshot not available yet — re-run the refresh workflow)</div>`;
+    html += `<table class=nums><tr><th>crop<th>value<th>benchmark (row)<th>model (column)<th>status</tr>`;
+    for (const c of sec.items) {
+      const st = effectiveStatus(c, REVIEWS);
+      html += `<tr><td><a class=pop href="${esc(c.crop_url)}" target=_blank>
+          <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a></td>
+        <td class=raw>${esc(c.value_string)}</td>
+        <td>${esc((c.context?.row_label || "").slice(0, 90))}</td>
+        <td>${esc((c.context?.column_header || "").slice(0, 60))}</td>
+        <td><span class="flag s-${st}">${st}</span></td></tr>`;
+    }
+    html += `</table></div>`;
+  }
+  document.getElementById("content").innerHTML = html;
+}
+
+load().catch(err => document.getElementById("content").innerHTML =
+  `<span style="color:#c0143c">Load failed: ${esc(err.message || err)}</span>`);
+</script></body></html>

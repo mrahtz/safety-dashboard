@@ -18,12 +18,12 @@ def ingest(conn, src: corpus.Source, max_cells: int = MAX_CELLS) -> tuple[int, i
     fr = freeze.freeze(src.origin_url)
     sid = db.upsert_source(conn, src.kind, src.origin_url, fr.sha256, fr.retrieved_at, fr.blob_path)
     if src.kind == "html":
-        cands = runner.run_html(src.origin_url, table_index=-1)  # live page, all tables
+        pairs = runner.run_html_sections(src.origin_url)  # live page, all tables + sections
     else:
-        cands = extract_pdf.extract_all(fr.blob_path, paths.CROPS, f"{src.model_id}", max_cells)
-    for c in cands:
-        db.insert_candidate(conn, sid, c, status="pending")
-    return sid, len(cands)
+        pairs = extract_pdf.extract_all_with_sections(fr.blob_path, paths.CROPS, f"{src.model_id}", max_cells)
+    for c, section in pairs:
+        db.insert_candidate(conn, sid, c, status="pending", section=section)
+    return sid, len(pairs)
 
 
 def verify_source(conn, sid: int) -> dict[str, int]:

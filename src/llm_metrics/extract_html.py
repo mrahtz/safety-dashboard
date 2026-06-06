@@ -5,6 +5,12 @@ and for every numeric table cell returns its raw text, its on-screen rectangle
 (via ``getBoundingClientRect``), an element selector, a tight highlighted crop,
 and the surrounding context (column header, row label, caption, footnotes).
 
+It also tags each table and renders one **section screenshot** per table (a
+screenshot of the whole ``<table>`` element), and records which table each cell
+belongs to. That section metadata travels next to the IR as a plain dict (the IR
+is a frozen contract), so the per-source view can group numbers under the table
+they appear in.
+
 Runs as ``python -m llm_metrics.extract_html <source> <table_index> <crops_dir>
 <out_json>`` so callers (Flask) can invoke it in a subprocess, keeping the sync
 Playwright event loop out of the web server's worker threads. ``source`` may be
@@ -55,13 +61,35 @@ _EXTRACT_JS = r"""
 }
 """
 
-# Same idea as _EXTRACT_JS but across every table on the page (capped), so one
-# browser session yields a card's full numeric content.
+# Same idea as _EXTRACT_JS but across every table on the page (capped). Each
+# table is tagged with a stable id and given a title (its caption, else the
+# nearest preceding heading), so one browser session yields a card's full
+# numeric content plus a section screenshot target per table.
 _EXTRACT_ALL_JS = r"""
 (maxCells) => {
+  const titleFor = (table) => {
+    const cap = (table.querySelector('caption')?.innerText || '').trim();
+    if (cap) return cap.slice(0, 110);
+    let el = table;
+    for (let i = 0; i < 6 && el; i++) {
+      let p = el.previousElementSibling;
+      while (p) {
+        if (/^H[1-4]$/.test(p.tagName)) return p.innerText.trim().slice(0, 110);
+        const h = p.querySelector && p.querySelector('h1,h2,h3,h4');
+        if (h) return h.innerText.trim().slice(0, 110);
+        p = p.previousElementSibling;
+      }
+      el = el.parentElement;
+    }
+    return '';
+  };
   const tables = [...document.querySelectorAll('table')];
-  const cells = []; let uid = 0;
+  const cells = []; const tableInfo = []; let uid = 0;
   tables.forEach((table, ti) => {
+    const skey = 't' + ti;
+    table.setAttribute('data-llm-table', skey);
+    tableInfo.push({section_key: skey, selector: '[data-llm-table="' + skey + '"]',
+                    section_title: titleFor(table)});
     const caption = (table.querySelector('caption')?.innerText || '').trim();
     const rows = [...table.querySelectorAll('tr')];
     const headerRow = rows.find(r => r.querySelector('th')) || rows[0];
@@ -75,13 +103,14 @@ _EXTRACT_ALL_JS = r"""
         if (ci === 0 || !/^[-+($]?\d/.test(text) || cells.length >= maxCells) return;
         const id = 'llmcell-' + (uid++); cell.setAttribute('data-llm-id', id);
         cells.push({value_string: text, selector: '[data-llm-id="' + id + '"]',
-                    column_header: headerCells[ci] || '', row_label: rowLabel, caption});
+                    column_header: headerCells[ci] || '', row_label: rowLabel, caption,
+                    section_key: skey});
       });
     }
   });
   const footnotes = [...document.querySelectorAll('p,li,small,span,div,td')]
     .map(e => e.innerText.trim()).filter(t => /^[*†‡§¶]\s*\S/.test(t) && t.length < 400);
-  return {n_tables: tables.length, n_cells: cells.length, cells, footnotes};
+  return {n_tables: tables.length, n_cells: cells.length, cells, tableInfo, footnotes};
 }
 """
 
@@ -130,6 +159,19 @@ def _render_crop(page: pw.Page, selector: str, out_path: pathlib.Path) -> tuple[
     return (rect["x"] + sx, rect["y"] + sy, rect["x"] + sx + rect["w"], rect["y"] + sy + rect["h"])
 
 
+def _render_section(page: pw.Page, selector: str, out_path: pathlib.Path) -> bool:
+    """Screenshot a whole <table> element (no highlight). Returns success."""
+    el = page.query_selector(selector)
+    if el is None:
+        return False
+    try:
+        el.scroll_into_view_if_needed()
+        el.screenshot(path=str(out_path))
+    except Exception:
+        return False
+    return out_path.exists() and out_path.stat().st_size > 0
+
+
 def _cells_to_candidates(page, cells, footnotes, crops_dir, run_id) -> tuple[ir.Candidate, ...]:
     out: list[ir.Candidate] = []
     for i, cell in enumerate(cells):
@@ -153,19 +195,58 @@ def _open(p):
     return browser, browser.new_page(viewport=VIEWPORT, device_scale_factor=SCALE, ignore_https_errors=True)
 
 
-def extract(source: str, table_index: int, crops_dir: pathlib.Path, run_id: str,
-            max_cells: int = 60) -> tuple[ir.Candidate, ...]:
-    """Extract one table (``table_index >= 0``) or every table (``-1``, capped)."""
+def _extract_all_pairs(page, crops_dir: pathlib.Path, run_id: str,
+                       max_cells: int) -> list[tuple[ir.Candidate, dict]]:
+    """All-tables path: per-cell crops + one section screenshot per table."""
+    data = page.evaluate(_EXTRACT_ALL_JS, max_cells)
+    footnotes = data["footnotes"]
+    # Render a section screenshot for each table and build its section dict.
+    sections: dict[str, dict] = {}
+    for info in data["tableInfo"]:
+        skey = info["section_key"]
+        section_crop = crops_dir / f"{run_id}_{skey}_section.png"
+        ok = _render_section(page, info["selector"], section_crop)
+        sections[skey] = {"section_key": skey, "section_title": info["section_title"],
+                          "section_crop_path": str(section_crop) if ok else ""}
+    pairs: list[tuple[ir.Candidate, dict]] = []
+    for i, cell in enumerate(data["cells"]):
+        crop = crops_dir / f"{run_id}_c{i}.png"
+        bbox = _render_crop(page, cell["selector"], crop)
+        cand = ir.Candidate(
+            value_string=cell["value_string"],
+            source_ref=ir.SourceRef(kind="html", page=None, selector=cell["selector"], bbox=bbox),
+            crop_path=crop,
+            context=ir.Context(column_header=cell["column_header"], row_label=cell["row_label"],
+                               caption=cell["caption"],
+                               footnotes=_footnotes_for(cell["value_string"], footnotes)))
+        pairs.append((cand, sections.get(cell["section_key"], {})))
+    return pairs
+
+
+def extract_with_sections(source: str, crops_dir: pathlib.Path, run_id: str,
+                          max_cells: int = 60) -> list[tuple[ir.Candidate, dict]]:
+    """Extract every table, pairing each candidate with its table's section."""
     crops_dir.mkdir(parents=True, exist_ok=True)
     with pw.sync_playwright() as p:
         browser, page = _open(p)
         page.goto(_as_url(source), wait_until="networkidle", timeout=60000)
-        if table_index < 0:
-            data = page.evaluate(_EXTRACT_ALL_JS, max_cells)
-        else:
-            data = page.evaluate(_EXTRACT_JS, table_index)
-            if "error" in data:
-                raise ValueError(f"{data['error']} (page has {data['n_tables']} tables)")
+        pairs = _extract_all_pairs(page, crops_dir, run_id, max_cells)
+        browser.close()
+    return pairs
+
+
+def extract(source: str, table_index: int, crops_dir: pathlib.Path, run_id: str,
+            max_cells: int = 60) -> tuple[ir.Candidate, ...]:
+    """Extract one table (``table_index >= 0``) or every table (``-1``, capped)."""
+    crops_dir.mkdir(parents=True, exist_ok=True)
+    if table_index < 0:
+        return tuple(c for c, _ in extract_with_sections(source, crops_dir, run_id, max_cells))
+    with pw.sync_playwright() as p:
+        browser, page = _open(p)
+        page.goto(_as_url(source), wait_until="networkidle", timeout=60000)
+        data = page.evaluate(_EXTRACT_JS, table_index)
+        if "error" in data:
+            raise ValueError(f"{data['error']} (page has {data['n_tables']} tables)")
         out = _cells_to_candidates(page, data["cells"], data["footnotes"], crops_dir, run_id)
         browser.close()
     return out
@@ -173,9 +254,15 @@ def extract(source: str, table_index: int, crops_dir: pathlib.Path, run_id: str,
 
 def main() -> None:
     source, table_index, crops_dir, out_json = sys.argv[1], int(sys.argv[2]), pathlib.Path(sys.argv[3]), pathlib.Path(sys.argv[4])
-    cands = extract(source, table_index, crops_dir, run_id=pathlib.Path(out_json).stem)
-    out_json.write_text(json.dumps([serde.candidate_to_dict(c) for c in cands], indent=2))
-    print(f"extracted {len(cands)} candidates -> {out_json}")
+    run_id = pathlib.Path(out_json).stem
+    if table_index < 0:
+        pairs = extract_with_sections(source, crops_dir, run_id)
+        items = [{**serde.candidate_to_dict(c), "section": s} for c, s in pairs]
+    else:
+        cands = extract(source, table_index, crops_dir, run_id)
+        items = [{**serde.candidate_to_dict(c), "section": None} for c in cands]
+    out_json.write_text(json.dumps(items, indent=2))
+    print(f"extracted {len(items)} candidates -> {out_json}")
 
 
 if __name__ == "__main__":

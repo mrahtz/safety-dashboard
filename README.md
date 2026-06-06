@@ -71,14 +71,43 @@ baked export:
   crops up: it uploads each crop to Storage and upserts the rows via PostgREST,
   rewriting `crop_path` → public `crop_url`. Needs `var/supabase.env` (gitignored)
   with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE`.
-- `web/index.html` is the static frontend: it reads candidates from PostgREST
-  and crops from Storage entirely client-side. Open it directly, or serve it on
-  GitHub Pages (point Pages at the repo / `web/`). The ingest runs in CI or
-  locally and publishes; Pages just serves the static file.
+- The static frontend (`web/`) reads candidates from PostgREST and crops from
+  Storage entirely client-side. The ingest runs in CI or locally and publishes;
+  Pages just serves the static files.
 
 The split: **ingest is a backend batch job** (Actions/local, holds the secrets);
 **serving is static** (Pages, anon read-only). Re-run `scripts/ingest.sh` then
 `scripts/publish.sh` to refresh.
+
+## The three pages (`web/`)
+
+1. **`index.html` — Model × benchmark dashboard.** A pivot built client-side:
+   each card's table *columns* are the models (rows of the matrix) and its *rows*
+   are the benchmarks (columns of the matrix). Every cell links to all the source
+   values behind it, each with its provenance crop.
+2. **`sources.html` — Numbers by source.** Pick a card; each of its tables is
+   shown as a **screenshot of the whole table/section** (not just one number's
+   box), followed by every number extracted from it with its tight crop.
+3. **`review.html` — Review, one table at a time.** A reviewer signs in (Supabase
+   Auth magic link) and accepts/rejects a whole table at once. Decisions are
+   keyed by a stable `table_key = origin_url || '::' || section_key`, stored in a
+   separate `reviews` table, so the weekly re-ingest never wipes them; the badge
+   then overlays the other two pages.
+
+**Section screenshots** ride through the existing publish path with *no schema
+change*: the whole-table image goes to Storage and its URL plus `section_key` /
+`section_title` are written into the candidate's `context` JSONB (the IR stays a
+frozen contract — section data is merged in `db.insert_candidate`).
+
+### Review setup (one-time)
+
+- **Create the reviews table + RLS:** run `supabase/reviews.sql` in the Supabase
+  SQL editor. Anon may read decisions (for the badges); only authenticated users
+  may write.
+- **Enable email auth:** Supabase → Authentication → Providers → Email (magic
+  link is on by default). Add the deployed URL to Authentication → URL
+  Configuration → Site URL / Redirect URLs, e.g.
+  `https://amid.fish/safety-dashboard/review.html`.
 
 ## Known limits
 

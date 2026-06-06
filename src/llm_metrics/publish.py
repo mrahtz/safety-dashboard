@@ -68,13 +68,22 @@ def publish() -> None:
                  ("id", "kind", "origin_url", "sha256", "retrieved_at", "blob_path")} for s in sources])
     print(f"upserted {len(sources)} sources", flush=True)
     rows = []
+    section_urls: dict[str, str] = {}  # local section-crop path -> public url (dedup uploads)
     cands = conn.execute("SELECT * FROM candidates ORDER BY id").fetchall()
     for i, r in enumerate(cands):
         crop_url = upload_crop(env, pathlib.Path(r["crop_path"]))
+        context = json.loads(r["context_json"])
+        # Replace the local section-crop path with a public Storage URL (one
+        # upload per table; many candidates share the same section image).
+        sec_path = context.pop("section_crop_path", "")
+        if sec_path and pathlib.Path(sec_path).exists():
+            if sec_path not in section_urls:
+                section_urls[sec_path] = upload_crop(env, pathlib.Path(sec_path))
+            context["section_crop_url"] = section_urls[sec_path]
         rows.append({"id": r["id"], "source_id": r["source_id"], "value_string": r["value_string"],
                      "kind": r["kind"], "page": r["page"], "selector": r["selector"],
                      "bbox": json.loads(r["bbox"]), "crop_url": crop_url,
-                     "context": json.loads(r["context_json"]),
+                     "context": context,
                      "structural_value": r["structural_value"], "vlm_value": r["vlm_value"],
                      "status": r["status"]})
         if (i + 1) % 50 == 0:

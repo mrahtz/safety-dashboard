@@ -1,0 +1,155 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>LLM safety-metrics — review</title>
+<style>
+ .shot{border:1px solid #c9d2df;border-radius:8px;max-width:100%;margin:8px 0;background:#fff}
+ table.nums{border-collapse:collapse;width:100%;font-size:13px}
+ table.nums th,table.nums td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
+ table.nums th{background:#f3f6fb} td.raw{font-weight:700;white-space:nowrap}
+ .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+ .big-accept{background:#0a7d28;border-color:#0a7d28;color:#fff}
+ .big-reject{background:#c0143c;border-color:#c0143c;color:#fff}
+ .big-needs{background:#8a5a00;border-color:#8a5a00;color:#fff}
+ .login{max-width:420px}
+ .note{min-width:240px}
+ progress{width:200px}
+</style></head><body>
+<main>
+ <div class=card>
+   <div style="font-size:18px;font-weight:700">Review — one table at a time</div>
+   <div class=muted>Sign in, then judge each table as a whole: its screenshot, every number in it, and a
+     single decision. Decisions are stored against a stable table key, so the weekly re-ingest won't wipe
+     them, and they show up as a sign-off badge across the other pages.</div>
+ </div>
+ <div id=gate class=card>Loading…</div>
+ <div id=app style=display:none>
+   <div class="card bar">
+     <button onclick=move(-1)>◀ prev</button>
+     <button onclick=move(1)>next ▶</button>
+     <progress id=prog value=0 max=1></progress>
+     <span id=count class=muted></span>
+     <label style="margin-left:auto"><input type=checkbox id=unrev onchange=rebuild()> unreviewed only</label>
+   </div>
+   <div id=tablecard class=card></div>
+ </div>
+</main>
+<div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
+  <div class=modal id=modalBody></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src=common.js></script>
+<script>
+let sb, SESSION = null, DATA = [], REVIEWS = {}, TABLES = [], QUEUE = [], idx = 0;
+
+async function boot() {
+  mountChrome("review.html");
+  sb = supabase.createClient(SUPABASE_URL, ANON);
+  const { data: { session } } = await sb.auth.getSession();
+  SESSION = session;
+  if (location.hash.includes("access_token")) history.replaceState({}, "", location.pathname);
+  sb.auth.onAuthStateChange((_e, s) => { if ((s && !SESSION) || (!s && SESSION)) { SESSION = s; start(); } });
+  start();
+}
+
+async function start() {
+  if (!SESSION) return showLogin();
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "";
+  await loadAll();
+}
+
+function showLogin(msg) {
+  document.getElementById("app").style.display = "none";
+  const g = document.getElementById("gate");
+  g.style.display = "";
+  g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
+    <p class=muted>Enter your email and we'll send a magic link. Only signed-in reviewers can save decisions.</p>
+    <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
+      <button class=on onclick=sendLink()>Send magic link</button></div>
+    <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
+}
+
+async function sendLink() {
+  const email = document.getElementById("email").value.trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp(
+    { email, options: { emailRedirectTo: location.origin + location.pathname } });
+  document.getElementById("loginmsg").textContent =
+    error ? ("Error: " + error.message) : "Check your email for the sign-in link, then return here.";
+}
+
+async function signOut() { await sb.auth.signOut(); SESSION = null; showLogin("Signed out."); }
+
+async function loadAll() {
+  [DATA, REVIEWS] = await Promise.all([loadCandidates(), loadReviews()]);
+  const byTable = new Map();
+  for (const c of DATA) {
+    const url = c.sources?.origin_url || "?", skey = c.context?.section_key || "_";
+    const tk = tableKey(url, skey);
+    if (!byTable.has(tk))
+      byTable.set(tk, { tableKey: tk, url, label: sourceLabel(url), section_key: skey,
+        title: c.context?.section_title || "Table", page: c.page,
+        shot: c.context?.section_crop_url || "", items: [] });
+    byTable.get(tk).items.push(c);
+  }
+  TABLES = [...byTable.values()].sort((a, b) =>
+    a.label.localeCompare(b.label) || a.section_key.localeCompare(b.section_key, undefined, { numeric: true }));
+  rebuild();
+}
+
+function rebuild() {
+  const unrev = document.getElementById("unrev").checked;
+  QUEUE = TABLES.filter(t => !unrev || !REVIEWS[t.tableKey]);
+  if (idx >= QUEUE.length) idx = Math.max(0, QUEUE.length - 1);
+  renderTable();
+}
+
+function move(d) { idx = Math.min(QUEUE.length - 1, Math.max(0, idx + d)); renderTable(); }
+
+function renderTable() {
+  const reviewed = TABLES.filter(t => REVIEWS[t.tableKey]).length;
+  document.getElementById("prog").max = TABLES.length || 1;
+  document.getElementById("prog").value = reviewed;
+  document.getElementById("count").textContent =
+    `${reviewed}/${TABLES.length} tables reviewed · showing ${QUEUE.length ? idx + 1 : 0}/${QUEUE.length}`;
+  const card = document.getElementById("tablecard");
+  if (!QUEUE.length) { card.innerHTML = "<b>Nothing to review here.</b> Untick 'unreviewed only' to revisit decisions."; return; }
+  const t = QUEUE[idx], rv = REVIEWS[t.tableKey];
+  let rows = "";
+  for (const c of t.items) {
+    rows += `<tr><td><a class=pop href="${esc(c.crop_url)}" target=_blank>
+        <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a></td>
+      <td class=raw>${esc(c.value_string)}</td>
+      <td>${esc((c.context?.row_label || "").slice(0, 90))}</td>
+      <td>${esc((c.context?.column_header || "").slice(0, 60))}</td>
+      <td><span class="flag s-${c.status}">${c.status}</span></td></tr>`;
+  }
+  const cur = rv ? `<span class="flag s-${rv.status}">current: ${rv.status}</span>
+      <span class=muted>by ${esc(rv.reviewer || "?")} · ${esc((rv.updated_at || "").slice(0, 16).replace("T", " "))}</span>` : `<span class=muted>not yet reviewed</span>`;
+  card.innerHTML = `
+    <div class=muted>${esc(SESSION.user.email)} · <a href=# onclick="signOut();return false">sign out</a></div>
+    <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(t.label)} — ${esc(t.title)}</div>
+    <div class=muted>${t.page != null ? "page " + (t.page + 1) + " · " : ""}${t.items.length} numbers · ${cur}</div>
+    ${t.shot ? `<img class=shot loading=lazy src="${esc(t.shot)}">`
+             : `<div class=muted style="padding:8px 0">(section screenshot not available — re-run the refresh workflow)</div>`}
+    <table class=nums><tr><th>crop<th>value<th>benchmark (row)<th>model (column)<th>auto status</tr>${rows}</table>
+    <div class="bar" style="margin-top:12px">
+      <button class=big-accept onclick="decide('accepted')">Accept table</button>
+      <button class=big-needs onclick="decide('needs_review')">Needs review</button>
+      <button class=big-reject onclick="decide('rejected')">Reject table</button>
+      <input id=note class=note placeholder="optional note…" value="${esc(rv?.note || "")}">
+    </div>`;
+}
+
+async function decide(status) {
+  const t = QUEUE[idx];
+  const row = { table_key: t.tableKey, status, note: document.getElementById("note").value.trim() || null,
+                reviewer: SESSION.user.email, updated_at: new Date().toISOString() };
+  const { error } = await sb.from("reviews").upsert(row, { onConflict: "table_key" });
+  if (error) { alert("Save failed: " + error.message + "\n\nHas the reviews table + RLS been created?"); return; }
+  REVIEWS[t.tableKey] = row;
+  if (document.getElementById("unrev").checked) rebuild(); else move(1);
+}
+
+boot().catch(err => document.getElementById("gate").innerHTML =
+  `<span style="color:#c0143c">Failed: ${esc(err.message || err)}</span>`);
+</script></body></html>
