@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+# Frozen blobs / crops / databases land here in P1+; never commit them.
+/blobs/
+/crops/
+*.sqlite
+*.db

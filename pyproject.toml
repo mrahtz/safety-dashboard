@@ -1,0 +1,14 @@
+[project]
+name = "llm-metrics"
+version = "0.0.0"
+description = "LLM-metrics ingestion pipeline with screenshot provenance"
+requires-python = ">=3.11"
+
+# Phase 0 needs nothing beyond the standard library + pytest. The extractor
+# dependencies arrive with the prototypes that use them (P1+):
+#   playwright (HTML), pdfplumber + pymupdf (PDF).
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
