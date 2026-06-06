@@ -77,6 +77,9 @@ async function load() {
   for (const c of DATA) {
     const ctx = c.context || {};
     if (isJunkAxis(ctx.column_header) || isJunkAxis(ctx.row_label)) continue;
+    // Value must look like a number, not just contain a digit — drops model-name
+    // cells from win/loss matchup tables (e.g. "OpenAI o3", "gpt-5-thinking").
+    if (!/^[<>~≤≥]?\s*[-+($]?\$?\.?\d/.test((c.value_string || "").trim())) continue;
     const model = cleanLabel(ctx.column_header);
     const bench = cleanLabel(ctx.row_label);
     const url = c.sources?.origin_url || "";

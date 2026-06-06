@@ -73,7 +73,10 @@ def parse_csv(text: str) -> list[tuple[str, str, str]]:
         for i in range(1, len(r)):
             val = (r[i] or "").strip()
             col = headers[i].strip() if i < len(headers) else ""
-            if val and re.search(r"\d", val) and col.lower() not in drop:
+            # Must look like a NUMBER (optionally led by < > ~ +/- ( $ .), not merely
+            # contain a digit -- otherwise model-name cells like "gpt-5-thinking" or
+            # "OpenAI o3" (from win/loss matchup tables) leak in as "values".
+            if col.lower() not in drop and re.match(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d", val):
                 out.append((col, row_label, val))
     return out
 
