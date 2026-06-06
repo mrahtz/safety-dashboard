@@ -49,19 +49,29 @@ def _req(method: str, url: str, headers: dict, data: bytes | None = None, tries:
     raise RuntimeError("unreachable")
 
 
-def upload_crop(env: dict, path: pathlib.Path) -> str:
+_CONTENT_TYPE = {".png": "image/png", ".csv": "text/csv"}
+
+
+def upload_blob(env: dict, path: pathlib.Path) -> str:
+    """Content-address a file into the public crops bucket; return its URL.
+    Handles PNG crops/section screenshots and CSV table transcriptions."""
     data = path.read_bytes()
-    key = f"{hashlib.sha256(data).hexdigest()}.png"
+    ext = path.suffix.lower() if path.suffix.lower() in _CONTENT_TYPE else ".png"
+    key = f"{hashlib.sha256(data).hexdigest()}{ext}"
     url = f"{env['SUPABASE_URL']}/storage/v1/object/crops/{key}"
     headers = {"Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
                "apikey": env["SUPABASE_SERVICE_ROLE"],
-               "Content-Type": "image/png", "x-upsert": "true"}
+               "Content-Type": _CONTENT_TYPE[ext], "x-upsert": "true"}
     try:
         _req("POST", url, headers, data)
     except urllib.error.HTTPError as e:
         if e.code != 200:  # 200 with x-upsert is success; anything else is real
-            raise RuntimeError(f"crop upload failed {e.code}: {e.read()[:160]!r}") from e
+            raise RuntimeError(f"upload failed {e.code}: {e.read()[:160]!r}") from e
     return f"{env['SUPABASE_URL']}/storage/v1/object/public/crops/{key}"
+
+
+# Back-compat alias (older callers/tests).
+upload_crop = upload_blob
 
 
 def _rest_upsert(env: dict, table: str, rows: list[dict]) -> None:
@@ -92,7 +102,7 @@ def publish() -> None:
 
     def up(path: str) -> str:
         if path not in uploaded:
-            uploaded[path] = upload_crop(env, pathlib.Path(path))
+            uploaded[path] = upload_blob(env, pathlib.Path(path))
         return uploaded[path]
 
     cands = conn.execute("SELECT * FROM candidates ORDER BY id").fetchall()
@@ -105,6 +115,9 @@ def publish() -> None:
         sec_path = context.pop("section_crop_path", "")
         if sec_path and pathlib.Path(sec_path).exists():
             context["section_crop_url"] = up(sec_path)
+        csv_path = context.pop("table_csv_path", "")
+        if csv_path and pathlib.Path(csv_path).exists():
+            context["table_csv_url"] = up(csv_path)
         rows.append({"id": r["id"], "source_id": r["source_id"], "value_string": r["value_string"],
                      "kind": r["kind"], "page": r["page"], "selector": r["selector"],
                      "bbox": json.loads(r["bbox"]), "crop_url": crop_url,

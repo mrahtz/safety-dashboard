@@ -55,7 +55,7 @@ def insert_candidate(conn, source_id: int, c: ir.Candidate, status: str = "pendi
     # screenshot) rides inside context_json -- the IR itself is a frozen
     # contract, so we attach it here rather than widening the IR.
     if section:
-        for k in ("section_key", "section_title", "section_crop_path"):
+        for k in ("section_key", "section_title", "section_crop_path", "table_csv_path"):
             if section.get(k):
                 ctx[k] = section[k]
     cur = conn.execute(

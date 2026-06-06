@@ -15,6 +15,14 @@
  table.nums th,table.nums td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
  table.nums th{background:#f3f6fb}
  td.raw{font-weight:700;white-space:nowrap}
+ table.src-grid{border-collapse:collapse;font-size:13px;margin:8px 0;max-width:100%}
+ table.src-grid th,table.src-grid td{border:1px solid #dde3ec;padding:5px 9px;text-align:right;white-space:nowrap}
+ table.src-grid thead th{background:#eef2f8;text-align:center;position:sticky;top:0}
+ table.src-grid th.rl{text-align:left;background:#f6f8fc;font-weight:600;position:sticky;left:0}
+ table.src-grid td.num{font-variant-numeric:tabular-nums;background:#fbfdff}
+ table.src-grid td:not(.num){color:#667;text-align:left}
+ .section details{margin-top:8px} .section summary{cursor:pointer;color:#3a5273;font-size:13px}
+ .gridwrap{overflow:auto}
 </style></head><body>
 <main>
  <div class=card>
@@ -47,7 +55,7 @@ async function load() {
     const skey = ctx.section_key || "_";
     if (!s.sections.has(skey))
       s.sections.set(skey, { key: skey, title: ctx.section_title || "Table", page: c.page,
-                             shot: ctx.section_crop_url || "", items: [] });
+                             shot: ctx.section_crop_url || "", csv: ctx.table_csv_url || "", items: [] });
     s.sections.get(skey).items.push(c);
   }
   SRC = [...bySource.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -58,35 +66,70 @@ async function load() {
   pick(0);
 }
 
-function pick(i) {
+// Minimal RFC-4180-ish CSV parser (handles quoted fields, commas, newlines).
+function parseCSV(text) {
+  const rows = [[]]; let f = "", q = false;
+  for (let k = 0; k < text.length; k++) {
+    const ch = text[k];
+    if (q) {
+      if (ch === '"' && text[k + 1] === '"') { f += '"'; k++; }
+      else if (ch === '"') q = false;
+      else f += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ",") { rows[rows.length - 1].push(f); f = ""; }
+    else if (ch === "\n") { rows[rows.length - 1].push(f); f = ""; rows.push([]); }
+    else if (ch === "\r") { /* skip */ }
+    else f += ch;
+  }
+  rows[rows.length - 1].push(f);
+  return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+
+const isNum = v => /\d/.test(v) && /^[-+(]?\$?\d|^[-+]?\.?\d/.test(v.trim());
+
+// Render the stored transcription as an HTML table matching the source layout.
+function renderCsvTable(rows) {
+  if (!rows.length) return "<div class=muted>(empty table)</div>";
+  const head = rows[0];
+  let h = "<table class=src-grid><thead><tr>";
+  head.forEach((c, j) => h += `<th class="${j === 0 ? "rl" : ""}">${esc(c)}</th>`);
+  h += "</tr></thead><tbody>";
+  for (const r of rows.slice(1)) {
+    h += "<tr>";
+    for (let j = 0; j < head.length; j++) {
+      const v = r[j] ?? "";
+      if (j === 0) h += `<th class=rl>${esc(v)}</th>`;
+      else h += `<td class="${isNum(v) ? "num" : ""}">${esc(v)}</td>`;
+    }
+    h += "</tr>";
+  }
+  return h + "</tbody></table>";
+}
+
+async function pick(i) {
   current = i;
   SRC.forEach((_, j) => document.getElementById("src" + j).classList.toggle("on", j === i));
   const s = SRC[i];
   const sections = [...s.sections.values()].sort((a, b) =>
     (a.key).localeCompare(b.key, undefined, { numeric: true }));
+  // Fetch every table's stored CSV in parallel (table-level provenance).
+  const csvs = await Promise.all(sections.map(sec =>
+    sec.csv ? fetch(sec.csv).then(r => r.ok ? r.text() : "").catch(() => "") : Promise.resolve("")));
   let html = `<div style="font-size:17px;font-weight:700">${esc(s.label)}</div>
     <div class=muted><a href="${esc(s.url)}" target=_blank>${esc(s.url)}</a> — ${sections.length} table(s)</div>`;
-  for (const sec of sections) {
-    const tk = tableKey(s.url, sec.key);
-    const rv = REVIEWS[tk];
+  sections.forEach((sec, k) => {
+    const rv = REVIEWS[tableKey(s.url, sec.key)];
     const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
     html += `<div class=section><h3>${esc(sec.title)} ${badge}</h3>
-      <div class=muted>${sec.page != null ? "page " + (sec.page + 1) + " · " : ""}${sec.items.length} numbers</div>`;
-    html += sec.shot
-      ? `<img class=shot loading=lazy src="${esc(sec.shot)}" alt="section screenshot">`
-      : `<div class=muted style="padding:8px 0">(section screenshot not available yet — re-run the refresh workflow)</div>`;
-    html += `<table class=nums><tr><th>crop<th>value<th>benchmark (row)<th>model (column)<th>status</tr>`;
-    for (const c of sec.items) {
-      const st = effectiveStatus(c, REVIEWS);
-      html += `<tr><td><a class=pop href="${esc(c.crop_url)}" target=_blank>
-          <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a></td>
-        <td class=raw>${esc(c.value_string)}</td>
-        <td>${esc((c.context?.row_label || "").slice(0, 90))}</td>
-        <td>${esc((c.context?.column_header || "").slice(0, 60))}</td>
-        <td><span class="flag s-${st}">${st}</span></td></tr>`;
-    }
-    html += `</table></div>`;
-  }
+      <div class=muted>${sec.page != null ? "page " + (sec.page + 1) + " · " : ""}${sec.items.length} numbers · VLM-transcribed</div>`;
+    html += csvs[k]
+      ? renderCsvTable(parseCSV(csvs[k]))
+      : `<div class=muted>(table format not stored yet — re-run the refresh)</div>`;
+    if (sec.shot)
+      html += `<details><summary>source screenshot the model read</summary>
+        <img class=shot loading=lazy src="${esc(sec.shot)}"></details>`;
+    html += `</div>`;
+  });
   document.getElementById("content").innerHTML = html;
 }
 

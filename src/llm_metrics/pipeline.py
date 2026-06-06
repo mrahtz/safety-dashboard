@@ -29,13 +29,18 @@ def ingest(conn, src: corpus.Source) -> tuple[int, int]:
     for t in _tables(src, fr.blob_path):
         img = t["image"]
         try:
-            rows = vlm_table.transcribe(pathlib.Path(img))
+            csv_text = vlm_table.transcribe_raw(pathlib.Path(img))
         except Exception as e:  # one unreadable table doesn't sink the source (section 9)
             print(f"    ! {src.model_id} table {t['section_key']}: {type(e).__name__}: {str(e)[:120]}", flush=True)
             continue
+        rows = vlm_table.parse_csv(csv_text)
+        # Persist the table's transcription (its format) next to the screenshot so
+        # the per-source view can re-render the grid exactly as laid out.
+        csv_path = pathlib.Path(img).with_suffix(".csv")
+        csv_path.write_text(csv_text)
         bbox = tuple(t.get("bbox") or (0.0, 0.0, 0.0, 0.0))
         section = {"section_key": t["section_key"], "section_title": t.get("section_title", ""),
-                   "section_crop_path": img}
+                   "section_crop_path": img, "table_csv_path": str(csv_path)}
         for col, row_label, value in rows:
             cand = ir.Candidate(
                 value_string=value,

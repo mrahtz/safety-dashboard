@@ -66,18 +66,21 @@ def parse_csv(text: str) -> list[tuple[str, str, str]]:
     if len(rows) < 2:
         return []
     headers = [h.strip() for h in rows[0]]
+    drop = {"description", "notes", "note"}        # free-text columns, not data
     out: list[tuple[str, str, str]] = []
     for r in rows[1:]:
         row_label = (r[0] if r else "").strip()
         for i in range(1, len(r)):
             val = (r[i] or "").strip()
             col = headers[i].strip() if i < len(headers) else ""
-            if val and re.search(r"\d", val):     # keep numeric cells only
+            if val and re.search(r"\d", val) and col.lower() not in drop:
                 out.append((col, row_label, val))
     return out
 
 
-def transcribe(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120) -> list[tuple[str, str, str]]:
+def transcribe_raw(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120) -> str:
+    """Return the model's raw CSV transcription of the table image (the table
+    format we persist so the per-source view can re-render it faithfully)."""
     if not image_path.exists():
         raise FileNotFoundError(f"table image missing for transcription: {image_path}")
     b64 = base64.standard_b64encode(image_path.read_bytes()).decode()
@@ -96,4 +99,8 @@ def transcribe(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120)
         if e.code in (400, 401, 403):
             raise VlmUnavailable(f"HTTP {e.code}: {e.read().decode()[:200]}") from e
         raise
-    return parse_csv(data["content"][0]["text"])
+    return _strip_fences(data["content"][0]["text"])
+
+
+def transcribe(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120) -> list[tuple[str, str, str]]:
+    return parse_csv(transcribe_raw(image_path, model, timeout))
