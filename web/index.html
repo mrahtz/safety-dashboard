@@ -67,29 +67,35 @@ const isJunkAxis = raw => {
 async function load() {
   mountChrome("index.html");
   [DATA, REVIEWS] = await Promise.all([loadCandidates(), loadReviews()]);
-  const benchGroup = new Map();             // benchmark -> group label (first seen)
-  const modelSet = new Set(), benchSet = new Set(), groupSet = new Set();
+  // A benchmark COLUMN is qualified by its source + table (section) + row label,
+  // so two different metric tables that reuse the same model columns and category
+  // rows (e.g. not_unsafe vs not_overrefuse) become distinct columns instead of
+  // collapsing into one cell. Group = "card · table".
+  const benchMeta = new Map();              // benchId -> {id, name, group}
+  const modelSet = new Set(), groupSet = new Set();
   const KEPT = [];
   for (const c of DATA) {
     const ctx = c.context || {};
     if (isJunkAxis(ctx.column_header) || isJunkAxis(ctx.row_label)) continue;
     const model = cleanLabel(ctx.column_header);
     const bench = cleanLabel(ctx.row_label);
-    const group = sourceLabel(c.sources?.origin_url) || "—";   // group columns by source card
-    modelSet.add(model); benchSet.add(bench); groupSet.add(group);
-    if (!benchGroup.has(bench)) benchGroup.set(bench, group);
-    const k = ck(model, bench);
+    const url = c.sources?.origin_url || "";
+    const sect = cleanLabel(ctx.section_title);
+    const group = sourceLabel(url) + (sect ? " · " + sect : "");
+    const benchId = url + "::" + (ctx.section_key || "") + "::" + bench;
+    modelSet.add(model); groupSet.add(group);
+    if (!benchMeta.has(benchId)) benchMeta.set(benchId, { id: benchId, name: bench, group });
+    const k = ck(model, benchId);
     if (!CELL.has(k)) CELL.set(k, []);
     CELL.get(k).push(c);
     KEPT.push(c);
   }
   MODELS = [...modelSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  BENCHES = [...benchSet].map(b => ({ name: b, group: benchGroup.get(b) }))
-    .sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+  BENCHES = [...benchMeta.values()].sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
   GROUPS = [...groupSet].sort();
   document.getElementById("k-n").textContent = KEPT.length;
   document.getElementById("k-m").textContent = MODELS.length;
-  document.getElementById("k-b").textContent = BENCHES.length;
+  document.getElementById("k-b").textContent = new Set(BENCHES.map(b => b.name)).size;
   document.getElementById("k-v").textContent = KEPT.filter(c => TRUST.includes(effectiveStatus(c, REVIEWS))).length;
   const sel = document.getElementById("grp");
   sel.innerHTML = `<option value="">All groups (${GROUPS.length})</option>` +
@@ -108,8 +114,8 @@ function render() {
   const bq = document.getElementById("bq").value.toLowerCase();
   const benches = BENCHES.filter(b => (!g || b.group === g) && (!bq || b.name.toLowerCase().includes(bq)));
   const models = MODELS.filter(m => !mq || m.toLowerCase().includes(mq));
-  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m, b.name)) || []).length));
-  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m, b.name)) || []).length));
+  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
+  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
   document.getElementById("shown").textContent = `${liveM.length} models × ${liveB.length} benchmarks`;
   if (!liveM.length || !liveB.length) {
     document.getElementById("t").innerHTML = "<tbody><tr><td style=padding:20px>No cells for this filter.</td></tr></tbody>";
@@ -126,7 +132,7 @@ function render() {
   for (const m of liveM) {
     html += `<tr><td class=model title="${esc(m)}">${esc(m)}</td>`;
     for (const b of liveB) {
-      const all = CELL.get(ck(m, b.name)) || [];
+      const all = CELL.get(ck(m, b.id)) || [];
       const vis = visibleEntries(all);
       if (!vis.length) { html += `<td class=empty>·</td>`; continue; }
       const best = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
@@ -134,7 +140,7 @@ function render() {
       const reviewed = REVIEWS[tableKey(best.sources?.origin_url, best.context?.section_key)] ? " reviewed" : "";
       const distinct = new Set(vis.map(c => c.value_string)).size;
       const mark = vis.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${vis.length}</span>` : "";
-      const idx = CELLKEYS.push(ck(m, b.name)) - 1;
+      const idx = CELLKEYS.push(ck(m, b.id)) - 1;
       html += `<td class="cell v-${st}${reviewed}" onclick="openCell(${idx})" `
         + `title="${esc(m)} · ${esc(b.name)} — ${esc(st)}">${esc(best.value_string)}${mark}</td>`;
     }
