@@ -114,6 +114,40 @@ _EXTRACT_ALL_JS = r"""
 }
 """
 
+# Find the data tables on the page (>= min numeric cells), tag each, and return
+# its stable key + title. Used by the VLM-transcription path, which screenshots
+# each table and reads it whole rather than cell-by-cell.
+_TABLES_JS = r"""
+(minNumeric) => {
+  const titleFor = (table) => {
+    const cap = (table.querySelector('caption')?.innerText || '').trim();
+    if (cap) return cap.slice(0, 140);
+    let el = table;
+    for (let i = 0; i < 6 && el; i++) {
+      let p = el.previousElementSibling;
+      while (p) {
+        if (/^H[1-4]$/.test(p.tagName)) return p.innerText.trim().slice(0, 140);
+        const h = p.querySelector && p.querySelector('h1,h2,h3,h4');
+        if (h) return h.innerText.trim().slice(0, 140);
+        p = p.previousElementSibling;
+      }
+      el = el.parentElement;
+    }
+    return '';
+  };
+  const out = [];
+  [...document.querySelectorAll('table')].forEach((t, ti) => {
+    let n = 0;
+    t.querySelectorAll('td,th').forEach(c => { if (/^[-+($]?\d/.test(c.innerText.trim())) n++; });
+    if (n >= minNumeric) {
+      const skey = 't' + ti; t.setAttribute('data-llm-table', skey);
+      out.push({section_key: skey, selector: '[data-llm-table="' + skey + '"]', title: titleFor(t)});
+    }
+  });
+  return out;
+}
+"""
+
 _HIGHLIGHT_JS = """(r) => {
   const d = document.createElement('div'); d.id = '__llm_hl';
   Object.assign(d.style, {position:'fixed', left:r.x+'px', top:r.y+'px',
@@ -235,6 +269,26 @@ def extract_with_sections(source: str, crops_dir: pathlib.Path, run_id: str,
     return pairs
 
 
+def list_tables(source: str, crops_dir: pathlib.Path, run_id: str,
+                min_numeric: int = 3) -> list[dict]:
+    """Screenshot each data table on the page; return its key/title/image path.
+
+    This is the input to the VLM-transcription pipeline: one whole-table image
+    per table, no per-cell crops."""
+    crops_dir.mkdir(parents=True, exist_ok=True)
+    out: list[dict] = []
+    with pw.sync_playwright() as p:
+        browser, page = _open(p)
+        page.goto(_as_url(source), wait_until="networkidle", timeout=60000)
+        for info in page.evaluate(_TABLES_JS, min_numeric):
+            img = crops_dir / f"{run_id}_{info['section_key']}_section.png"
+            if _render_section(page, info["selector"], img):
+                out.append({"section_key": info["section_key"], "section_title": info["title"],
+                            "image": str(img), "page": None})
+        browser.close()
+    return out
+
+
 def extract(source: str, table_index: int, crops_dir: pathlib.Path, run_id: str,
             max_cells: int = 60) -> tuple[ir.Candidate, ...]:
     """Extract one table (``table_index >= 0``) or every table (``-1``, capped)."""
@@ -253,8 +307,13 @@ def extract(source: str, table_index: int, crops_dir: pathlib.Path, run_id: str,
 
 
 def main() -> None:
-    source, table_index, crops_dir, out_json = sys.argv[1], int(sys.argv[2]), pathlib.Path(sys.argv[3]), pathlib.Path(sys.argv[4])
+    source, mode, crops_dir, out_json = sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]), pathlib.Path(sys.argv[4])
     run_id = pathlib.Path(out_json).stem
+    if mode == "tables":   # VLM-transcription path: just screenshot each data table
+        out_json.write_text(json.dumps(list_tables(source, crops_dir, run_id), indent=2))
+        print(f"listed {len(json.loads(out_json.read_text()))} tables -> {out_json}")
+        return
+    table_index = int(mode)
     if table_index < 0:
         pairs = extract_with_sections(source, crops_dir, run_id)
         items = [{**serde.candidate_to_dict(c), "section": s} for c, s in pairs]

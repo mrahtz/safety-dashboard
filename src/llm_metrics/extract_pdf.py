@@ -128,3 +128,30 @@ def extract_all_with_sections(source: str, crops_dir: pathlib.Path, run_id: str,
 def extract_all(source: str, crops_dir: pathlib.Path, run_id: str,
                 max_cells: int = 60) -> tuple[ir.Candidate, ...]:
     return tuple(c for c, _ in extract_all_with_sections(source, crops_dir, run_id, max_cells))
+
+
+def list_tables(source: str, crops_dir: pathlib.Path, run_id: str,
+                min_numeric: int = 3) -> list[dict]:
+    """Render one whole-table image per data table (VLM-transcription path).
+    Returns dicts with section_key / section_title / image / page / bbox."""
+    paths.ensure()
+    local = fetch.local_copy(source, _cache())
+    out: list[dict] = []
+    with pdfplumber.open(local) as pdf:
+        for pi, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            if not text.strip():
+                continue
+            for ti, table in enumerate(page.find_tables()):
+                data = table.extract()
+                n = sum(1 for row in data for cell in row
+                        if cell and re.match(r"^[-+($]?\$?\d", (cell or "").strip()))
+                if n < min_numeric:
+                    continue
+                skey = f"p{pi}_t{ti}"
+                img = crops_dir / f"{run_id}_{skey}_section.png"
+                crop.render_pdf_section(local, pi, tuple(table.bbox), img)
+                out.append({"section_key": skey,
+                            "section_title": _title_above(page, table.bbox) or f"Page {pi + 1}, table {ti + 1}",
+                            "image": str(img), "page": pi, "bbox": list(table.bbox)})
+    return out

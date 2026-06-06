@@ -1,70 +1,66 @@
-"""Orchestration: freeze -> extract -> persist -> verify, source by source.
+"""Orchestration (VLM-transcription pipeline).
 
-A source we cannot structurally parse is recorded and skipped (a normal outcome,
-section 9), not allowed to crash the whole run. Verification fans the VLM reads
-out across threads (network-bound) and writes results back on the main thread
-(SQLite is single-writer).
+For each source: freeze it, screenshot every data table, and have the vision
+model transcribe each table image to CSV. Every numeric cell becomes a candidate
+whose provenance is that whole-table screenshot (table-level, not a per-cell
+box). The model is the reader; trust is established by human review (P5), not by
+a structural cross-check.
+
+A source/table we cannot read is recorded and skipped (a normal outcome,
+section 9), not allowed to crash the whole run.
 """
 
 import pathlib
 
-from llm_metrics import corpus, db, extract_pdf, freeze, paths, runner, verify
-
-MAX_CELLS = 30
+from llm_metrics import corpus, db, extract_pdf, freeze, ir, paths, runner, vlm_table
 
 
-def ingest(conn, src: corpus.Source, max_cells: int = MAX_CELLS) -> tuple[int, int]:
-    """Freeze the source, extract candidates, persist them as 'pending'."""
+def _tables(src: corpus.Source, blob_path: str) -> list[dict]:
+    if src.kind == "html":
+        return runner.run_html_tables(src.origin_url)            # live page, all data tables
+    return extract_pdf.list_tables(blob_path, paths.CROPS, src.model_id)
+
+
+def ingest(conn, src: corpus.Source) -> tuple[int, int]:
+    """Freeze, screenshot each table, VLM-transcribe it, persist the cells."""
     fr = freeze.freeze(src.origin_url)
     sid = db.upsert_source(conn, src.kind, src.origin_url, fr.sha256, fr.retrieved_at, fr.blob_path)
-    if src.kind == "html":
-        pairs = runner.run_html_sections(src.origin_url)  # live page, all tables + sections
-    else:
-        pairs = extract_pdf.extract_all_with_sections(fr.blob_path, paths.CROPS, f"{src.model_id}", max_cells)
-    for c, section in pairs:
-        db.insert_candidate(conn, sid, c, status="pending", section=section)
-    return sid, len(pairs)
-
-
-def verify_source(conn, sid: int) -> dict[str, int]:
-    # Sequential by design: the only network step (the VLM) is independent per
-    # candidate, and spawning many concurrent OCR subprocesses is fragile in
-    # constrained environments. One source is a short job; we run many of them.
-    counts: dict[str, int] = {}
-    for r in db.pending_candidates(conn, sid):
-        cid, vs, cp = r["id"], r["value_string"], pathlib.Path(r["crop_path"])
-        db.add_attempt(conn, cid, "structural", "structural extraction", vs)
+    n = 0
+    for t in _tables(src, fr.blob_path):
+        img = t["image"]
         try:
-            res = verify.verify_candidate(vs, cp)
-        except Exception as e:  # a failed read is not a broken invariant (section 9)
-            db.add_attempt(conn, cid, "vlm", "read number in red box", f"ERROR:{type(e).__name__}")
-            db.set_status(conn, cid, "needs_review")
-            counts["needs_review"] = counts.get("needs_review", 0) + 1
+            rows = vlm_table.transcribe(pathlib.Path(img))
+        except Exception as e:  # one unreadable table doesn't sink the source (section 9)
+            print(f"    ! {src.model_id} table {t['section_key']}: {type(e).__name__}: {str(e)[:120]}", flush=True)
             continue
-        db.add_attempt(conn, cid, "vlm", "read number in red box", res.vlm_raw)
-        db.set_verification(conn, cid, res.structural_value, res.vlm_value, res.status)
-        counts[res.status] = counts.get(res.status, 0) + 1
-    return counts
+        bbox = tuple(t.get("bbox") or (0.0, 0.0, 0.0, 0.0))
+        section = {"section_key": t["section_key"], "section_title": t.get("section_title", ""),
+                   "section_crop_path": img}
+        for col, row_label, value in rows:
+            cand = ir.Candidate(
+                value_string=value,
+                source_ref=ir.SourceRef(kind=src.kind, page=t.get("page"), selector=None, bbox=bbox),
+                crop_path=pathlib.Path(img),          # provenance = the whole-table screenshot
+                context=ir.Context(column_header=col, row_label=row_label, caption="", footnotes=()))
+            # VLM-read, not yet human-reviewed -> 'accepted' (the schema's machine-trust
+            # status). Page 5 review upgrades/overrides via the reviews table.
+            db.insert_candidate(conn, sid, cand, status="accepted", section=section)
+            n += 1
+    return sid, n
 
 
-def run(conn, sources: tuple[corpus.Source, ...] = corpus.SOURCES, do_verify: bool = True) -> None:
+def run(conn, sources: tuple[corpus.Source, ...] = corpus.SOURCES) -> None:
     paths.ensure()
     for src in sources:
         try:
-            sid, n = ingest(conn, src)
-            line = f"  + {src.model_id}: {n} candidates"
-            if do_verify and n:
-                counts = verify_source(conn, sid)
-                line += "  -> " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+            _, n = ingest(conn, src)
+            print(f"  + {src.model_id}: {n} numbers transcribed", flush=True)
         except Exception as e:  # in-domain failure: skip the source, keep going (section 9)
             print(f"  ! {src.model_id}: failed ({type(e).__name__}: {str(e)[:140]})", flush=True)
-            continue
-        print(line, flush=True)
 
 
 def main() -> None:
-    """Ingest the given model_ids (or the whole corpus). Run one per process so a
-    long corpus stays a series of short, isolated jobs."""
+    """Ingest the given model_ids (or the whole corpus)."""
     import sys
     ids = [a for a in sys.argv[1:] if a != "all"]
     srcs = corpus.SOURCES if not ids else tuple(s for s in corpus.SOURCES if s.model_id in ids)

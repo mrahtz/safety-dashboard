@@ -60,6 +60,13 @@ def _rest_upsert(env: dict, table: str, rows: list[dict]) -> None:
     _req("POST", url, headers, json.dumps(rows).encode())
 
 
+def _rest_delete(env: dict, table: str, query: str) -> None:
+    url = f"{env['SUPABASE_URL']}/rest/v1/{table}?{query}"
+    headers = {"Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
+               "apikey": env["SUPABASE_SERVICE_ROLE"], "Prefer": "return=minimal"}
+    _req("DELETE", url, headers)
+
+
 def publish() -> None:
     env = _env()
     conn = sqlite3.connect(DB_PATH)
@@ -91,6 +98,13 @@ def publish() -> None:
             print(f"  uploaded {i + 1}/{len(cands)} crops", flush=True)
     for j in range(0, len(rows), 100):
         _rest_upsert(env, "candidates", rows[j:j + 100])
+    # publish fully replaces the local DB: drop any stale rows left from a prior
+    # publish that had MORE rows (local ids are contiguous 1..N), so a smaller
+    # re-ingest doesn't leave orphans behind.
+    if rows:
+        _rest_delete(env, "candidates", f"id=gt.{max(r['id'] for r in rows)}")
+    if sources:
+        _rest_delete(env, "sources", f"id=gt.{max(s['id'] for s in sources)}")
     print(f"PUBLISHED sources={len(sources)} candidates={len(rows)}", flush=True)
 
 
