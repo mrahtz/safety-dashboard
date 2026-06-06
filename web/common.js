@@ -18,6 +18,11 @@ const SOURCE_LABELS = {
   "https://deploymentsafety.openai.com/o3": "OpenAI o3 system card",
   "https://deploymentsafety.openai.com/sora-2": "Sora 2 system card",
   "https://deploymentsafety.openai.com/gpt-oss": "gpt-oss system card",
+  "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-3-Pro-Model-Card.pdf": "Gemini 3 Pro model card",
+  "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-3-1-Pro-Model-Card.pdf": "Gemini 3.1 Pro model card",
+  "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Pro-Model-Card.pdf": "Gemini 2.5 Pro model card",
+  "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Flash-Model-Card.pdf": "Gemini 2.5 Flash model card",
+  "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-0-Flash-Model-Card.pdf": "Gemini 2.0 Flash model card",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");
