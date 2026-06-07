@@ -18,7 +18,9 @@ from llm_metrics import corpus, db, extract_pdf, freeze, ir, paths, runner, vlm_
 def _tables(src: corpus.Source, blob_path: str) -> list[dict]:
     if src.kind == "html":
         return runner.run_html_tables(src.origin_url)            # live page, all data tables
-    return extract_pdf.list_tables(blob_path, paths.CROPS, src.model_id)
+    # PDFs: render every page and let the VLM read it (no pdfplumber table
+    # detection -- it misses the borderless tables these cards use).
+    return extract_pdf.list_pages(blob_path, paths.CROPS, src.model_id)
 
 
 def ingest(conn, src: corpus.Source) -> tuple[int, int]:
@@ -29,7 +31,13 @@ def ingest(conn, src: corpus.Source) -> tuple[int, int]:
     for t in _tables(src, fr.blob_path):
         img = t["image"]
         try:
-            csv_text = vlm_table.transcribe_raw(pathlib.Path(img))
+            # HTML images are one table each; PDF images are whole pages, so use
+            # the page-aware prompt (and a larger budget for dense pages).
+            if src.kind == "pdf":
+                csv_text = vlm_table.transcribe_raw(pathlib.Path(img),
+                                                    prompt=vlm_table._PAGE_PROMPT, max_tokens=8000)
+            else:
+                csv_text = vlm_table.transcribe_raw(pathlib.Path(img))
         except Exception as e:  # one unreadable table doesn't sink the source (section 9)
             print(f"    ! {src.model_id} table {t['section_key']}: {type(e).__name__}: {str(e)[:120]}", flush=True)
             continue

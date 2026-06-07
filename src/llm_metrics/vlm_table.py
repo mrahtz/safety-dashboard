@@ -50,6 +50,29 @@ _PROMPT = (
     "from row labels and column headers. Keep values exactly as printed."
 )
 
+# Page-at-a-time variant (PDF path): a whole page may hold one table, several,
+# or none. Same CSV output as _PROMPT (so parse_csv is unchanged), with each
+# table separated by a blank line -- parse_csv already reads blank-line blocks.
+_PAGE_PROMPT = (
+    "You are transcribing data tables from ONE PAGE of an AI model/system card "
+    "PDF. The page may contain one table, several tables, or none (just prose). "
+    "Output CSV and NOTHING else -- no prose, no code fences.\n"
+    "Rules:\n"
+    "1. Transcribe every data table on the page. For each table the first CSV row "
+    "is its column headers exactly as printed (usually model names); keep the "
+    "first cell for the row-label column, which may be blank.\n"
+    "2. Each following row begins with the row label exactly as printed (the "
+    "benchmark / metric / category), then one value per column in order.\n"
+    "3. Copy every value exactly as printed -- keep %, +/- signs and decimals -- "
+    "but NEVER use thousands separators (write 2439, not 2,439).\n"
+    "4. Separate multiple tables on the page with a SINGLE BLANK LINE, repeating "
+    "the column-header row for each table.\n"
+    "5. Strip footnote markers (*, †, ‡, §, ¶, superscript digits/letters) from "
+    "row labels and column headers; keep values verbatim.\n"
+    "6. If the page has no data table, output nothing at all.\n"
+    "Do not add, drop, merge, reorder, or compute anything."
+)
+
 
 def _api_key() -> str:
     key = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
@@ -122,7 +145,11 @@ def transcribe_raw(image_path: pathlib.Path, model: str = MODEL, timeout: int = 
         if e.code in (400, 401, 403):
             raise VlmUnavailable(f"HTTP {e.code}: {e.read().decode()[:200]}") from e
         raise
-    return _strip_fences(data["content"][0]["text"])
+    # An empty content list is a valid response: the model output nothing (e.g. a
+    # prose PDF page under _PAGE_PROMPT). Treat it as an empty transcription, not
+    # an IndexError.
+    texts = [b.get("text", "") for b in (data.get("content") or []) if b.get("type") == "text"]
+    return _strip_fences(texts[0] if texts else "")
 
 
 def transcribe(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120) -> list[tuple[str, str, str]]:
