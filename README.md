@@ -82,7 +82,7 @@ token does **not**).
 ## CI / deployment
 
 - **`.github/workflows/refresh.yml`** — full re-ingest + publish (weekly + manual).
-- **`.github/workflows/dev-ingest.yml`** — fast loop: ingest one/two cards, dump
+- **`.github/workflows/dev.yml`** (dev-ingest) — fast loop: ingest one/two cards, dump
   transcriptions to the log, **no publish**. Use this to iterate.
 - **`.github/workflows/probe.yml`** — checks the Supabase key works (Storage +
   PostgREST) with dummy data, no ingest.
