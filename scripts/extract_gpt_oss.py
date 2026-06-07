@@ -137,7 +137,8 @@ def build_html(tables: list[dict], csvs: list[str]) -> str:
         h1 {{ font-size: 1.4rem; }}
         h2 {{ font-size: 1.1rem; border-bottom: 1px solid #ccc; padding-bottom: .3rem; }}
         .pair {{ display: flex; gap: 2rem; align-items: flex-start; margin: 1rem 0; }}
-        .screenshot img {{ max-width: 700px; border: 1px solid #ddd; }}
+        .pair > div {{ flex: 1 1 0; min-width: 0; }}
+        .screenshot img {{ max-width: 100%; border: 1px solid #ddd; }}
         .label {{ font-size: .8rem; color: #666; margin: 0 0 .3rem; }}
         .extracted {{ overflow-x: auto; }}
         table.data {{ border-collapse: collapse; font-size: .8rem; white-space: nowrap; }}
