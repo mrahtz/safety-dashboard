@@ -2,6 +2,8 @@
 Claude, and write a side-by-side HTML report: screenshot | extracted numbers."""
 
 import base64
+import csv
+import io
 import pathlib
 import sys
 import textwrap
@@ -11,7 +13,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import playwright.sync_api as pw
 from llm_metrics.extract_html import _TABLES_JS, _render_section, VIEWPORT, SCALE
-from llm_metrics.vlm_table import transcribe_raw, parse_csv
+from llm_metrics.vlm_table import transcribe_raw, parse_csv, _strip_fences
 
 URL = "https://deploymentsafety.openai.com/gpt-oss"
 OUT_DIR = ROOT / "var" / "gpt_oss_report"
@@ -46,20 +48,48 @@ def img_data_uri(path: pathlib.Path) -> str:
     return f"data:image/png;base64,{b64}"
 
 
+def csv_to_grid_html(raw_csv: str) -> tuple[str, int]:
+    """Render the raw CSV as an HTML table preserving its 2-D layout.
+    Returns (html_string, numeric_cell_count)."""
+    rows = [r for r in csv.reader(io.StringIO(_strip_fences(raw_csv)))
+            if any(c.strip() for c in r)]
+    if not rows:
+        return "<p class='empty'>No data extracted.</p>", 0
+
+    import re
+    _is_numeric = re.compile(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d").match
+
+    headers = rows[0]
+    n_numeric = sum(
+        1 for r in rows[1:] for i, v in enumerate(r)
+        if i > 0 and _is_numeric(v.strip())
+    )
+
+    def cell(tag: str, content: str, numeric: bool = False) -> str:
+        cls = " class='num'" if numeric else ""
+        return f"<{tag}{cls}>{content}</{tag}>"
+
+    html = "<table class='data'><thead><tr>"
+    for h in headers:
+        html += cell("th", h)
+    html += "</tr></thead><tbody>"
+    for r in rows[1:]:
+        html += "<tr>"
+        for i, v in enumerate(r):
+            is_num = i > 0 and bool(_is_numeric(v.strip()))
+            html += cell("td", v, numeric=is_num)
+        html += "</tr>"
+    html += "</tbody></table>"
+    return html, n_numeric
+
+
 def build_html(tables: list[dict], csvs: list[str]) -> str:
     sections = []
     for t, raw_csv in zip(tables, csvs):
         title = t["section_title"] or t["section_key"]
         img_uri = img_data_uri(pathlib.Path(t["image"]))
 
-        rows = parse_csv(raw_csv)
-        if rows:
-            data_html = "<table class='data'><tr><th>Row label</th><th>Column</th><th>Value</th></tr>"
-            for col, row_lbl, val in rows:
-                data_html += f"<tr><td>{row_lbl}</td><td>{col}</td><td>{val}</td></tr>"
-            data_html += "</table>"
-        else:
-            data_html = "<p class='empty'>No numeric values extracted.</p>"
+        data_html, n_numeric = csv_to_grid_html(raw_csv)
 
         sections.append(textwrap.dedent(f"""
         <section>
@@ -70,7 +100,7 @@ def build_html(tables: list[dict], csvs: list[str]) -> str:
               <img src='{img_uri}' alt='table screenshot'>
             </div>
             <div class='extracted'>
-              <p class='label'>Extracted numbers ({len(rows)} cells)</p>
+              <p class='label'>Extracted numbers ({n_numeric} numeric cells)</p>
               {data_html}
             </div>
           </div>
@@ -95,9 +125,11 @@ def build_html(tables: list[dict], csvs: list[str]) -> str:
         .pair {{ display: flex; gap: 2rem; align-items: flex-start; margin: 1rem 0; }}
         .screenshot img {{ max-width: 700px; border: 1px solid #ddd; }}
         .label {{ font-size: .8rem; color: #666; margin: 0 0 .3rem; }}
-        table.data {{ border-collapse: collapse; font-size: .85rem; }}
-        table.data th, table.data td {{ border: 1px solid #ddd; padding: .25rem .5rem; }}
-        table.data th {{ background: #f0f0f0; }}
+        .extracted {{ overflow-x: auto; }}
+        table.data {{ border-collapse: collapse; font-size: .8rem; white-space: nowrap; }}
+        table.data th, table.data td {{ border: 1px solid #ddd; padding: .2rem .45rem; }}
+        table.data th {{ background: #f0f0f0; text-align: left; }}
+        table.data td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
         .empty {{ color: #888; font-style: italic; }}
         details {{ margin-top: .5rem; }}
         pre {{ background: #f8f8f8; padding: .5rem; overflow-x: auto; font-size: .8rem; }}
@@ -114,18 +146,32 @@ def build_html(tables: list[dict], csvs: list[str]) -> str:
 
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Screenshotting tables from {URL} …")
-    tables = list_tables_local(URL, OUT_DIR, "gpt_oss")
-    print(f"Found {len(tables)} data tables")
+
+    # Re-use cached screenshots if they exist; re-screenshot otherwise.
+    cached = sorted(OUT_DIR.glob("gpt_oss_t*_section.png"))
+    if cached:
+        print(f"Using {len(cached)} cached screenshots")
+        tables = [{"section_key": p.stem.removeprefix("gpt_oss_").removesuffix("_section"),
+                   "section_title": "", "image": str(p), "page": None}
+                  for p in cached]
+    else:
+        print(f"Screenshotting tables from {URL} …")
+        tables = list_tables_local(URL, OUT_DIR, "gpt_oss")
+        print(f"Found {len(tables)} data tables")
 
     csvs = []
     for t in tables:
-        title = t["section_title"] or t["section_key"]
         img_path = pathlib.Path(t["image"])
-        print(f"  Transcribing {t['section_key']}: {title!r} ({img_path.name}) …")
-        raw = transcribe_raw(img_path)
-        parsed = parse_csv(raw)
-        print(f"    → {len(parsed)} numeric cells")
+        csv_cache = img_path.with_suffix(".csv")
+        if csv_cache.exists():
+            print(f"  {t['section_key']}: using cached CSV")
+            raw = csv_cache.read_text()
+        else:
+            print(f"  Transcribing {t['section_key']} ({img_path.name}) …")
+            raw = transcribe_raw(img_path)
+            csv_cache.write_text(raw)
+            parsed = parse_csv(raw)
+            print(f"    → {len(parsed)} numeric cells")
         csvs.append(raw)
 
     html = build_html(tables, csvs)
