@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import playwright.sync_api as pw
 from llm_metrics.extract_html import _TABLES_JS, _render_section, VIEWPORT, SCALE
-from llm_metrics.vlm_table import transcribe_raw, parse_csv, _strip_fences, _parse_block
+from llm_metrics.vlm_table import transcribe_raw, parse_csv, _strip_fences
 
 URL = "https://deploymentsafety.openai.com/gpt-oss"
 OUT_DIR = ROOT / "var" / "gpt_oss_report"
