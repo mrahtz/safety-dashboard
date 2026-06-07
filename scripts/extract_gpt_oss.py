@@ -1,20 +1,27 @@
-"""Screenshot every data table from the gpt-oss model card, transcribe with
-Claude into a normalized long format, and emit:
+"""Screenshot every data table AND labelled figure from the gpt-oss model card,
+transcribe with Claude into a normalized long format, and emit:
 
-  * one ``*_long.csv`` per table  -- the single source of the numbers, one row
+  * one ``*_long.csv`` per table   -- the single source of the numbers, one row
     per numeric cell (id, row, col, model, condition, benchmark, metric, value),
   * one ``*_grid.csv`` per table   -- the paper's 2-D layout, whose data cells
     hold an ``#id`` REFERENCE into the long CSV (no values duplicated),
-  * ``gpt_oss_long.csv``            -- all tables concatenated, the standardized
-    dataframe (table, model, condition, benchmark, metric, value),
-  * ``report.html``                -- screenshot | grid (de-referenced) side by side.
+  * one ``*_long.csv`` per figure  -- the printed values read off a chart
+    (id, model, condition, benchmark, metric, value),
+  * ``gpt_oss_long.csv``           -- tables + figures concatenated, the
+    standardized frame (kind, source, model, condition, benchmark, metric, value),
+  * ``report.html``                -- screenshot | extracted values, side by side.
 
-One VLM call per table; the numbers live only in the long CSV.
+Same screenshot+VLM pipeline for both: tables are screenshots of ``<table>``
+elements, figures are screenshots of ``<figure>`` elements. Charts without
+printed value labels (scatter/line plots, text diagrams) yield no rows and are
+dropped, so only graphs with actual numbers land in the frame. The numbers live
+only in the long CSVs.
 """
 
 import base64
 import csv
 import io
+import json
 import pathlib
 import re
 import sys
@@ -62,7 +69,67 @@ _LONG_PROMPT = (
     "one line."
 )
 
+# Charts have no 2-D grid, so no row/col -- just the semantic axes + value. The
+# model reads PRINTED bar/point labels (not pixel positions); if a figure has no
+# printed values it must return the header alone, so it self-filters out.
+_CHART_PROMPT = (
+    "You are reading ONE figure (a chart) from an AI model/system card "
+    "screenshot. Transcribe a number ONLY IF that exact number is written as "
+    "text on the chart (a data label, e.g. printed above a bar). This is "
+    "transcription, NOT reading a graph: if a bar/point has only a category "
+    "label (like 'low'/'medium'/'high' or a model name) and no printed number, "
+    "or you would have to judge its height against the y-axis / gridlines, then "
+    "DO NOT output it. A scatter or line plot whose points are not annotated "
+    "with their numeric value yields NO rows. Never estimate, round, or infer a "
+    "value. If the figure has no printed numeric data labels at all (an "
+    "unlabelled scatter/line plot, or a text/diagram), output ONLY the header "
+    "line and nothing else.\n"
+    "Output CSV and NOTHING else -- no prose, no fences. First line exactly:\n"
+    "model,condition,benchmark,metric,value\n"
+    "Then one line per printed value:\n"
+    "- value: the number exactly as printed (keep % and decimals).\n"
+    "- model: the model that bar/point belongs to, from its x-axis label or the "
+    "legend -- the base model name (e.g. gpt-oss-120b, o4-mini, DeepSeek "
+    "R1-0528). Carry a legend/subplot model across its bars.\n"
+    "- condition: any setting attached to the bar/point or its subplot -- e.g. "
+    "browsing, no browsing, with tools, without tools, low, medium, high, launch "
+    "candidate, helpful-only. EMPTY if none.\n"
+    "- benchmark: what is measured -- the chart title or the subplot/panel title "
+    "(e.g. ProtocolQA Open-Ended, AIME 2024, GPQA Diamond).\n"
+    "- metric: the y-axis label (e.g. pass@1, Accuracy (%), Elo). If unclear use "
+    "'score'.\n"
+    "Strip footnote markers. One line per printed numeric label; emit nothing for "
+    "unlabelled marks."
+)
+
+# Find every <figure> that carries a chart image; tag, title, and note its image
+# source (used to skip charts we know can't be transcribed -- see SKIP_FIG_SRC).
+_FIGURES_JS = r"""
+() => {
+  const out = [];
+  [...document.querySelectorAll('figure')].forEach((f, fi) => {
+    const img = f.querySelector('img');
+    if (!img) return;
+    const skey = 'f' + fi;
+    f.setAttribute('data-llm-fig', skey);
+    const cap = f.querySelector('figcaption');
+    out.push({section_key: skey, selector: '[data-llm-fig="' + skey + '"]',
+              title: (cap ? cap.innerText : '').trim().slice(0, 160),
+              src: img.currentSrc || img.src || ''});
+  });
+  return out;
+}
+"""
+
+# Charts with no printed value labels -- the model estimates their marks off the
+# axis no matter how firmly the prompt forbids it (an unlabelled scatter/line
+# plot is reading a graph, not transcribing it), so we exclude them by image
+# source. Matched as substrings of the figure's <img> src.
+SKIP_FIG_SRC = ("scaling",)   # Fig 3: accuracy-vs-CoT-length scatter, points unlabelled
+
 _FIELDS = ["row", "col", "model", "condition", "benchmark", "metric", "value"]
+_FIG_FIELDS = ["model", "condition", "benchmark", "metric", "value"]
+FIG_SCALE = 3  # charts render small in the page column; capture at 3x for legible labels
 _is_numeric = re.compile(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d").match
 
 
@@ -87,6 +154,37 @@ def list_tables_local(url: str, crops_dir: pathlib.Path, run_id: str,
                             "image": str(img), "page": None})
         browser.close()
     return out
+
+
+def list_figures_local(url: str, crops_dir: pathlib.Path, run_id: str) -> list[dict]:
+    """Screenshot each <figure> (whole element incl. caption) at FIG_SCALE."""
+    crops_dir.mkdir(parents=True, exist_ok=True)
+    out: list[dict] = []
+    with pw.sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=_HEADLESS_SHELL)
+        page = browser.new_page(viewport=VIEWPORT, device_scale_factor=FIG_SCALE,
+                                ignore_https_errors=True)
+        page.goto(url, wait_until="networkidle", timeout=60000)
+        for _ in range(16):                       # scroll to trigger lazy figure images
+            page.mouse.wheel(0, 2000)
+            page.wait_for_timeout(250)
+        page.wait_for_timeout(800)
+        for info in page.evaluate(_FIGURES_JS):
+            img = crops_dir / f"{run_id}_{info['section_key']}_section.png"
+            if _render_section(page, info["selector"], img):
+                # Persist caption + src so a cached re-run keeps them (the PNG alone loses them).
+                img.with_suffix(".meta.json").write_text(json.dumps(
+                    {"section_title": info["title"], "src": info["src"]}))
+                out.append({"section_key": info["section_key"],
+                            "section_title": info["title"], "src": info["src"],
+                            "image": str(img), "page": None})
+        browser.close()
+    return out
+
+
+def _load_meta(image: str) -> dict:
+    meta = pathlib.Path(image).with_suffix(".meta.json")
+    return json.loads(meta.read_text()) if meta.exists() else {}
 
 
 def img_data_uri(path: pathlib.Path) -> str:
@@ -138,6 +236,36 @@ def read_long_csv(path: pathlib.Path) -> list[dict]:
                     "benchmark": r["benchmark"], "metric": r["metric"],
                     "value": r["value"]})
     return out
+
+
+def parse_chart_records(raw: str) -> list[dict]:
+    """VLM chart-CSV output -> list of {model, condition, benchmark, metric,
+    value}. Drops anything whose value isn't numeric (so unlabelled charts and
+    text figures collapse to nothing)."""
+    reader = csv.DictReader(io.StringIO(_strip_fences(raw)))
+    out: list[dict] = []
+    for r in reader:
+        val = (r.get("value") or "").strip()
+        if not _is_numeric(val):
+            continue
+        out.append({"model": (r.get("model") or "").strip(),
+                    "condition": (r.get("condition") or "").strip(),
+                    "benchmark": (r.get("benchmark") or "").strip(),
+                    "metric": (r.get("metric") or "").strip(),
+                    "value": val})
+    return out
+
+
+def write_fig_long_csv(records: list[dict], path: pathlib.Path) -> None:
+    with path.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", *_FIG_FIELDS])
+        for i, rec in enumerate(records):
+            w.writerow([i, *(rec[k] for k in _FIG_FIELDS)])
+
+
+def read_fig_long_csv(path: pathlib.Path) -> list[dict]:
+    return [{k: r[k] for k in _FIG_FIELDS} for r in csv.DictReader(path.open())]
 
 
 def build_grid(records: list[dict]) -> list[list[str]]:
@@ -215,34 +343,47 @@ def grid_to_html(grid: list[list[str]], id2value: dict[int, str]) -> str:
     return html
 
 
-def build_html(tables: list[dict], grids: list[list[list[str]]],
-               id2values: list[dict[int, str]], counts: list[int],
-               raws: list[str]) -> str:
-    sections = []
-    for t, grid, id2value, n, raw in zip(tables, grids, id2values, counts, raws):
-        title = t["section_title"] or t["section_key"]
-        img_uri = img_data_uri(pathlib.Path(t["image"]))
-        data_html = grid_to_html(grid, id2value)
-        sections.append(textwrap.dedent(f"""
+def records_to_values_html(records: list[dict]) -> str:
+    """Plain values table for a figure (no paper grid to reconstruct)."""
+    if not records:
+        return "<p class='empty'>No printed values.</p>"
+    html = ("<table class='data'><thead><tr><th>Model</th><th>Condition</th>"
+            "<th>Benchmark</th><th>Metric</th><th>Value</th></tr></thead><tbody>")
+    for r in records:
+        vcls = " class='num'" if _is_numeric(r["value"]) else ""
+        html += (f"<tr><td>{r['model']}</td><td>{r['condition']}</td>"
+                 f"<td>{r['benchmark']}</td><td>{r['metric']}</td>"
+                 f"<td{vcls}>{r['value']}</td></tr>")
+    html += "</tbody></table>"
+    return html
+
+
+def build_html(sections: list[dict]) -> str:
+    """Render generic sections (table or figure): screenshot | extracted values."""
+    blocks = []
+    for s in sections:
+        img_uri = img_data_uri(pathlib.Path(s["image"]))
+        badge = f"<span class='badge {s['kind']}'>{s['kind']}</span>"
+        blocks.append(textwrap.dedent(f"""
         <section>
-          <h2>{title}</h2>
+          <h2>{badge} {s['title']}</h2>
           <div class='pair'>
             <div class='screenshot'>
               <p class='label'>Screenshot</p>
-              <img src='{img_uri}' alt='table screenshot'>
+              <img src='{img_uri}' alt='{s['kind']} screenshot'>
             </div>
             <div class='extracted'>
-              <p class='label'>Grid (cells reference the long CSV) — {n} numeric cells</p>
-              {data_html}
+              <p class='label'>{s['label']}</p>
+              {s['values_html']}
             </div>
           </div>
           <details>
-            <summary>Raw long CSV from Claude</summary>
-            <pre>{raw}</pre>
+            <summary>Raw CSV from Claude</summary>
+            <pre>{s['raw']}</pre>
           </details>
         </section>
         """))
-    body = "\n".join(sections)
+    body = "\n".join(blocks)
     return textwrap.dedent(f"""
     <!DOCTYPE html>
     <html lang='en'>
@@ -266,12 +407,19 @@ def build_html(tables: list[dict], grids: list[list[list[str]]],
         details {{ margin-top: .5rem; }}
         pre {{ background: #f8f8f8; padding: .5rem; overflow-x: auto; font-size: .8rem; }}
         section {{ margin-bottom: 3rem; }}
+        .badge {{ font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+                  padding: .1rem .4rem; border-radius: .25rem; vertical-align: middle; }}
+        .badge.table {{ background: #e3f0ff; color: #1a4f8a; }}
+        .badge.figure {{ background: #fff0db; color: #8a5a1a; }}
       </style>
     </head>
     <body>
-      <h1>gpt-oss model card — normalized tables ({URL})</h1>
-      <p>Each table has a long CSV (the data, one row per cell) and a grid CSV
-      whose cells reference it; the combined frame is <code>gpt_oss_long.csv</code>.</p>
+      <h1>gpt-oss model card — normalized tables &amp; figures ({URL})</h1>
+      <p>Tables and labelled figures, extracted by the same screenshot+VLM
+      pipeline into one schema. Tables also get a grid CSV whose cells reference
+      their long CSV; figures hold only printed values. The combined frame
+      (<code>kind, source, model, condition, benchmark, metric, value</code>) is
+      <code>gpt_oss_long.csv</code>.</p>
       {body}
     </body>
     </html>
@@ -279,63 +427,117 @@ def build_html(tables: list[dict], grids: list[list[list[str]]],
 
 
 # ---------------------------------------------------------------------------
+def _cached_or_screenshot(glob_pat: str, lister, label: str) -> list[dict]:
+    """Reuse cached *_section.png screenshots if present, else screenshot fresh."""
+    cached = sorted(OUT_DIR.glob(glob_pat))
+    if cached:
+        print(f"Using {len(cached)} cached {label} screenshots")
+        return [{"section_key": p.stem.removeprefix("gpt_oss_").removesuffix("_section"),
+                 "section_title": "", "image": str(p), "page": None, **_load_meta(str(p))}
+                for p in cached]
+    print(f"Screenshotting {label} from {URL} …")
+    items = lister(URL, OUT_DIR, "gpt_oss")
+    print(f"Found {len(items)} {label}")
+    return items
+
+
+def process_table(t: dict) -> tuple[dict, list[dict]]:
+    """Returns (report-section, combined-rows) for one table."""
+    img_path = pathlib.Path(t["image"])
+    stem = img_path.with_suffix("")
+    long_path, grid_path = pathlib.Path(f"{stem}.long.csv"), pathlib.Path(f"{stem}.grid.csv")
+    raw_path = pathlib.Path(f"{stem}.long.raw.csv")
+
+    if long_path.exists() and raw_path.exists():
+        print(f"  {t['section_key']}: using cached long CSV")
+        records, raw = read_long_csv(long_path), raw_path.read_text()
+    else:
+        print(f"  Transcribing table {t['section_key']} ({img_path.name}) …")
+        raw = transcribe_raw(img_path, prompt=_LONG_PROMPT, max_tokens=8000)
+        records = parse_records(raw)
+        raw_path.write_text(raw)
+        write_long_csv(records, long_path)
+        print(f"    → {len(records)} numeric cells")
+
+    grid = build_grid(records)
+    write_grid_csv(grid, grid_path)
+    id2value = {i: rec["value"] for i, rec in enumerate(records)}
+    section = {"kind": "table", "title": t["section_title"] or t["section_key"],
+               "image": t["image"], "raw": raw,
+               "label": f"Grid (cells reference the long CSV) — {len(records)} numeric cells",
+               "values_html": grid_to_html(grid, id2value)}
+    rows = [{"kind": "table", "source": t["section_key"],
+             **{k: rec[k] for k in _FIG_FIELDS}} for rec in records]
+    return section, rows
+
+
+def process_figure(t: dict) -> tuple[dict, list[dict]] | None:
+    """Returns (report-section, combined-rows), or None if the figure has no
+    printed values (so only graphs with actual numbers are kept)."""
+    src = t.get("src", "")
+    if any(p in src for p in SKIP_FIG_SRC):
+        print(f"  {t['section_key']}: unlabelled scatter/line plot "
+              f"({src.rsplit('/', 1)[-1]}) — skipped")
+        return None
+
+    img_path = pathlib.Path(t["image"])
+    stem = img_path.with_suffix("")
+    long_path, raw_path = pathlib.Path(f"{stem}.long.csv"), pathlib.Path(f"{stem}.long.raw.csv")
+
+    if long_path.exists() and raw_path.exists():
+        print(f"  {t['section_key']}: using cached long CSV")
+        records, raw = read_fig_long_csv(long_path), raw_path.read_text()
+    else:
+        print(f"  Reading figure {t['section_key']} ({img_path.name}) …")
+        raw = transcribe_raw(img_path, prompt=_CHART_PROMPT, max_tokens=4000)
+        records = parse_chart_records(raw)
+        raw_path.write_text(raw)
+        write_fig_long_csv(records, long_path)
+        print(f"    → {len(records)} printed values"
+              + ("" if records else " (no numbers — skipped)"))
+
+    if not records:
+        return None
+    section = {"kind": "figure", "title": t["section_title"] or t["section_key"],
+               "image": t["image"], "raw": raw,
+               "label": f"Extracted values — {len(records)} printed numbers",
+               "values_html": records_to_values_html(records)}
+    rows = [{"kind": "figure", "source": t["section_key"],
+             **{k: rec[k] for k in _FIG_FIELDS}} for rec in records]
+    return section, rows
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    cached = sorted(OUT_DIR.glob("gpt_oss_t*_section.png"))
-    if cached:
-        print(f"Using {len(cached)} cached screenshots")
-        tables = [{"section_key": p.stem.removeprefix("gpt_oss_").removesuffix("_section"),
-                   "section_title": "", "image": str(p), "page": None}
-                  for p in cached]
-    else:
-        print(f"Screenshotting tables from {URL} …")
-        tables = list_tables_local(URL, OUT_DIR, "gpt_oss")
-        print(f"Found {len(tables)} data tables")
+    tables = _cached_or_screenshot("gpt_oss_t*_section.png", list_tables_local, "tables")
+    figures = _cached_or_screenshot("gpt_oss_f*_section.png", list_figures_local, "figures")
 
-    grids, id2values, counts, raws = [], [], [], []
+    sections: list[dict] = []
     combined: list[dict] = []
     for t in tables:
-        img_path = pathlib.Path(t["image"])
-        stem = img_path.with_suffix("")
-        long_path = pathlib.Path(f"{stem}.long.csv")
-        grid_path = pathlib.Path(f"{stem}.grid.csv")
-        raw_path = pathlib.Path(f"{stem}.long.raw.csv")
+        section, rows = process_table(t)
+        sections.append(section)
+        combined.extend(rows)
+    for t in figures:
+        result = process_figure(t)
+        if result is not None:
+            section, rows = result
+            sections.append(section)
+            combined.extend(rows)
 
-        if long_path.exists() and raw_path.exists():
-            print(f"  {t['section_key']}: using cached long CSV")
-            records = read_long_csv(long_path)
-            raw = raw_path.read_text()
-        else:
-            print(f"  Transcribing {t['section_key']} ({img_path.name}) …")
-            raw = transcribe_raw(img_path, prompt=_LONG_PROMPT, max_tokens=8000)
-            records = parse_records(raw)
-            raw_path.write_text(raw)
-            write_long_csv(records, long_path)
-            print(f"    → {len(records)} numeric cells")
-
-        grid = build_grid(records)
-        write_grid_csv(grid, grid_path)
-        id2value = {i: rec["value"] for i, rec in enumerate(records)}
-
-        grids.append(grid)
-        id2values.append(id2value)
-        counts.append(len(records))
-        raws.append(raw)
-        for rec in records:
-            combined.append({"table": t["section_key"], **{k: rec[k] for k in
-                             ("model", "condition", "benchmark", "metric", "value")}})
-
-    # The standardized dataframe: every number from every table, one row each.
+    # The standardized frame: every number from every table + labelled figure.
+    cols = ["kind", "source", *_FIG_FIELDS]
     with COMBINED.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["table", "model", "condition", "benchmark", "metric", "value"])
+        w.writerow(cols)
         for r in combined:
-            w.writerow([r["table"], r["model"], r["condition"], r["benchmark"],
-                        r["metric"], r["value"]])
+            w.writerow([r[c] for c in cols])
 
-    REPORT.write_text(build_html(tables, grids, id2values, counts, raws), encoding="utf-8")
-    print(f"\nCombined frame → {COMBINED} ({len(combined)} rows)")
+    REPORT.write_text(build_html(sections), encoding="utf-8")
+    n_tab = sum(r["kind"] == "table" for r in combined)
+    n_fig = len(combined) - n_tab
+    print(f"\nCombined frame → {COMBINED} ({len(combined)} rows: {n_tab} table, {n_fig} figure)")
     print(f"Report written → {REPORT}")
 
 
