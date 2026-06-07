@@ -5,6 +5,7 @@ import base64
 import csv
 import io
 import pathlib
+import re
 import sys
 import textwrap
 
@@ -13,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import playwright.sync_api as pw
 from llm_metrics.extract_html import _TABLES_JS, _render_section, VIEWPORT, SCALE
-from llm_metrics.vlm_table import transcribe_raw, parse_csv, _strip_fences
+from llm_metrics.vlm_table import transcribe_raw, parse_csv, _strip_fences, _parse_block
 
 URL = "https://deploymentsafety.openai.com/gpt-oss"
 OUT_DIR = ROOT / "var" / "gpt_oss_report"
@@ -48,18 +49,15 @@ def img_data_uri(path: pathlib.Path) -> str:
     return f"data:image/png;base64,{b64}"
 
 
-def csv_to_grid_html(raw_csv: str) -> tuple[str, int]:
-    """Render the raw CSV as an HTML table preserving its 2-D layout.
-    Returns (html_string, numeric_cell_count)."""
-    rows = [r for r in csv.reader(io.StringIO(_strip_fences(raw_csv)))
-            if any(c.strip() for c in r)]
+_is_numeric = re.compile(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d").match
+
+
+def _block_to_table_html(block_text: str) -> tuple[str, int]:
+    """Render one CSV block as an HTML <table>. Returns (html, numeric_cell_count)."""
+    rows = [r for r in csv.reader(io.StringIO(block_text)) if any(c.strip() for c in r)]
     if not rows:
-        return "<p class='empty'>No data extracted.</p>", 0
+        return "", 0
 
-    import re
-    _is_numeric = re.compile(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d").match
-
-    headers = rows[0]
     n_numeric = sum(
         1 for r in rows[1:] for i, v in enumerate(r)
         if i > 0 and _is_numeric(v.strip())
@@ -70,17 +68,33 @@ def csv_to_grid_html(raw_csv: str) -> tuple[str, int]:
         return f"<{tag}{cls}>{content}</{tag}>"
 
     html = "<table class='data'><thead><tr>"
-    for h in headers:
+    for h in rows[0]:
         html += cell("th", h)
     html += "</tr></thead><tbody>"
     for r in rows[1:]:
         html += "<tr>"
         for i, v in enumerate(r):
-            is_num = i > 0 and bool(_is_numeric(v.strip()))
-            html += cell("td", v, numeric=is_num)
+            html += cell("td", v, numeric=(i > 0 and bool(_is_numeric(v.strip()))))
         html += "</tr>"
     html += "</tbody></table>"
     return html, n_numeric
+
+
+def csv_to_grid_html(raw_csv: str) -> tuple[str, int]:
+    """Render the raw CSV as HTML, handling sub-tables separated by blank lines.
+    Returns (html_string, total_numeric_cell_count)."""
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", _strip_fences(raw_csv)) if b.strip()]
+    if not blocks:
+        return "<p class='empty'>No data extracted.</p>", 0
+
+    parts, total = [], 0
+    for block in blocks:
+        h, n = _block_to_table_html(block)
+        if h:
+            parts.append(h)
+            total += n
+
+    return "\n".join(parts) if parts else "<p class='empty'>No data extracted.</p>", total
 
 
 def build_html(tables: list[dict], csvs: list[str]) -> str:

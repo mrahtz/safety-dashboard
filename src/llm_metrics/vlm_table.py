@@ -38,10 +38,16 @@ _PROMPT = (
     "be blank.\n"
     "2. Each following row begins with the row label exactly as printed (the "
     "benchmark / metric / category), then one value per column in order.\n"
-    "3. Copy every value exactly as printed -- keep %, +/- signs, decimals, and "
-    "footnote marks. Use an empty field for blank cells.\n"
+    "3. Copy every value exactly as printed -- keep %, +/- signs, and decimals. "
+    "Use an empty field for blank cells.\n"
     "4. Do not add, drop, merge, reorder, or compute anything. One CSV column "
-    "per table column, one CSV row per table row."
+    "per table column, one CSV row per table row.\n"
+    "5. Sub-tables: if a new set of column headers appears partway through the "
+    "table body (a row of text labels, not values), treat it as a sub-table "
+    "boundary. Emit a blank line, then output that row as a fresh header row, "
+    "then continue with the rows below it.\n"
+    "6. Strip footnote markers (*, †, ‡, §, ¶, and superscript digits/letters) "
+    "from row labels and column headers. Keep values exactly as printed."
 )
 
 
@@ -60,13 +66,12 @@ def _strip_fences(text: str) -> str:
     return t.strip()
 
 
-def parse_csv(text: str) -> list[tuple[str, str, str]]:
-    """CSV text -> [(column_header, row_label, value_string)] for numeric cells."""
-    rows = [r for r in csv.reader(io.StringIO(_strip_fences(text))) if any(c.strip() for c in r)]
+def _parse_block(block_text: str, drop: set[str]) -> list[tuple[str, str, str]]:
+    """Parse one CSV block (no blank lines) into numeric (col, row_label, value) tuples."""
+    rows = [r for r in csv.reader(io.StringIO(block_text)) if any(c.strip() for c in r)]
     if len(rows) < 2:
         return []
     headers = [h.strip() for h in rows[0]]
-    drop = {"description", "notes", "note"}        # free-text columns, not data
     out: list[tuple[str, str, str]] = []
     for r in rows[1:]:
         row_label = (r[0] if r else "").strip()
@@ -78,6 +83,17 @@ def parse_csv(text: str) -> list[tuple[str, str, str]]:
             # "OpenAI o3" (from win/loss matchup tables) leak in as "values".
             if col.lower() not in drop and re.match(r"^[<>~≤≥]?\s*[-+($]?\$?\.?\d", val):
                 out.append((col, row_label, val))
+    return out
+
+
+def parse_csv(text: str) -> list[tuple[str, str, str]]:
+    """CSV text -> [(column_header, row_label, value_string)] for numeric cells.
+
+    Handles multi-block output (sub-tables separated by blank lines)."""
+    drop = {"description", "notes", "note"}
+    out: list[tuple[str, str, str]] = []
+    for block in re.split(r"\n\s*\n", _strip_fences(text)):
+        out.extend(_parse_block(block.strip(), drop))
     return out
 
 
