@@ -1,121 +1,115 @@
 # safety-dashboard — LLM-metrics ingestion with screenshot provenance
 
-A pipeline that extracts LLM benchmark/safety numbers from published system cards
-into a database, and a dashboard to review them. The one load-bearing property:
-**every stored number is provable.** Each number is bound to a *bounding box* in
-the source's own coordinate system, so its screenshot is a tight crop of exactly
-that spot — provenance by construction, not by luck.
+Extracts LLM benchmark/safety numbers from published system/model cards into a
+database and serves three static dashboards to explore and review them. Every
+number is tied to **the screenshot of the table it came from**, so each value is
+traceable back to its source.
 
-Design in one line: a deterministic **structural extractor** is the source of
-truth (it gives real coordinates); an independent **VLM** only cross-checks the
-number it reads (it never produces the record). A number is `verified` only when
-both agree *and* the value is found in the OCR text of its own crop.
+## How it works (current pipeline: VLM transcription)
 
-## What works end to end
+```
+corpus → freeze → screenshot each data table → VLM transcribes table → numbers → publish → static pages
+```
 
-| Stage | What it does | Module(s) |
-|------|---------------|-----------|
-| Contracts | Frozen IR + DB schema everything codes against | `ir.py`, `schema.py` |
-| P1 HTML | Playwright reads DOM cells + `getBoundingClientRect`, renders tight highlighted crops | `extract_html.py` |
-| P2 PDF | `pdfplumber` cells + PyMuPDF rasterize/crop — identical IR | `extract_pdf.py`, `crop.py` |
-| P3 freeze+DB | Content-addressed freezer + SQLite persistence + accept/reject UI | `freeze.py`, `db.py`, `app.py` |
-| P4 VLM verify | Independent VLM read + normalize-compare + OCR-presence check | `vlm.py`, `verify.py`, `ocr.py` |
-| P5 dashboard | Render-from-DB dashboard; status filter so only verified rows show | `app.py`, `export_static.py` |
-| P6a normalize | Strip %/marks, parse typed float, record precision | `normalize.py` |
+For each card (`corpus.py`):
+1. **Freeze** (`freeze.py`) — fetch the bytes, hash to sha256, snapshot to `var/blobs/`.
+2. **Screenshot every data table** — Playwright for the OpenAI HTML pages
+   (`extract_html.list_tables`), `pdfplumber`/PyMuPDF for the Gemini PDFs
+   (`extract_pdf.list_tables`). One image per table (≥3 numeric cells).
+3. **Transcribe** (`vlm_table.py`) — each table image is sent to Claude
+   (`claude-sonnet-4-6`) and returned as CSV. Every numeric cell becomes a
+   candidate `(column_header, row_label, value)`; the raw CSV (the table's
+   layout) is saved too.
+4. **Persist** (`db.py`, schema in `schema.py`) — candidates land in SQLite with
+   status `accepted` (machine-read, not yet human-reviewed). Provenance =
+   the whole-table screenshot + the stored CSV.
+5. **Publish** (`publish.py`) — uploads the table screenshots + table CSVs to
+   Supabase Storage (content-addressed, deduped) and upserts rows via PostgREST.
 
-Orchestration (`pipeline.py`) freezes → extracts → persists → verifies each card
-in `corpus.py`. Failures degrade gracefully: a source it can't parse is skipped,
-a number it can't auto-verify becomes `needs_review` — it never writes a guessed
-record (brief §9).
+**Provenance is table-level**: a number links to the table image the model read
+and the CSV it produced, not to a per-cell bounding box.
+
+> **Accuracy caveat (measured).** The VLM is accurate on most tables but
+> *silently misreads some complex ones*. A cell-level audit against the HTML DOM
+> found ~95% exact but **46 wrong cells concentrated in a few tables** (e.g.
+> gpt-oss "Table 3" — 37/38 wrong, column misalignment). For HTML we have exact
+> values for free in the DOM, so the recommended next step is to take HTML values
+> structurally and keep the VLM for PDFs (see "Two readers" below). Run the audit
+> with `/tmp`-style scripts or the presence/cell checks in the git history.
+
+## The three pages (`web/`, served by GitHub Pages)
+
+1. **`index.html` — model × benchmark matrix.** Rows = models (`column_header`),
+   columns = benchmarks (`row_label`), qualified by source+table so distinct
+   metric tables don't collapse. Junk axes/values are filtered client-side. Click
+   a cell to see every source value + the table screenshot.
+2. **`sources.html` — numbers by source.** Pick a card; each table is re-rendered
+   **in its original layout** from the stored CSV, with the source screenshot one
+   click away.
+3. **`review.html` — review one table at a time.** Sign in (Supabase Auth magic
+   link) and accept/reject a whole table. Decisions are keyed by a stable
+   `table_key = origin_url || '::' || section_key` in a separate `reviews` table,
+   so re-ingest never wipes them; the sign-off badge overlays the other pages.
+
+Section/table metadata (screenshot URL, CSV URL, `section_key`, `section_title`)
+rides inside the candidate's `context` JSONB — the IR and DB schema stay frozen
+contracts (`ir.py`, `schema.py`); extras are merged in `db.insert_candidate`.
 
 ## Corpus
 
-12 real system/model cards from two families discovered at build time:
+12 cards from two families:
 - **OpenAI Deployment Safety Hub** (HTML): gpt-5.5, gpt-5.2, gpt-5.1, gpt-5, o3, sora-2, gpt-oss.
 - **Google DeepMind model cards** (PDF): Gemini 3 Pro, 3.1 Pro, 2.5 Pro, 2.5 Flash, 2.0 Flash.
 
 ## Run it
 
 ```bash
-pip install flask pymupdf pdfplumber playwright pytesseract markupsafe
+pip install playwright pdfplumber pymupdf Pillow markupsafe   # ingest deps (no OCR needed)
 python -m playwright install chromium
-apt-get install -y tesseract-ocr
-export CLAUDE_API_KEY=sk-ant-...        # for the VLM verifier (P4)
+export CLAUDE_API_KEY=sk-ant-...                              # the table reader
 
-./scripts/ingest.sh        # freeze + extract + verify the whole corpus -> var/metrics.sqlite
-./scripts/serve.sh         # interactive UI at http://localhost:8000  (Dashboard / Review / Extract)
-./scripts/export.sh        # self-contained offline dashboard -> var/export/index.html
-pytest -q                  # contract + pipeline self-tests
+./scripts/ingest.sh                       # whole corpus -> var/metrics.sqlite
+python3 -m llm_metrics.pipeline gpt-5-5   # OR just one/two cards (fast)
+python3 scripts/dump_tables.py            # print the transcribed CSVs to eyeball
+./scripts/publish.sh                      # push to Supabase (needs var/supabase.env)
+pytest -q                                 # contract + persistence self-tests
 ```
 
-The **offline export** (`var/export/`) is a single `index.html` plus a `crops/`
-folder, fully self-contained: open it in any browser with no server and no
-network. Filter by status, search, sort, and hover any crop to enlarge it.
+`var/supabase.env` (gitignored) needs `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE`
+(a `service_role` JWT or a new `sb_secret_…` key — both work; a `sbp_…` personal
+token does **not**).
 
-## Tests
+## CI / deployment
 
-`pytest` covers the frozen contracts, normalization, persistence/idempotency, and
-the verification protocol — including the P4 case that a **deliberately wrong
-bounding box is caught by the OCR-presence check**.
+- **`.github/workflows/refresh.yml`** — full re-ingest + publish (weekly + manual).
+- **`.github/workflows/dev-ingest.yml`** — fast loop: ingest one/two cards, dump
+  transcriptions to the log, **no publish**. Use this to iterate.
+- **`.github/workflows/probe.yml`** — checks the Supabase key works (Storage +
+  PostgREST) with dummy data, no ingest.
+- **`.github/workflows/pages.yml`** — deploys `web/` to GitHub Pages.
 
-## Live deployment (GitHub Pages + Supabase)
-
-The dashboard can run as a static page backed by an external DB instead of a
-baked export:
-
-- **Postgres (Supabase)** holds `sources`/`candidates`; **Storage** holds the
-  crops (public bucket, keyed by sha256 — immutable, deduplicated provenance).
-- **RLS**: anonymous users get read-only access; status changes require an
-  authenticated reviewer. The frontend ships only the public **anon** key.
-- `scripts/publish.sh` (`llm_metrics/publish.py`) pushes the local SQLite +
-  crops up: it uploads each crop to Storage and upserts the rows via PostgREST,
-  rewriting `crop_path` → public `crop_url`. Needs `var/supabase.env` (gitignored)
-  with `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE`.
-- The static frontend (`web/`) reads candidates from PostgREST and crops from
-  Storage entirely client-side. The ingest runs in CI or locally and publishes;
-  Pages just serves the static files.
-
-The split: **ingest is a backend batch job** (Actions/local, holds the secrets);
-**serving is static** (Pages, anon read-only). Re-run `scripts/ingest.sh` then
-`scripts/publish.sh` to refresh.
-
-## The three pages (`web/`)
-
-1. **`index.html` — Model × benchmark dashboard.** A pivot built client-side:
-   each card's table *columns* are the models (rows of the matrix) and its *rows*
-   are the benchmarks (columns of the matrix). Every cell links to all the source
-   values behind it, each with its provenance crop.
-2. **`sources.html` — Numbers by source.** Pick a card; each of its tables is
-   shown as a **screenshot of the whole table/section** (not just one number's
-   box), followed by every number extracted from it with its tight crop.
-3. **`review.html` — Review, one table at a time.** A reviewer signs in (Supabase
-   Auth magic link) and accepts/rejects a whole table at once. Decisions are
-   keyed by a stable `table_key = origin_url || '::' || section_key`, stored in a
-   separate `reviews` table, so the weekly re-ingest never wipes them; the badge
-   then overlays the other two pages.
-
-**Section screenshots** ride through the existing publish path with *no schema
-change*: the whole-table image goes to Storage and its URL plus `section_key` /
-`section_title` are written into the candidate's `context` JSONB (the IR stays a
-frozen contract — section data is merged in `db.insert_candidate`).
+Secrets required: `CLAUDE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`.
 
 ### Review setup (one-time)
+- Run `supabase/reviews.sql` in the Supabase SQL editor (creates `reviews` + RLS:
+  anon read, authenticated write).
+- Supabase → Authentication: enable Email/magic-link and add the deployed
+  `…/review.html` URL to the redirect allowlist.
 
-- **Create the reviews table + RLS:** run `supabase/reviews.sql` in the Supabase
-  SQL editor. Anon may read decisions (for the badges); only authenticated users
-  may write.
-- **Enable email auth:** Supabase → Authentication → Providers → Email (magic
-  link is on by default). Add the deployed URL to Authentication → URL
-  Configuration → Site URL / Redirect URLs, e.g.
-  `https://amid.fish/safety-dashboard/review.html`.
+## Two readers (note for maintainers)
 
-## Known limits
+This repo currently contains **two** ways to read tables:
+- **VLM transcription** (`vlm_table.py` + `*.list_tables` + `pipeline.py`) — the
+  shipped path described above.
+- **Structural extraction** (`extract_html.extract*`, `extract_pdf.extract*`,
+  `serde.py`, `runner.run_html*`, `ocr.py`, `normalize.py`) — reads DOM/PDF cells
+  with exact coordinates and tight per-cell crops. It powers the local Flask app
+  (`app.py`, `scripts/serve.sh`) and is the **exact-values reference** the audit
+  uses. It's the basis for the recommended "structural values for HTML" step.
 
-- HTML crops render from the **live page** (faithful layout); the raw bytes are
-  still frozen by sha256 for provenance/diffing. Freezing a full HTML asset
-  bundle is out of scope for this milestone.
-- Image-only PDF tables (no text layer) are out of scope (brief §3.3) — e.g. the
-  Gemini capabilities table on page 5, which is a figure.
-- This managed environment firewalls all egress except TLS/443, so a public
-  Cloudflare tunnel (edge port 7844) cannot be established here; the dashboard is
-  delivered as the offline export above and runs locally via `scripts/serve.sh`.
+The old single-crop VLM cross-check (`verify.py`/`vlm.py`) has been removed.
+
+## Offline export
+
+`./scripts/export.sh` renders the DB to a self-contained `var/export/index.html`
+(+ `crops/`) — viewable with no server (`export_static.py`).
