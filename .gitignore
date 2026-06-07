@@ -6,6 +6,8 @@ __pycache__/
 # Run-time artifacts (frozen blobs, crops, db, static export) live under var/.
 # Regenerate with scripts/ingest.sh + scripts/export.sh; never commit them.
 /var/
+# Downloaded source cache (content-addressed PDFs etc., via fetch.local_copy).
+/cache/
 *.sqlite
 *.db
 *.zip
