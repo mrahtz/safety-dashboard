@@ -97,17 +97,21 @@ def parse_csv(text: str) -> list[tuple[str, str, str]]:
     return out
 
 
-def transcribe_raw(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120) -> str:
+def transcribe_raw(image_path: pathlib.Path, model: str = MODEL, timeout: int = 120,
+                   prompt: str = _PROMPT, max_tokens: int = 4000) -> str:
     """Return the model's raw CSV transcription of the table image (the table
-    format we persist so the per-source view can re-render it faithfully)."""
+    format we persist so the per-source view can re-render it faithfully).
+
+    ``prompt``/``max_tokens`` are overridable so callers can request an
+    alternative transcription schema (e.g. a normalized long format)."""
     if not image_path.exists():
         raise FileNotFoundError(f"table image missing for transcription: {image_path}")
     b64 = base64.standard_b64encode(image_path.read_bytes()).decode()
     body = json.dumps({
-        "model": model, "max_tokens": 4000,
+        "model": model, "max_tokens": max_tokens,
         "messages": [{"role": "user", "content": [
             {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": b64}},
-            {"type": "text", "text": _PROMPT}]}],
+            {"type": "text", "text": prompt}]}],
     }).encode()
     req = urllib.request.Request(_ENDPOINT, data=body, headers={
         "x-api-key": _api_key(), "anthropic-version": "2023-06-01", "content-type": "application/json"})
