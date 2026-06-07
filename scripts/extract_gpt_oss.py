@@ -358,8 +358,16 @@ def records_to_values_html(records: list[dict]) -> str:
     return html
 
 
-def build_html(sections: list[dict]) -> str:
-    """Render generic sections (table or figure): screenshot | extracted values."""
+def build_html(sections: list[dict], heading: str | None = None,
+               intro: str | None = None) -> str:
+    """Render generic sections (table/figure/page): screenshot | extracted values."""
+    heading = heading or f"gpt-oss model card — normalized tables &amp; figures ({URL})"
+    intro = intro or (
+        "Tables and labelled figures, extracted by the same screenshot+VLM "
+        "pipeline into one schema. Tables also get a grid CSV whose cells "
+        "reference their long CSV; figures hold only printed values. The combined "
+        "frame (<code>kind, source, model, condition, benchmark, metric, value</code>) "
+        "is <code>gpt_oss_long.csv</code>.")
     blocks = []
     for s in sections:
         img_uri = img_data_uri(pathlib.Path(s["image"]))
@@ -411,15 +419,12 @@ def build_html(sections: list[dict]) -> str:
                   padding: .1rem .4rem; border-radius: .25rem; vertical-align: middle; }}
         .badge.table {{ background: #e3f0ff; color: #1a4f8a; }}
         .badge.figure {{ background: #fff0db; color: #8a5a1a; }}
+        .badge.page {{ background: #e8f5e9; color: #2e6b32; }}
       </style>
     </head>
     <body>
-      <h1>gpt-oss model card — normalized tables &amp; figures ({URL})</h1>
-      <p>Tables and labelled figures, extracted by the same screenshot+VLM
-      pipeline into one schema. Tables also get a grid CSV whose cells reference
-      their long CSV; figures hold only printed values. The combined frame
-      (<code>kind, source, model, condition, benchmark, metric, value</code>) is
-      <code>gpt_oss_long.csv</code>.</p>
+      <h1>{heading}</h1>
+      <p>{intro}</p>
       {body}
     </body>
     </html>
