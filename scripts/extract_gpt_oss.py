@@ -51,7 +51,8 @@ _LONG_PROMPT = (
     "row,col,model,condition,benchmark,metric,value\n"
     "Then emit ONE line per NUMERIC data cell in the table. For each cell:\n"
     "- value: the number exactly as printed (keep %, +/- signs and decimals; do "
-    "not round or compute).\n"
+    "not round or compute), but NEVER use thousands separators (write 2439, not "
+    "2,439) -- a comma would corrupt the CSV.\n"
     "- model: the model the column belongs to, from the column header; carry a "
     "spanned model header across every column it covers.\n"
     "- condition: the reasoning level / setting for that column (e.g. low, "
@@ -87,7 +88,8 @@ _CHART_PROMPT = (
     "Output CSV and NOTHING else -- no prose, no fences. First line exactly:\n"
     "model,condition,benchmark,metric,value\n"
     "Then one line per printed value:\n"
-    "- value: the number exactly as printed (keep % and decimals).\n"
+    "- value: the number exactly as printed (keep % and decimals), but NEVER use "
+    "thousands separators (write 2439, not 2,439) -- a comma would corrupt the CSV.\n"
     "- model: the model that bar/point belongs to, from its x-axis label or the "
     "legend -- the base model name (e.g. gpt-oss-120b, o4-mini, DeepSeek "
     "R1-0528). Carry a legend/subplot model across its bars.\n"
@@ -268,6 +270,76 @@ def read_fig_long_csv(path: pathlib.Path) -> list[dict]:
     return [{k: r[k] for k in _FIG_FIELDS} for r in csv.DictReader(path.open())]
 
 
+# ---------------------------------------------------------------------------
+# Second-pass verification: re-read each cell from the image guided ONLY by its
+# (model, condition, benchmark) identity -- never the extracted value -- and flag
+# where the fresh read disagrees. An independent read, not a "do you agree?".
+# ---------------------------------------------------------------------------
+_VERIFY_PROMPT = (
+    "You are VERIFYING numbers transcribed from this image. Below is a list of "
+    "cells, each with an id and its (model, condition, benchmark). For EACH id, "
+    "locate that exact cell in the image and read the number printed there fresh "
+    "-- do NOT assume or guess a value, read what is shown. Output CSV and "
+    "NOTHING else, first line exactly:\n"
+    "id,value\n"
+    "then one line per id, value copied exactly as printed (keep %, +/- signs, "
+    "decimals). Leave value empty if you cannot find that cell.\n\n"
+    "Cells to verify:\n"
+)
+
+
+def _verify_block(records: list[dict]) -> str:
+    lines = ["id | model | condition | benchmark"]
+    for i, r in enumerate(records):
+        lines.append(f"{i} | {r['model']} | {r.get('condition', '')} | {r['benchmark']}")
+    return "\n".join(lines)
+
+
+_NUM_TOKEN = re.compile(r"[-+]?\$?\s*\d[\d,]*\.?\d*")
+
+
+def _norm_value(v: str) -> str:
+    """Compare by the leading numeric token only, so trailing annotations
+    ('+0.2% (non-egregious)') and formatting ('$5,478.16') don't cause false
+    disagreements."""
+    v = v.replace("−", "-").replace("–", "-")
+    m = _NUM_TOKEN.search(v)
+    if not m:
+        return re.sub(r"\s+", "", v).lower()
+    return re.sub(r"[\s,$+]", "", m.group(0))
+
+
+def verify_records(image_path, records: list[dict], max_tokens: int = 4000) -> dict[int, str]:
+    """Guided re-read: returns {id: freshly-read value} for the given records."""
+    if not records:
+        return {}
+    raw = transcribe_raw(pathlib.Path(image_path),
+                         prompt=_VERIFY_PROMPT + _verify_block(records), max_tokens=max_tokens)
+    out: dict[int, str] = {}
+    # Split on the FIRST comma only -- values themselves can contain commas
+    # ('$5,478.16'), which a naive CSV parse would truncate.
+    for line in _strip_fences(raw).splitlines():
+        line = line.strip()
+        if not line or "," not in line or line.lower().startswith("id"):
+            continue
+        sid, val = line.split(",", 1)
+        try:
+            out[int(sid.strip())] = val.strip()
+        except ValueError:
+            continue
+    return out
+
+
+def flagged_ids(records: list[dict], verified: dict[int, str]) -> dict[int, str]:
+    """ids whose fresh re-read disagrees with the extracted value -> the re-read."""
+    flags: dict[int, str] = {}
+    for i, rec in enumerate(records):
+        v = verified.get(i)
+        if v and _norm_value(rec["value"]) != _norm_value(v):
+            flags[i] = v
+    return flags
+
+
 def build_grid(records: list[dict]) -> list[list[str]]:
     """Reconstruct the paper's 2-D layout with #id references in data cells.
 
@@ -317,20 +389,28 @@ def write_grid_csv(grid: list[list[str]], path: pathlib.Path) -> None:
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
-def grid_to_html(grid: list[list[str]], id2value: dict[int, str]) -> str:
-    """Render the grid, de-referencing #id cells to their value from the long CSV."""
+def grid_to_html(grid: list[list[str]], id2value: dict[int, str],
+                 flags: dict[int, str] | None = None) -> str:
+    """Render the grid, de-referencing #id cells to their value from the long CSV.
+    Cells whose id is in ``flags`` are marked (the value the re-read disagreed on
+    is shown on hover)."""
     if not grid:
         return "<p class='empty'>No data extracted.</p>"
+    flags = flags or {}
     n_head = 1 + (1 if len(grid) > 1 and any(grid[1][1:]) and not any(
         c.startswith("#") for c in grid[1][1:]) else 0)
 
     def render_cell(tag, text):
-        ref = text.startswith("#")
-        if ref:
-            text = id2value.get(int(text[1:]), "?")
-        num = ref and bool(_is_numeric(text))
-        cls = " class='num'" if num else ""
-        return f"<{tag}{cls}>{text}</{tag}>"
+        cid = int(text[1:]) if text.startswith("#") else None
+        if cid is not None:
+            text = id2value.get(cid, "?")
+        classes = (["num"] if cid is not None and _is_numeric(text) else [])
+        title = ""
+        if cid in flags:
+            classes.append("flag")
+            title = f" title='re-read as: {flags[cid]}'"
+        cls = f" class='{' '.join(classes)}'" if classes else ""
+        return f"<{tag}{cls}{title}>{text}</{tag}>"
 
     html = "<table class='data'><thead>"
     for hr in grid[:n_head]:
@@ -411,6 +491,8 @@ def build_html(sections: list[dict], heading: str | None = None,
         table.data th, table.data td {{ border: 1px solid #ddd; padding: .2rem .45rem; }}
         table.data th {{ background: #f0f0f0; text-align: left; }}
         table.data td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+        table.data td.flag, table.data th.flag {{ background: #ffe0e0; outline: 2px solid #e03030;
+            cursor: help; }}
         .empty {{ color: #888; font-style: italic; }}
         details {{ margin-top: .5rem; }}
         pre {{ background: #f8f8f8; padding: .5rem; overflow-x: auto; font-size: .8rem; }}

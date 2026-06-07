@@ -40,7 +40,8 @@ _PAGE_PROMPT = (
     "Then emit ONE line per NUMERIC data cell in any table on the page. If the "
     "page has no tabular numeric data, output ONLY the header line.\n"
     "- value: the number exactly as printed (keep %, +/- signs, decimals; do not "
-    "round or compute).\n"
+    "round or compute), but NEVER use thousands separators (write 2439, not 2,439) "
+    "-- a comma would corrupt the CSV.\n"
     "- model: the model/system the column belongs to, from the column header "
     "(e.g. Gemini 3 Pro, Gemini 2.5 Pro, Claude Sonnet 4.5, GPT-5.2). Carry a "
     "spanned header across every column it covers.\n"
@@ -74,9 +75,26 @@ def render_pages(url: str, out_dir: pathlib.Path, run: str,
     return out
 
 
-def process_page(t: dict) -> tuple[dict, list[dict]] | None:
-    """One VLM call per page. Returns (report-section, rows), or None if the page
-    has no tabular numbers."""
+def _verify(img_path: pathlib.Path, stem: pathlib.Path, records: list[dict],
+            section_key: str) -> dict[int, str]:
+    """Guided re-read (cached) -> {id: re-read value} for cells that disagree."""
+    verify_path = pathlib.Path(f"{stem}.verify.csv")
+    if verify_path.exists():
+        verified = {int(r["id"]): r["value"] for r in csv.DictReader(verify_path.open())}
+    else:
+        print(f"    verifying {section_key} …")
+        verified = g.verify_records(img_path, records)
+        with verify_path.open("w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["id", "value"])
+            for i in sorted(verified):
+                w.writerow([i, verified[i]])
+    return g.flagged_ids(records, verified)
+
+
+def process_page(t: dict) -> tuple[dict, list[dict], list[dict]] | None:
+    """One VLM call per page (+ one verification call). Returns (report-section,
+    rows, flag-rows), or None if the page has no tabular numbers."""
     img_path = pathlib.Path(t["image"])
     stem = img_path.with_suffix("")
     long_path = pathlib.Path(f"{stem}.long.csv")
@@ -100,13 +118,24 @@ def process_page(t: dict) -> tuple[dict, list[dict]] | None:
     grid = g.build_grid(records)
     g.write_grid_csv(grid, grid_path)
     id2value = {i: rec["value"] for i, rec in enumerate(records)}
+
+    flags = _verify(img_path, stem, records, t["section_key"])
+    if flags:
+        print(f"    ⚑ {len(flags)} cell(s) flagged on re-read")
+
+    label = f"Grid (cells reference the long CSV) — {len(records)} numeric cells"
+    if flags:
+        label += f" · <span style='color:#c00'>{len(flags)} flagged on re-read</span>"
     section = {"kind": "page", "title": t["section_title"],
-               "image": t["image"], "raw": raw,
-               "label": f"Grid (cells reference the long CSV) — {len(records)} numeric cells",
-               "values_html": g.grid_to_html(grid, id2value)}
+               "image": t["image"], "raw": raw, "label": label,
+               "values_html": g.grid_to_html(grid, id2value, flags)}
     rows = [{"kind": "page", "source": t["section_key"],
              **{k: rec[k] for k in g._FIG_FIELDS}} for rec in records]
-    return section, rows
+    flag_rows = [{"source": t["section_key"], "benchmark": records[i]["benchmark"],
+                  "model": records[i]["model"], "condition": records[i]["condition"],
+                  "extracted": records[i]["value"], "reread": v}
+                 for i, v in flags.items()]
+    return section, rows, flag_rows
 
 
 def main():
@@ -116,12 +145,14 @@ def main():
 
     sections: list[dict] = []
     combined: list[dict] = []
+    all_flags: list[dict] = []
     for t in pages:
         result = process_page(t)
         if result is not None:
-            section, rows = result
+            section, rows, flag_rows = result
             sections.append(section)
             combined.extend(rows)
+            all_flags.extend(flag_rows)
 
     cols = ["kind", "source", *g._FIG_FIELDS]
     with COMBINED.open("w", newline="") as f:
@@ -130,14 +161,35 @@ def main():
         for r in combined:
             w.writerow([r[c] for c in cols])
 
+    # Disagreements between the first read and the guided re-read, for the user to adjudicate.
+    flag_cols = ["source", "benchmark", "model", "condition", "extracted", "reread"]
+    flags_csv = OUT_DIR / "gemini3_flags.csv"
+    with flags_csv.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(flag_cols)
+        for r in all_flags:
+            w.writerow([r[c] for c in flag_cols])
+
     heading = f"Gemini 3 Pro model card — normalized tables ({URL})"
     intro = ("Each PDF page was rendered and sent once to Claude with the "
-             "long-format prompt (no pdfplumber table detection). Pages with no "
-             "tabular numbers are dropped. The combined frame (<code>kind, source, "
-             "model, condition, benchmark, metric, value</code>) is "
+             "long-format prompt (no pdfplumber table detection), then a second "
+             "guided re-read verified each value. Pages with no tabular numbers "
+             "are dropped. The combined frame (<code>kind, source, model, "
+             "condition, benchmark, metric, value</code>) is "
              "<code>gemini3_long.csv</code>.")
+    if all_flags:
+        items = "".join(
+            f"<li><b>{r['source']}</b> · {r['benchmark']} / {r['model']}"
+            f"{(' / ' + r['condition']) if r['condition'] else ''}: extracted "
+            f"<code>{r['extracted']}</code>, re-read <code>{r['reread']}</code></li>"
+            for r in all_flags)
+        intro += (f"<br><strong style='color:#c00'>{len(all_flags)} cell(s) flagged by "
+                  "second-pass verification</strong> (first read vs an independent "
+                  f"re-read — check these against the screenshot):<ul>{items}</ul>")
+
     REPORT.write_text(g.build_html(sections, heading=heading, intro=intro), encoding="utf-8")
     print(f"\nCombined frame → {COMBINED} ({len(combined)} rows from {len(sections)} pages)")
+    print(f"Flags → {flags_csv} ({len(all_flags)} disagreements)")
     print(f"Report written → {REPORT}")
 
 
