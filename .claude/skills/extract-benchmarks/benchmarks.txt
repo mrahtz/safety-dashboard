@@ -70,3 +70,20 @@ OpenAI Hate
 OpenAI Harassment
 OpenAI Self-harm
 OpenAI Disallowed Content
+
+# --- Added from gpt-oss system card (2026-06) ---
+HealthBench
+HealthBench Hard
+HealthBench Consensus
+PaperBench
+Multimodal Troubleshooting Virology | VCT
+ProtocolQA Open-Ended | ProtocolQA
+Biorisk Tacit Knowledge and Troubleshooting
+TroubleshootingBench
+# Company-internal (OpenAI-run) evals from the gpt-oss card:
+OpenAI Gryphon Free Response | Gryphon Free Response | Autograded Gryphon Free Response
+OpenAI Capture the Flag (Collegiate) | Capture the Flag (CTF) Collegiate
+OpenAI Capture the Flag (Professional) | Capture the Flag (CTF) Professional
+OpenAI Cyber Range | Cyber Range
+OpenAI PRs
+OpenAI PersonQA | PersonQA

@@ -48,3 +48,8 @@ DeepSeek-R1 | DeepSeek R1
 # --- Qwen / others ---
 Qwen2.5-72B | Qwen2.5 72B
 Mistral Large
+
+# --- Added from gpt-oss system card (2026-06) ---
+Kimi K2
+Qwen3 Thinking | Qwen 3 Thinking
+DeepSeek-R1-0528 | DeepSeek R1-0528
