@@ -58,10 +58,13 @@ async function sbGetAll(table, select) {
   return out;
 }
 
-async function loadCandidates() {
-  return sbGetAll("candidates",
-    "id,value_string,structural_value,vlm_value,status,crop_url,context,page,source_id,sources(origin_url)");
+async function loadMetrics() {
+  return sbGetAll("metrics",
+    "id,model,condition,benchmark,value,units,row_idx,col_idx,status,crop_url," +
+    "section_key,section_title,source_id,sources(origin_url)");
 }
+// Back-compat alias for any older caller.
+const loadCandidates = loadMetrics;
 
 // Returns { table_key: {status, note, reviewer, updated_at} }. Tolerates the
 // reviews table not existing yet (returns {} so read-only pages still work).
@@ -76,8 +79,16 @@ async function loadReviews() {
 
 // A table-level review decision overrides each number's automatic status.
 function effectiveStatus(cand, reviews) {
-  const r = reviews[tableKey(cand.sources?.origin_url, cand.context?.section_key)];
+  const r = reviews[tableKey(cand.sources?.origin_url, cand.section_key)];
   return r ? r.status : cand.status;
+}
+
+// Render a value with its units: "75.0%", "$5478.16", "2439 Elo", or bare.
+function fmtVal(value, units) {
+  const v = (value ?? "").toString();
+  if (units === "%") return v + "%";
+  if (units === "$") return "$" + v;
+  return units ? v + " " + units : v;
 }
 
 const NAV = [

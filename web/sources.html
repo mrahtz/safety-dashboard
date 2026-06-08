@@ -14,48 +14,36 @@
  table.nums{border-collapse:collapse;width:100%;font-size:13px}
  table.nums th,table.nums td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
  table.nums th{background:#f3f6fb}
- td.raw{font-weight:700;white-space:nowrap}
- table.src-grid{border-collapse:collapse;font-size:13px;margin:8px 0;max-width:100%}
- table.src-grid th,table.src-grid td{border:1px solid #dde3ec;padding:5px 9px;text-align:right;white-space:nowrap}
- table.src-grid thead th{background:#eef2f8;text-align:center;position:sticky;top:0}
- table.src-grid th.rl{text-align:left;background:#f6f8fc;font-weight:600;position:sticky;left:0}
- table.src-grid td.num{font-variant-numeric:tabular-nums;background:#fbfdff}
- table.src-grid td:not(.num){color:#667;text-align:left}
+ td.raw{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
  .section details{margin-top:8px} .section summary{cursor:pointer;color:#3a5273;font-size:13px}
- .gridwrap{overflow:auto}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Numbers by source</div>
-   <div class=muted>Pick a card on the left. Each table in it is shown as a <b>screenshot of the whole
-     table/section</b> where the numbers live, followed by every number extracted from it with its own
-     tight provenance crop.</div>
+   <div class=muted>Pick a card on the left. Each table/page is shown as a <b>screenshot</b> the
+     model read, followed by every number extracted from it (model · condition · benchmark · value).</div>
  </div>
  <div class=layout>
    <div class=side id=side></div>
    <div id=content class=card>Loading from Supabase…</div>
  </div>
 </main>
-<div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
-  <div class=modal id=modalBody></div></div>
 <script src=common.js></script>
 <script>
 let SRC = [], REVIEWS = {}, current = null;
 
 async function load() {
   mountChrome("sources.html");
-  const [data, reviews] = await Promise.all([loadCandidates(), loadReviews()]);
+  const [data, reviews] = await Promise.all([loadMetrics(), loadReviews()]);
   REVIEWS = reviews;
   const bySource = new Map();
   for (const c of data) {
     const url = c.sources?.origin_url || "?";
     if (!bySource.has(url)) bySource.set(url, { url, label: sourceLabel(url), sections: new Map() });
     const s = bySource.get(url);
-    const ctx = c.context || {};
-    const skey = ctx.section_key || "_";
+    const skey = c.section_key || "_";
     if (!s.sections.has(skey))
-      s.sections.set(skey, { key: skey, title: ctx.section_title || "Table", page: c.page,
-                             shot: ctx.section_crop_url || "", csv: ctx.table_csv_url || "", items: [] });
+      s.sections.set(skey, { key: skey, title: c.section_title || "Table", shot: c.crop_url || "", items: [] });
     s.sections.get(skey).items.push(c);
   }
   SRC = [...bySource.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -63,73 +51,37 @@ async function load() {
     const n = [...s.sections.values()].reduce((t, x) => t + x.items.length, 0);
     return `<button class=src id=src${i} onclick=pick(${i})>${esc(s.label)}<span class=n>${n}</span></button>`;
   }).join("");
-  pick(0);
+  if (SRC.length) pick(0); else document.getElementById("content").innerHTML = "<span class=muted>No data.</span>";
 }
 
-// Minimal RFC-4180-ish CSV parser (handles quoted fields, commas, newlines).
-function parseCSV(text) {
-  const rows = [[]]; let f = "", q = false;
-  for (let k = 0; k < text.length; k++) {
-    const ch = text[k];
-    if (q) {
-      if (ch === '"' && text[k + 1] === '"') { f += '"'; k++; }
-      else if (ch === '"') q = false;
-      else f += ch;
-    } else if (ch === '"') q = true;
-    else if (ch === ",") { rows[rows.length - 1].push(f); f = ""; }
-    else if (ch === "\n") { rows[rows.length - 1].push(f); f = ""; rows.push([]); }
-    else if (ch === "\r") { /* skip */ }
-    else f += ch;
-  }
-  rows[rows.length - 1].push(f);
-  return rows.filter(r => r.some(c => c.trim() !== ""));
-}
-
-const isNum = v => /\d/.test(v) && /^[-+(]?\$?\d|^[-+]?\.?\d/.test(v.trim());
-
-// Render the stored transcription as an HTML table matching the source layout.
-function renderCsvTable(rows) {
-  if (!rows.length) return "<div class=muted>(empty table)</div>";
-  const head = rows[0];
-  let h = "<table class=src-grid><thead><tr>";
-  head.forEach((c, j) => h += `<th class="${j === 0 ? "rl" : ""}">${esc(c)}</th>`);
-  h += "</tr></thead><tbody>";
-  for (const r of rows.slice(1)) {
-    h += "<tr>";
-    for (let j = 0; j < head.length; j++) {
-      const v = r[j] ?? "";
-      if (j === 0) h += `<th class=rl>${esc(v)}</th>`;
-      else h += `<td class="${isNum(v) ? "num" : ""}">${esc(v)}</td>`;
-    }
-    h += "</tr>";
-  }
+function numsTable(items) {
+  const sorted = items.slice().sort((a, b) =>
+    (a.row_idx ?? 1e9) - (b.row_idx ?? 1e9) || (a.col_idx ?? 1e9) - (b.col_idx ?? 1e9));
+  let h = "<table class=nums><thead><tr><th>model<th>condition<th>benchmark<th>value</tr></thead><tbody>";
+  for (const c of sorted)
+    h += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td>`
+       + `<td>${esc(c.benchmark)}</td><td class=raw>${esc(fmtVal(c.value, c.units))}</td></tr>`;
   return h + "</tbody></table>";
 }
 
-async function pick(i) {
+function pick(i) {
   current = i;
   SRC.forEach((_, j) => document.getElementById("src" + j).classList.toggle("on", j === i));
   const s = SRC[i];
   const sections = [...s.sections.values()].sort((a, b) =>
-    (a.key).localeCompare(b.key, undefined, { numeric: true }));
-  // Fetch every table's stored CSV in parallel (table-level provenance).
-  const csvs = await Promise.all(sections.map(sec =>
-    sec.csv ? fetch(sec.csv).then(r => r.ok ? r.text() : "").catch(() => "") : Promise.resolve("")));
+    a.key.localeCompare(b.key, undefined, { numeric: true }));
   let html = `<div style="font-size:17px;font-weight:700">${esc(s.label)}</div>
     <div class=muted><a href="${esc(s.url)}" target=_blank>${esc(s.url)}</a> — ${sections.length} table(s)</div>`;
-  sections.forEach((sec, k) => {
+  for (const sec of sections) {
     const rv = REVIEWS[tableKey(s.url, sec.key)];
     const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
     html += `<div class=section><h3>${esc(sec.title)} ${badge}</h3>
-      <div class=muted>${sec.page != null ? "page " + (sec.page + 1) + " · " : ""}${sec.items.length} numbers · VLM-transcribed</div>`;
-    html += csvs[k]
-      ? renderCsvTable(parseCSV(csvs[k]))
-      : `<div class=muted>(table format not stored yet — re-run the refresh)</div>`;
+      <div class=muted>${sec.items.length} numbers · VLM-transcribed</div>`;
     if (sec.shot)
       html += `<details><summary>source screenshot the model read</summary>
         <img class=shot loading=lazy src="${esc(sec.shot)}"></details>`;
-    html += `</div>`;
-  });
+    html += numsTable(sec.items) + `</div>`;
+  }
   document.getElementById("content").innerHTML = html;
 }
 

@@ -105,37 +105,30 @@ def publish() -> None:
             uploaded[path] = upload_blob(env, pathlib.Path(path))
         return uploaded[path]
 
-    cands = conn.execute("SELECT * FROM candidates ORDER BY id").fetchall()
-    for i, r in enumerate(cands):
-        # In the VLM-transcription pipeline every cell of a table shares ONE
-        # whole-table screenshot, so the same image recurs across many rows --
-        # dedup by path or we'd PUT it hundreds of times (and trip a 504).
-        crop_url = up(r["crop_path"])
-        context = json.loads(r["context_json"])
-        sec_path = context.pop("section_crop_path", "")
-        if sec_path and pathlib.Path(sec_path).exists():
-            context["section_crop_url"] = up(sec_path)
-        csv_path = context.pop("table_csv_path", "")
-        if csv_path and pathlib.Path(csv_path).exists():
-            context["table_csv_url"] = up(csv_path)
-        rows.append({"id": r["id"], "source_id": r["source_id"], "value_string": r["value_string"],
-                     "kind": r["kind"], "page": r["page"], "selector": r["selector"],
-                     "bbox": json.loads(r["bbox"]), "crop_url": crop_url,
-                     "context": context,
-                     "structural_value": r["structural_value"], "vlm_value": r["vlm_value"],
+    mets = conn.execute("SELECT * FROM metrics ORDER BY id").fetchall()
+    for i, r in enumerate(mets):
+        # Every cell of a table shares ONE whole-table screenshot, so the same
+        # image recurs across many rows -- dedup by path (the up() cache) or we'd
+        # PUT it hundreds of times (and trip a 504).
+        crop_url = up(r["crop_path"]) if r["crop_path"] else ""
+        rows.append({"id": r["id"], "source_id": r["source_id"],
+                     "model": r["model"], "condition": r["condition"],
+                     "benchmark": r["benchmark"], "value": r["value"], "units": r["units"],
+                     "row_idx": r["row_idx"], "col_idx": r["col_idx"], "crop_url": crop_url,
+                     "section_key": r["section_key"], "section_title": r["section_title"],
                      "status": r["status"]})
         if (i + 1) % 50 == 0:
-            print(f"  uploaded {i + 1}/{len(cands)} crops", flush=True)
+            print(f"  uploaded {i + 1}/{len(mets)} crops", flush=True)
     for j in range(0, len(rows), 100):
-        _rest_upsert(env, "candidates", rows[j:j + 100])
+        _rest_upsert(env, "metrics", rows[j:j + 100])
     # publish fully replaces the local DB: drop any stale rows left from a prior
     # publish that had MORE rows (local ids are contiguous 1..N), so a smaller
     # re-ingest doesn't leave orphans behind.
     if rows:
-        _rest_delete(env, "candidates", f"id=gt.{max(r['id'] for r in rows)}")
+        _rest_delete(env, "metrics", f"id=gt.{max(r['id'] for r in rows)}")
     if sources:
         _rest_delete(env, "sources", f"id=gt.{max(s['id'] for s in sources)}")
-    print(f"PUBLISHED sources={len(sources)} candidates={len(rows)}", flush=True)
+    print(f"PUBLISHED sources={len(sources)} metrics={len(rows)}", flush=True)
 
 
 if __name__ == "__main__":

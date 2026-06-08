@@ -80,15 +80,14 @@ async function sendLink() {
 async function signOut() { await sb.auth.signOut(); SESSION = null; showLogin("Signed out."); }
 
 async function loadAll() {
-  [DATA, REVIEWS] = await Promise.all([loadCandidates(), loadReviews()]);
+  [DATA, REVIEWS] = await Promise.all([loadMetrics(), loadReviews()]);
   const byTable = new Map();
   for (const c of DATA) {
-    const url = c.sources?.origin_url || "?", skey = c.context?.section_key || "_";
+    const url = c.sources?.origin_url || "?", skey = c.section_key || "_";
     const tk = tableKey(url, skey);
     if (!byTable.has(tk))
       byTable.set(tk, { tableKey: tk, url, label: sourceLabel(url), section_key: skey,
-        title: c.context?.section_title || "Table", page: c.page,
-        shot: c.context?.section_crop_url || "", items: [] });
+        title: c.section_title || "Table", shot: c.crop_url || "", items: [] });
     byTable.get(tk).items.push(c);
   }
   TABLES = [...byTable.values()].sort((a, b) =>
@@ -116,11 +115,12 @@ function renderTable() {
   const t = QUEUE[idx], rv = REVIEWS[t.tableKey];
   let rows = "";
   for (const c of t.items) {
-    rows += `<tr><td><a class=pop href="${esc(c.crop_url)}" target=_blank>
-        <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a></td>
-      <td class=raw>${esc(c.value_string)}</td>
-      <td>${esc((c.context?.row_label || "").slice(0, 90))}</td>
-      <td>${esc((c.context?.column_header || "").slice(0, 60))}</td>
+    rows += `<tr><td>${c.crop_url ? `<a class=pop href="${esc(c.crop_url)}" target=_blank>
+        <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a>` : ""}</td>
+      <td class=raw>${esc(fmtVal(c.value, c.units))}</td>
+      <td>${esc((c.benchmark || "").slice(0, 90))}</td>
+      <td>${esc((c.model || "").slice(0, 60))}</td>
+      <td>${esc(c.condition || "—")}</td>
       <td><span class="flag s-${c.status}">${c.status}</span></td></tr>`;
   }
   const cur = rv ? `<span class="flag s-${rv.status}">current: ${rv.status}</span>
@@ -128,10 +128,10 @@ function renderTable() {
   card.innerHTML = `
     <div class=muted>${esc(SESSION.user.email)} · <a href=# onclick="signOut();return false">sign out</a></div>
     <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(t.label)} — ${esc(t.title)}</div>
-    <div class=muted>${t.page != null ? "page " + (t.page + 1) + " · " : ""}${t.items.length} numbers · ${cur}</div>
+    <div class=muted>${t.items.length} numbers · ${cur}</div>
     ${t.shot ? `<img class=shot loading=lazy src="${esc(t.shot)}">`
-             : `<div class=muted style="padding:8px 0">(section screenshot not available — re-run the refresh workflow)</div>`}
-    <table class=nums><tr><th>crop<th>value<th>benchmark (row)<th>model (column)<th>auto status</tr>${rows}</table>
+             : `<div class=muted style="padding:8px 0">(screenshot not available — re-run the refresh workflow)</div>`}
+    <table class=nums><tr><th>crop<th>value<th>benchmark<th>model<th>condition<th>auto status</tr>${rows}</table>
     <div class="bar" style="margin-top:12px">
       <button class=big-accept onclick="decide('accepted')">Accept table</button>
       <button class=big-needs onclick="decide('needs_review')">Needs review</button>

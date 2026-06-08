@@ -73,6 +73,58 @@ _PAGE_PROMPT = (
     "Do not add, drop, merge, reorder, or compute anything."
 )
 
+# Long-format reader (the production schema): one CSV line per numeric cell,
+# splitting the model, condition, benchmark, value, and units into columns and
+# recording the cell's grid position. parse_long() turns it into metric dicts.
+_LONG_PROMPT = (
+    "You are transcribing the data table(s) in this AI model/system card image "
+    "into a normalized long format. Output CSV and NOTHING else -- no prose, no "
+    "code fences.\n"
+    "The first line must be exactly this header:\n"
+    "model,condition,benchmark,value,units,row,col\n"
+    "Then emit ONE line per NUMERIC data cell. For each cell:\n"
+    "- model: the model the column belongs to (its column header, usually a model "
+    "name); carry a spanned model header across every column it covers.\n"
+    "- condition: the setting for that column or row -- e.g. low, medium, high, "
+    "with tools, no tools, browsing. EMPTY if there is no such axis.\n"
+    "- benchmark: the row label (the benchmark / metric / category).\n"
+    "- value: the number as printed but WITHOUT its unit symbol and WITHOUT "
+    "thousands separators (write 2439 not 2,439; write 95.8 not 95.8%). Keep a "
+    "leading +/- sign and decimals.\n"
+    "- units: the unit of the value -- '%' for a percentage, '$' for dollars, "
+    "'Elo', etc.; EMPTY for a plain score or ratio.\n"
+    "- row: 0-based row index in the data body, top to bottom (continue across "
+    "sub-tables; skip header rows).\n"
+    "- col: 0-based index among the VALUE columns only; the leftmost value column "
+    "is 0. Do NOT count the label column.\n"
+    "Quote any field that contains a comma. Strip footnote markers from labels. "
+    "One line per numeric cell; do not add, drop, or compute anything."
+)
+
+
+def parse_long(text: str) -> list[dict]:
+    """Long-format CSV -> [{model, condition, benchmark, value, units, row_idx,
+    col_idx}] for the numeric cells."""
+    out: list[dict] = []
+    for r in csv.DictReader(io.StringIO(_strip_fences(text))):
+        val = (r.get("value") or "").strip()
+        if not re.match(r"^[<>~≤≥]?\s*[-+]?\$?\.?\d", val):  # must be a number
+            continue
+        try:
+            row_idx = int(r["row"])
+        except (TypeError, ValueError, KeyError):
+            row_idx = None
+        try:
+            col_idx = int(r["col"])
+        except (TypeError, ValueError, KeyError):
+            col_idx = None
+        out.append({"model": (r.get("model") or "").strip(),
+                    "condition": (r.get("condition") or "").strip(),
+                    "benchmark": (r.get("benchmark") or "").strip(),
+                    "value": val, "units": (r.get("units") or "").strip(),
+                    "row_idx": row_idx, "col_idx": col_idx})
+    return out
+
 
 def _api_key() -> str:
     key = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
