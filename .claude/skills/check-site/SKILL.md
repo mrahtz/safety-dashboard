@@ -22,6 +22,18 @@ python3 .claude/skills/check-site/check_site.py <BASE_URL> # any deploy/preview,
 Exit code is non-zero if any issue is found. Full-page screenshots of every page are
 written to `/tmp/site-check/` — read them (they're PNGs) to see the actual render.
 
+### After a deploy: wait for it to go live, then check
+
+```bash
+.claude/skills/check-site/await_deploy.sh [MARKER]   # MARKER defaults to "loadMetrics"
+```
+
+Polls the served `common.js` for a marker string only the new build contains, then
+auto-runs `check_site.py`. It is **bounded** — on timeout it prints a diagnostic
+(most often the deploy *failed*, not "slow": the `github-pages` environment blocks
+the branch — see CLAUDE.md) instead of spinning forever. Prefer this over an ad-hoc
+`curl | grep` poll loop.
+
 ## What it catches
 
 - **Visible error / empty state** — the page printed `Load failed: …`, `No cells`, or

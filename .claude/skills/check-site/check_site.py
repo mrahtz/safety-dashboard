@@ -45,9 +45,11 @@ def check() -> int:
             bad: list[str] = []
             page.on("console", lambda m, L=cons: L.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e, L=perr: L.append(str(e)))
-            # ignore favicon noise; flag real 4xx/5xx (Supabase, JS, CSS, images)
+            # flag real 4xx/5xx (Supabase, JS, CSS, images). Ignore favicon noise
+            # and the optional `reviews` table 404 (loadReviews() tolerates it).
             page.on("response", lambda r, L=bad: L.append(f"{r.status} {r.url}")
-                    if r.status >= 400 and "favicon" not in r.url else None)
+                    if r.status >= 400 and "favicon" not in r.url
+                    and "/rest/v1/reviews" not in r.url else None)
             try:
                 page.goto(url, wait_until="networkidle", timeout=30000)
             except Exception as e:
