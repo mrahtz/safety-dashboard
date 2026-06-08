@@ -85,15 +85,15 @@ Five credentials make the pipeline + site go. CI reads them from **GitHub Action
 secrets** (`refresh`/`dev-ingest`/`probe` workflows); `publish.py` reads the
 Supabase pair from a gitignored `var/supabase.env` that the workflow writes from
 those secrets. Manage CI secrets at
-<https://github.com/mrahtz/safety-dashboard/settings/secrets/actions>.
+[GitHub → Settings → Secrets → Actions](https://github.com/mrahtz/safety-dashboard/settings/secrets/actions).
 
 | Key | Used for | Where it lives | Get / rotate / generate |
 | --- | --- | --- | --- |
-| **Anthropic API key** | the VLM reader (`vlm_table.py`, model `claude-sonnet-4-6`). Env var `CLAUDE_API_KEY` (falls back to `ANTHROPIC_API_KEY`). | CI secret `CLAUDE_API_KEY`; locally export it in your shell. | Create/rotate a key (or a separate dev key) at <https://console.anthropic.com/settings/keys> |
-| **Supabase `service_role`** | all writes — PostgREST upserts + Storage crop uploads (`publish.py`). Must be a `service_role` JWT or `sb_secret_…` key. | CI secret `SUPABASE_SERVICE_ROLE`; locally `var/supabase.env`. | Reveal/rotate at <https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/api-keys> (legacy JWT tab: `…/settings/api`) |
-| **Supabase `anon`** | public read-only key the static site ships to read PostgREST + Storage. | hardcoded in `web/common.js` (safe to publish). | Same API-keys page as above; rotating it means updating `web/common.js` |
-| **Supabase URL** | base URL `https://rapkltwpfvzleejytgmq.supabase.co`. Config, not a secret. | CI secret `SUPABASE_URL`; `var/supabase.env`; `web/common.js`. | Project ref `rapkltwpfvzleejytgmq`; shown on any Supabase settings page |
-| **Supabase personal token** (`sbp_…`) | the **Management API** only (`api.supabase.com` — run SQL/DDL, e.g. schema migrations). Ad-hoc admin/dev, not used by CI. | not stored; generate per-use, short expiry. | <https://supabase.com/dashboard/account/tokens> |
+| **Anthropic API key** | the VLM reader (`vlm_table.py`, model `claude-sonnet-4-6`). Env var `CLAUDE_API_KEY` (falls back to `ANTHROPIC_API_KEY`). | CI secret `CLAUDE_API_KEY`; locally export it in your shell. | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) (make a separate dev key here too) |
+| **Supabase `service_role`** | all writes — PostgREST upserts + Storage crop uploads (`publish.py`). Must be a `service_role` JWT or `sb_secret_…` key. | CI secret `SUPABASE_SERVICE_ROLE`; locally `var/supabase.env`. | [API keys page](https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/api-keys) ([legacy JWT tab](https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/api)) |
+| **Supabase `anon`** | public read-only key the static site ships to read PostgREST + Storage. | hardcoded in `web/common.js` (safe to publish). | [same API keys page](https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/api-keys); rotating it means updating `web/common.js` |
+| **Supabase URL** | base URL `https://rapkltwpfvzleejytgmq.supabase.co`. Config, not a secret. | CI secret `SUPABASE_URL`; `var/supabase.env`; `web/common.js`. | [project settings](https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/general) (project ref `rapkltwpfvzleejytgmq`) |
+| **Supabase personal token** (`sbp_…`) | the **Management API** only (`api.supabase.com` — run SQL/DDL, e.g. schema migrations). Ad-hoc admin/dev, not used by CI. | not stored; generate per-use, short expiry. | [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) |
 
 Sharp edges (also see above): a `sbp_…` token does **not** work as a PostgREST/
 Storage `apikey` — it only drives the Management API; conversely a
