@@ -63,13 +63,15 @@ benchmark) data point. Column rules:
 | `benchmark` | canonical eval name from `benchmarks.txt` (normalize). |
 | `value` | the number **exactly as printed** (keep the source's precision/sign; e.g. `91.4`, `0.82`, `1247`). Don't round or rescale. |
 | `units` | `%`, `accuracy`, `Elo`, `pass@1`, `s`, … — whatever the source states. Empty if unitless. |
-| `fig_num` | **graphs only**: the figure number. Use the source's printed number; if figures aren't numbered, count them `1, 2, 3…` in reading order. Leave **empty for table rows**. |
+| `fig_num` | **always set** (tables *and* graphs): the table/figure number the row came from. Use the source's printed number (Table 3 → `3`, Figure 2 → `2`); if the source doesn't number them, count from `1` in reading order — tables and figures each in their own sequence. |
 | `row_idx` | **tables only**: 0-based row of the cell within its table (so the table can be reconstructed). Empty for graph rows. |
 | `col_idx` | **tables only**: 0-based column of the cell within its table. Empty for graph rows. |
 
-So a row comes from **either** a table (→ `row_idx`/`col_idx` set, `fig_num`
-empty) **or** a graph (→ `fig_num` set, `row_idx`/`col_idx` empty). Count tables
-and figures separately.
+So **every** row carries a `fig_num` identifying its source table/figure; a
+**table** row additionally sets `row_idx`/`col_idx`, a **graph** row leaves them
+empty. Whether `row_idx`/`col_idx` are populated is what distinguishes a table
+row (`fig_num=1` → Table 1) from a graph row (`fig_num=1` → Figure 1). Count
+tables and figures separately.
 
 Extraction rules:
 
@@ -94,7 +96,7 @@ Do **not** trust the first pass. Loop:
 
 1. **Double-check every number.** Go cell-by-cell / point-by-point back to the
    source image or DOM and confirm the `value` (and its `units`, `condition`,
-   and for tables its `row_idx`/`col_idx`) matches. Fix any mismatch.
+   `fig_num`, and for tables its `row_idx`/`col_idx`) matches. Fix any mismatch.
 2. **Double-check every name** (`benchmark` and `model`). For each, confirm:
    - it **matches what the paper actually calls it** (right eval, right model —
      not a look-alike);

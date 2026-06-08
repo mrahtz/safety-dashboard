@@ -5,8 +5,8 @@ produced a clean CSV. Inserts one PostgREST row per CSV row, tagging each with
 the `source` it came from so a run is identifiable and re-runnable.
 
 CSV columns (exact): model,condition,benchmark,value,units,fig_num,row_idx,col_idx
-  - a table row has row_idx/col_idx set and fig_num empty;
-  - a graph row has fig_num set and row_idx/col_idx empty.
+  - fig_num is the source table/figure number (always set);
+  - a table row also sets row_idx/col_idx; a graph row leaves them empty.
 
 Auth/retry conventions mirror publish.py: service-role key from
 var/supabase.env, the `apikey` header (PostgREST 401s without it), and a small
