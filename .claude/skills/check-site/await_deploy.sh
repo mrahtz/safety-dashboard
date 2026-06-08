@@ -20,7 +20,8 @@ set -o pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../../.." && pwd)"
 SITE="${SITE:-http://amid.fish/safety-dashboard}"
-VERSION="${1:-$(grep -oE 'common\.js\?v=[A-Za-z0-9._-]+' "$repo/web/index.html" | head -1 | sed 's/.*v=//')}"
+# -a: the HTML has multibyte chars (×) that make grep think it's binary
+VERSION="${1:-$(grep -aoE 'common\.js\?v=[A-Za-z0-9._-]+' "$repo/web/index.html" | head -1 | sed 's/.*v=//')}"
 TIMEOUT="${TIMEOUT:-300}"
 INTERVAL="${INTERVAL:-15}"
 deadline=$(( $(date +%s) + TIMEOUT ))
@@ -32,8 +33,8 @@ fi
 while [ "$(date +%s)" -lt "$deadline" ]; do
   # cache-bust the HTML fetch itself so we never read a stale edge copy of it
   html="$(curl -fsSL --max-time 15 -H 'Cache-Control: no-cache' "$SITE/index.html?cb=$(date +%s)" 2>/dev/null)"
-  if { [ -n "$VERSION" ] && printf '%s' "$html" | grep -q "common.js?v=$VERSION"; } \
-     || { [ -z "$VERSION" ] && printf '%s' "$html" | grep -q "loadMetrics"; }; then
+  if { [ -n "$VERSION" ] && printf '%s' "$html" | grep -aq "common.js?v=$VERSION"; } \
+     || { [ -z "$VERSION" ] && printf '%s' "$html" | grep -aq "loadMetrics"; }; then
     echo "[$(date +%H:%M:%S)] LIVE: deploy ${VERSION:+(v=$VERSION) }landed — running site check"
     exec python3 "$here/check_site.py" "$SITE/"
   fi
