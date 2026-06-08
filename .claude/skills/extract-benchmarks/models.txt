@@ -1,0 +1,50 @@
+# Canonical model names — one per line.
+#
+# Format:  Canonical Name | alias1 | alias2 | ...
+#   - '#' starts a comment; blank lines ignored.
+#   - The tail after '|' lists aliases that normalize to the canonical name.
+#
+# READ + AUTO-APPEND: the extract-benchmarks skill appends model names it is
+# confident are canonical. Keep variants/sizes distinct — do NOT merge a
+# different size or release into one row (e.g. gpt-oss-120b != gpt-oss-20b).
+
+# --- OpenAI ---
+GPT-5
+GPT-5 mini | GPT-5-mini
+GPT-5 nano | GPT-5-nano
+GPT-4.1
+GPT-4.1 mini | GPT-4.1-mini
+GPT-4o | GPT-4o (2024)
+o1
+o3
+o3-mini
+o4-mini
+gpt-oss-120b | gpt-oss 120b
+gpt-oss-20b | gpt-oss 20b
+
+# --- Anthropic ---
+Claude Opus 4.1
+Claude Opus 4
+Claude Sonnet 4.5 | Claude Sonnet 4.5 (new)
+Claude Sonnet 4
+Claude Haiku 4.5
+Claude 3.5 Sonnet
+
+# --- Google DeepMind ---
+Gemini 2.5 Pro
+Gemini 2.5 Flash
+Gemini 2.0 Flash
+Gemini 1.5 Pro
+
+# --- Meta ---
+Llama 4 Maverick
+Llama 4 Scout
+Llama 3.1 405B | Llama 3.1 405B Instruct
+
+# --- DeepSeek ---
+DeepSeek-V3 | DeepSeek V3
+DeepSeek-R1 | DeepSeek R1
+
+# --- Qwen / others ---
+Qwen2.5-72B | Qwen2.5 72B
+Mistral Large
