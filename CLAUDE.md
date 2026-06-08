@@ -89,11 +89,25 @@ Never do a full `refresh` just to test one thing.
   github-pages → Deployment branches and tags*. Stopgap without that change:
   force-push the commit onto the allowed branch and `workflow_dispatch` `pages.yml`
   on it (the env permits that ref).
-- **Verifying a deploy:** use the `check-site` skill, not an open-ended poll loop.
-  `.claude/skills/check-site/await_deploy.sh` waits (bounded) for the new build to
-  serve, then runs `check_site.py` (headless browser; flags console errors, failed
-  requests, visible load-error/empty states; screenshots to `/tmp/site-check/`).
-  A 404 on `/rest/v1/reviews` is expected and ignored.
+- **ALWAYS check the site after any deploy.** A green Actions run is NOT proof the
+  site works — env policy, schema drift, and CDN cache have all bitten us. After
+  every Pages deploy (or Supabase change), run
+  `.claude/skills/check-site/await_deploy.sh` — it waits (bounded) for the new build
+  to land, then runs `check_site.py` (headless browser; flags console errors, failed
+  requests, visible load-error/empty states; screenshots to `/tmp/site-check/`). Don't
+  report a deploy as done until this is green. A 404 on `/rest/v1/reviews` is expected
+  and ignored.
+- **Cloudflare edge cache + cache-busting.** `amid.fish` is proxied through the
+  owner's **Cloudflare** (not part of Pages — Pages itself is Fastly). Cloudflare
+  edge-caches `*.js` with a multi-hour TTL (`cf-cache-status: HIT`) but passes HTML
+  through (`DYNAMIC`). So after a deploy the HTML is fresh but `common.js` is stale
+  for hours. We defeat this **in-repo**: the three pages load `common.js?v=NNN`, and
+  the versioned URL is a fresh cache key → served from origin immediately. **When you
+  change `common.js`, bump the `?v=` token in `index.html`, `sources.html`, and
+  `review.html`** (a date like `20260608`, +letter for a second change that day), or
+  the change won't reach users. The `github.io` URL is not an escape hatch — Pages
+  301-redirects it to the custom domain. (Alternatives if ever needed: purge
+  Cloudflare via API, or drop the custom domain to serve straight from github.io.)
 
 ## Keys & secrets
 
