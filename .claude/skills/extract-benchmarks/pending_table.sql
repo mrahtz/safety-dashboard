@@ -28,7 +28,7 @@ create index if not exists pending_source_idx on public.pending (source);
 alter table public.pending enable row level security;
 
 -- service_role (used by upload_pending.py) bypasses RLS, so no write policy is
--- needed. Uncomment to let the anon key READ staged rows from a dashboard:
--- drop policy if exists pending_read on public.pending;
--- create policy pending_read on public.pending
---     for select to anon, authenticated using (true);
+-- needed. The static review page reads staged rows with the public anon key:
+drop policy if exists pending_read on public.pending;
+create policy pending_read on public.pending
+    for select to anon, authenticated using (true);
