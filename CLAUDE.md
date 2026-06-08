@@ -79,6 +79,28 @@ Never do a full `refresh` just to test one thing.
 - Supabase project ref `rapkltwpfvzleejytgmq`; `web/common.js` ships the public
   **anon** key (read-only). Service key lives only in CI secrets.
 
+## Keys & secrets
+
+Five credentials make the pipeline + site go. CI reads them from **GitHub Actions
+secrets** (`refresh`/`dev-ingest`/`probe` workflows); `publish.py` reads the
+Supabase pair from a gitignored `var/supabase.env` that the workflow writes from
+those secrets. Manage CI secrets at
+<https://github.com/mrahtz/safety-dashboard/settings/secrets/actions>.
+
+| Key | Used for | Where it lives | Get / rotate / generate |
+| --- | --- | --- | --- |
+| **Anthropic API key** | the VLM reader (`vlm_table.py`, model `claude-sonnet-4-6`). Env var `CLAUDE_API_KEY` (falls back to `ANTHROPIC_API_KEY`). | CI secret `CLAUDE_API_KEY`; locally export it in your shell. | Create/rotate a key (or a separate dev key) at <https://console.anthropic.com/settings/keys> |
+| **Supabase `service_role`** | all writes — PostgREST upserts + Storage crop uploads (`publish.py`). Must be a `service_role` JWT or `sb_secret_…` key. | CI secret `SUPABASE_SERVICE_ROLE`; locally `var/supabase.env`. | Reveal/rotate at <https://supabase.com/dashboard/project/rapkltwpfvzleejytgmq/settings/api-keys> (legacy JWT tab: `…/settings/api`) |
+| **Supabase `anon`** | public read-only key the static site ships to read PostgREST + Storage. | hardcoded in `web/common.js` (safe to publish). | Same API-keys page as above; rotating it means updating `web/common.js` |
+| **Supabase URL** | base URL `https://rapkltwpfvzleejytgmq.supabase.co`. Config, not a secret. | CI secret `SUPABASE_URL`; `var/supabase.env`; `web/common.js`. | Project ref `rapkltwpfvzleejytgmq`; shown on any Supabase settings page |
+| **Supabase personal token** (`sbp_…`) | the **Management API** only (`api.supabase.com` — run SQL/DDL, e.g. schema migrations). Ad-hoc admin/dev, not used by CI. | not stored; generate per-use, short expiry. | <https://supabase.com/dashboard/account/tokens> |
+
+Sharp edges (also see above): a `sbp_…` token does **not** work as a PostgREST/
+Storage `apikey` — it only drives the Management API; conversely a
+`service_role`/`sb_secret_…` key can't run DDL. Storage calls need the `apikey`
+header, not just `Authorization`. The Management API blocks the `python-urllib`
+User-Agent (Cloudflare 1010) — POST DDL with `curl` instead.
+
 ## Branch / git
 
 The repo's primary branch holds all work. Commit working changes; keep `pytest`
