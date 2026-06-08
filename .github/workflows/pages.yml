@@ -7,7 +7,7 @@ name: deploy-pages
 # supports Pages on private repos.
 on:
   push:
-    branches: ["claude/llm-metrics-ingestion-frdmg"]
+    branches: ["main"]
     paths: ["web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
