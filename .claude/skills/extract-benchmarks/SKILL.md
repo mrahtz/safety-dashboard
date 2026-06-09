@@ -44,8 +44,8 @@ Whatever the input, turn it into something you can actually read closely:
   table markup. Also grab a rendered screenshot if the layout/graphs matter.
 - **PDF.** Rasterize the pages to PNGs and read the images (graphs only exist as
   pixels): `pdftoppm -png -r 150 card.pdf page` → `page-01.png`, … Read each
-  page image. (`src/llm_metrics/crop.py` has `render_pdf_section` if you want a
-  tighter crop of one table.)
+  page image. (`src/llm_metrics/crop.py` has `render_pdf_page` if you want to
+  rasterize a page programmatically.)
 - **Local file / image.** Read it directly.
 
 Read the **whole** source before you decide you're done — tables and graphs are

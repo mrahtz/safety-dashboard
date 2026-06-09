@@ -25,10 +25,10 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-v1
-      - name: Python deps (ingest + publish; no OCR)
+      - name: Python deps (ingest + publish)
         run: |
           python -m pip install --upgrade pip
-          pip install playwright pdfplumber pymupdf Pillow markupsafe
+          pip install playwright pdfplumber pymupdf
           python -m playwright install --with-deps chromium
       - name: Ingest corpus (screenshot tables -> VLM transcribe)
         env:

@@ -18,21 +18,19 @@ numbers stored as `accepted` → `publish.py` pushes to Supabase. Provenance is
 
 - `src/llm_metrics/`
   - `pipeline.py` — orchestration (VLM path). `python -m llm_metrics.pipeline [ids…]`.
-  - `vlm_table.py` — table screenshot → CSV (the reader). `transcribe_raw`/`parse_csv`.
-  - `extract_html.py` / `extract_pdf.py` — `list_tables()` (screenshots, VLM path)
-    **and** the older per-cell structural `extract*()` (used by `app.py`).
-  - `crop.py` — PDF rasterize: `render_pdf_section` (table image), `render_pdf_crop` (per-cell).
+  - `vlm_table.py` — table screenshot → CSV (the reader). `transcribe_raw`/`parse_long`/`parse_csv`.
+  - `extract_html.py` — `list_tables()`: screenshot each HTML data table (runs Playwright
+    in a subprocess via `runner.run_html_tables`).
+  - `extract_pdf.py` — `list_pages()`: rasterize every PDF page (page-at-a-time VLM path).
+  - `crop.py` — PDF page rasterize: `render_pdf_page` (whole-page image).
   - `db.py` / `schema.py` — SQLite; **schema is a FROZEN CHECK-constrained contract**
     (statuses: pending/accepted/rejected/verified/needs_review). Extra per-table
     metadata is merged into `context_json`, never new columns.
-  - `ir.py` — FROZEN dataclasses (`Candidate`/`SourceRef`/`Context`); `test_ir` pins fields.
   - `publish.py` — uploads images+CSVs to Storage (deduped, retried) + upserts rows;
     deletes rows beyond the freshly-written set (no orphans).
   - `freeze.py`,`fetch.py`,`corpus.py`,`paths.py` — sources/IO.
-  - `app.py` + `serve.sh`, `export_static.py` + `export.sh` — legacy local Flask UI
-    and offline export; both use the **structural** reader (+`ocr.py`,`normalize.py`,`serde.py`).
 - `web/` — `index.html` (matrix), `sources.html`, `review.html`, `common.js`.
-- `scripts/` — `ingest.sh`, `publish.sh`, `dump_tables.py`, `probe_supabase.py`, `serve.sh`, `export.sh`.
+- `scripts/` — `ingest.sh`, `publish.sh`, `dump_tables.py`, `probe_supabase.py`.
 - `.github/workflows/` — `refresh` (full), `dev-ingest` (fast, no publish), `probe`, `pages`.
 - `supabase/` — Supabase DDL: `reviews.sql` (reviews table + RLS) and
   `promote.sql` (review-page "Accept → main" policies on metrics/pending + the
@@ -62,17 +60,17 @@ Never do a full `refresh` just to test one thing.
   rows — dedupe uploads by path (done) or you'll do thousands of PUTs and 504.
 - **Re-ingest is nondeterministic** (the VLM) — counts/values shift run to run.
 - **VLM accuracy**: silently misreads some complex tables (audit: gpt-oss
-  "Table 3" 37/38 wrong). For HTML the DOM has exact values — see README "Two
-  readers"; moving HTML values to structural is the open recommendation.
+  "Table 3" 37/38 wrong). For HTML the DOM has exact values, so reading HTML
+  values structurally (and keeping the VLM for PDFs) is the open recommendation.
 - **Always audit by spot check**: regenerate the matrix CSV and/or diff VLM
   values vs the DOM before trusting the data. Two tables is not an audit.
 
 ## Conventions
 
-- Don't change `ir.py` / `schema.py` field shapes (frozen; tests enforce). Put new
+- Don't change `schema.py` field shapes (frozen; tests enforce). Put new
   per-table data in `context_json`.
 - Keep comment/naming density consistent with surrounding code.
-- `pytest -q` must stay green (30 tests: ir, db, schema, normalize, fixtures).
+- `pytest -q` must stay green (15 tests: db, schema, extract_pdf_pages, fixtures).
 
 ## Deploy facts
 

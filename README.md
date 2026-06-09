@@ -13,9 +13,10 @@ corpus → freeze → screenshot each data table → VLM transcribes table → n
 
 For each card (`corpus.py`):
 1. **Freeze** (`freeze.py`) — fetch the bytes, hash to sha256, snapshot to `var/blobs/`.
-2. **Screenshot every data table** — Playwright for the OpenAI HTML pages
-   (`extract_html.list_tables`), `pdfplumber`/PyMuPDF for the Gemini PDFs
-   (`extract_pdf.list_tables`). One image per table (≥3 numeric cells).
+2. **Screenshot the source** — Playwright screenshots each OpenAI HTML data
+   table (`extract_html.list_tables`, ≥3 numeric cells); `pdfplumber`/PyMuPDF
+   rasterizes every page of the Gemini PDFs (`extract_pdf.list_pages`), since
+   their borderless tables defeat table detection.
 3. **Transcribe** (`vlm_table.py`) — each table image is sent to Claude
    (`claude-sonnet-4-6`) and returned as CSV. Every numeric cell becomes a
    candidate `(column_header, row_label, value)`; the raw CSV (the table's
@@ -34,8 +35,7 @@ and the CSV it produced, not to a per-cell bounding box.
 > found ~95% exact but **46 wrong cells concentrated in a few tables** (e.g.
 > gpt-oss "Table 3" — 37/38 wrong, column misalignment). For HTML we have exact
 > values for free in the DOM, so the recommended next step is to take HTML values
-> structurally and keep the VLM for PDFs (see "Two readers" below). Run the audit
-> with `/tmp`-style scripts or the presence/cell checks in the git history.
+> structurally and keep the VLM for PDFs.
 
 ## The three pages (`web/`, served by GitHub Pages)
 
@@ -64,7 +64,7 @@ keyed by `table_key = origin_url || '::' || section_key`.
 ## Run it
 
 ```bash
-pip install playwright pdfplumber pymupdf Pillow markupsafe   # ingest deps (no OCR needed)
+pip install playwright pdfplumber pymupdf   # ingest deps
 python -m playwright install chromium
 export CLAUDE_API_KEY=sk-ant-...                              # the table reader
 
