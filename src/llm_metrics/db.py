@@ -31,12 +31,12 @@ def upsert_source(conn, kind, origin_url, sha256, blob, retrieved_at) -> int:
 
 def insert_metric(conn, source_id: int, m: dict, accepted: bool = False) -> int:
     """Insert one long-format metric row. ``m`` has model/condition/benchmark/
-    value/units/row_idx/col_idx."""
+    value/units/row_idx/col_idx and optionally section_key."""
     cur = conn.execute(
-        "INSERT INTO metrics(source_id,model,condition,benchmark,value,units,row_idx,col_idx,accepted)"
-        " VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO metrics(source_id,model,condition,benchmark,value,units,row_idx,col_idx,section_key,accepted)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?)",
         (source_id, m["model"], m.get("condition", ""), m["benchmark"], m["value"],
-         m.get("units", ""), m.get("row_idx"), m.get("col_idx"), accepted))
+         m.get("units", ""), m.get("row_idx"), m.get("col_idx"), m.get("section_key"), accepted))
     conn.commit()
     return int(cur.lastrowid)
 

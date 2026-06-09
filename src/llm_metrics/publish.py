@@ -79,7 +79,8 @@ def publish() -> None:
         rows.append({"id": r[1]["id"], "source_id": r[1]["source_id"],
                      "model": r[1]["model"], "condition": r[1]["condition"],
                      "benchmark": r[1]["benchmark"], "value": r[1]["value"], "units": r[1]["units"],
-                     "row_idx": r[1]["row_idx"], "col_idx": r[1]["col_idx"], "accepted": r[1]["accepted"]})
+                     "row_idx": r[1]["row_idx"], "col_idx": r[1]["col_idx"],
+                     "section_key": r[1]["section_key"], "accepted": r[1]["accepted"]})
     for j in range(0, len(rows), 100):
         _rest_upsert(env, "metrics", rows[j:j + 100])
     if rows:

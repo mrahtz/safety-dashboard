@@ -35,7 +35,16 @@ CREATE TABLE IF NOT EXISTS metrics (
     units         TEXT    NOT NULL DEFAULT '',
     row_idx       INTEGER,
     col_idx       INTEGER,
+    section_key   TEXT,
     accepted      BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+    table_key   TEXT PRIMARY KEY,
+    accepted    BOOLEAN NOT NULL,
+    note        TEXT,
+    reviewer    TEXT,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 """
 
