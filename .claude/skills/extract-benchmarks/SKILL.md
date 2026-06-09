@@ -18,7 +18,34 @@ model,condition,benchmark,value,units,fig_num,row_idx,col_idx
 Work in a scratch dir (e.g. `var/extract/<source-slug>/`) — keep the source,
 the page/figure images, and the CSV together so the verify pass can re-look.
 
-## 0. Canonical name files (read these first, keep them growing)
+## 0. Credentials — set up `var/supabase.env` if missing
+
+Before doing anything else, check whether `var/supabase.env` exists (it lives at
+the repo root, is gitignored, and holds the Supabase write credentials).
+
+```bash
+test -f var/supabase.env && echo "exists" || echo "missing"
+```
+
+If it is **missing**, ask the user for:
+- `SUPABASE_URL` — the project URL, e.g. `https://rapkltwpfvzleejytgmq.supabase.co`
+- `SUPABASE_SERVICE_ROLE` — a `service_role` JWT or `sb_secret_…` key (from the
+  Supabase dashboard → Settings → API keys)
+
+Then write the file:
+
+```bash
+mkdir -p var
+cat > var/supabase.env <<EOF
+SUPABASE_URL=<value from user>
+SUPABASE_SERVICE_ROLE=<value from user>
+EOF
+```
+
+The file is gitignored — it will never be committed. Do not log or echo the key
+value. Once the file exists, proceed.
+
+## 1. Canonical name files (read these first, keep them growing)
 
 Two files in this skill dir are the source of truth for names:
 
@@ -35,7 +62,7 @@ are confident are the real canonical form — never invent canon to make a row
 fit. If you are unsure, leave the row's name as-written and flag it in the
 verify pass instead of polluting the canon files.
 
-## 1. Get the source in front of you
+## 2. Get the source in front of you
 
 Whatever the input, turn it into something you can actually read closely:
 
@@ -44,14 +71,13 @@ Whatever the input, turn it into something you can actually read closely:
   table markup. Also grab a rendered screenshot if the layout/graphs matter.
 - **PDF.** Rasterize the pages to PNGs and read the images (graphs only exist as
   pixels): `pdftoppm -png -r 150 card.pdf page` → `page-01.png`, … Read each
-  page image. (`src/llm_metrics/crop.py` has `render_pdf_page` if you want to
-  rasterize a page programmatically.)
+  page image.
 - **Local file / image.** Read it directly.
 
 Read the **whole** source before you decide you're done — tables and graphs are
 often in an appendix.
 
-## 2. First pass — extract to CSV
+## 3. First pass — extract to CSV
 
 Walk the source top to bottom and emit one CSV row per (model, condition,
 benchmark) data point. Column rules:
@@ -90,7 +116,7 @@ Extraction rules:
 
 Write the CSV (quote any field containing a comma; standard CSV quoting).
 
-## 3. Second pass — verify, fix, repeat until clean
+## 4. Second pass — verify, fix, repeat until clean
 
 Do **not** trust the first pass. Loop:
 
@@ -112,7 +138,7 @@ Do **not** trust the first pass. Loop:
 Briefly note in your reply what you changed between passes (e.g. "pass 2 fixed 3
 transposed digits and renamed `GPQA` → `GPQA Diamond`").
 
-## 4. Stage to Supabase (`pending` table)
+## 5. Stage to Supabase (`pending` table)
 
 The verified CSV is uploaded to a dedicated Supabase staging table named
 `pending` (separate from the live `metrics`/`candidates` tables).

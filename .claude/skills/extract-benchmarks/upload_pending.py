@@ -30,6 +30,14 @@ _INT_COLUMNS = ("fig_num", "row_idx", "col_idx")
 
 
 def _env() -> dict[str, str]:
+    if not ENV_PATH.exists():
+        raise SystemExit(
+            f"Missing {ENV_PATH}. Create it with:\n"
+            f"  mkdir -p var\n"
+            f"  echo 'SUPABASE_URL=https://<ref>.supabase.co' >> {ENV_PATH}\n"
+            f"  echo 'SUPABASE_SERVICE_ROLE=<service_role_key>' >> {ENV_PATH}\n"
+            f"(service_role key from Supabase dashboard → Settings → API keys)"
+        )
     out = {}
     for line in ENV_PATH.read_text().splitlines():
         if "=" in line:
