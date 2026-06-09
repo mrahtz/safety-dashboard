@@ -14,8 +14,6 @@
  .grp .sub{color:#566;font-size:12px;margin:2px 0 8px}
  .grp .kind{font-size:11px;padding:1px 7px;border-radius:10px;background:#eef1f5;color:#445;margin-left:6px;vertical-align:middle}
  .kind.g{background:#fff3da;color:#8a5a00}
- button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
- button.acc:disabled{opacity:.6;cursor:default}
  table.recon,table.schema{border-collapse:collapse;font-size:12px;width:100%}
  table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;padding:4px 7px;text-align:left;vertical-align:top}
  table.recon th,table.schema th{background:#f3f6fb;font-weight:600}
@@ -25,14 +23,19 @@
  .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
  .login{max-width:420px}
  .note{min-width:240px}
- .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+ .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+ button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
+ button.needs{background:#8a5a00;border-color:#8a5a00;color:#fff;white-space:nowrap}
+ button.rej{background:#c0143c;border-color:#c0143c;color:#fff;white-space:nowrap}
+ button.dec:disabled{opacity:.6;cursor:default}
 </style></head><body>
 <main>
  <div class=card>
-   <div style="font-size:18px;font-weight:700">Review — staged extractions (<code>pending</code>)</div>
+   <div style="font-size:18px;font-weight:700">Review — table-level sign-off</div>
    <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
-     extractor pulled from it stacks on the right. <b>Accept → main</b> promotes a figure's numbers into the
-     <code>metrics</code> table (the dashboard) and removes them from <code>pending</code>.</div>
+     extractor pulled from it stacks on the right. Judge each table as a whole — <b>Accept</b>,
+     <b>Needs review</b>, or <b>Reject</b>. The decision is saved against a stable table key (so the weekly
+     re-ingest won't wipe it) and shows as a sign-off badge across the other pages.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
@@ -50,11 +53,10 @@
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260608"></script>
+<script src="common.js?v=20260609"></script>
 <script>
-let sb, SESSION = null, PENDING = [], BY_SOURCE = new Map();
-let SRC_ID = new Map();        // origin_url -> sources.id (for promotion to metrics)
-const CARDS = new Map();       // origin_url -> stored card HTML (or null if none)
+let sb, SESSION = null, METRICS = [], REVIEWS = {}, BY_SOURCE = new Map();
+const SRC = new Map();   // origin_url -> {kind, html|src} stored-source preview (or null)
 
 async function boot() {
   mountChrome("review.html");
@@ -77,7 +79,7 @@ function showLogin(msg) {
   const g = document.getElementById("gate");
   g.style.display = "";
   g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
-    <p class=muted>Staged extractions are reviewer-only. Enter your email for a magic link.</p>
+    <p class=muted>Saving decisions is reviewer-only. Enter your email for a magic link.</p>
     <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
       <button class=on onclick=sendLink()>Send magic link</button></div>
     <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
@@ -94,39 +96,22 @@ async function sendLink() {
     error ? ("Error: " + error.message) : "Check your email for the sign-in link, then return here.";
 }
 
-async function signOut() { await sb.auth.signOut(); SESSION = null; PENDING = []; showLogin("Signed out."); }
-
-// Read the pending table AS THE SIGNED-IN USER (role=authenticated), so the
-// RLS policy — which only exposes rows to authenticated — actually returns data.
-async function fetchPending() {
-  const out = [], step = 1000;
-  for (let from = 0; ; from += step) {
-    const { data, error } = await sb.from("pending")
-      .select("id,source,model,condition,benchmark,value,units,fig_num,row_idx,col_idx")
-      .order("id").range(from, from + step - 1);
-    if (error) throw new Error(error.message);
-    out.push(...data);
-    if (data.length < step) break;
-  }
-  return out;
-}
+async function signOut() { await sb.auth.signOut(); SESSION = null; METRICS = []; showLogin("Signed out."); }
 
 async function loadData() {
-  const [pend, srcs] = await Promise.all([fetchPending(), sb.from("sources").select("id,origin_url")]);
-  PENDING = pend;
-  SRC_ID = new Map((srcs.data || []).map(s => [s.origin_url, s.id]));
+  [METRICS, REVIEWS] = await Promise.all([loadMetrics(), loadReviews()]);
   document.getElementById("who").textContent = SESSION.user.email;
   regroup();
 }
 
-// Rebuild the source grouping + dropdown from PENDING and re-render. Called on
-// load and after each accept (so a promoted figure / emptied source drops out).
+// Group every metric by its source URL, then (re)build the dropdown + render.
 function regroup() {
   const prev = document.getElementById("src").value;
   BY_SOURCE = new Map();
-  for (const r of PENDING) {
-    if (!BY_SOURCE.has(r.source)) BY_SOURCE.set(r.source, []);
-    BY_SOURCE.get(r.source).push(r);
+  for (const c of METRICS) {
+    const url = c.sources?.origin_url || "?";
+    if (!BY_SOURCE.has(url)) BY_SOURCE.set(url, []);
+    BY_SOURCE.get(url).push(c);
   }
   const keys = [...BY_SOURCE.keys()].sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)));
   const sel = document.getElementById("src");
@@ -135,7 +120,7 @@ function regroup() {
     document.getElementById("picker").style.display = "none";
     const g = document.getElementById("gate");
     g.style.display = "";
-    g.innerHTML = "<b>Nothing left in <code>pending</code>.</b> Every staged figure has been accepted (or none was ingested).";
+    g.innerHTML = "<b>No metrics in the database yet.</b> Ingest a source first.";
     return;
   }
   sel.innerHTML = keys.map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
@@ -146,93 +131,114 @@ function regroup() {
   render();
 }
 
-// fig groups for a source, ordered by fig_num. A group is a "table" if any of its
-// rows has a row_idx (graphs leave row_idx/col_idx null).
-function groupsFor(source) {
-  const byFig = new Map();
-  for (const r of BY_SOURCE.get(source) || []) {
-    const k = r.fig_num ?? "?";
-    if (!byFig.has(k)) byFig.set(k, []);
-    byFig.get(k).push(r);
+// Section groups for a source, ordered by section_key. A group is a "table" if any
+// of its rows has a row_idx (graphs leave row_idx/col_idx null).
+function groupsFor(url) {
+  const bySec = new Map();
+  for (const c of BY_SOURCE.get(url) || []) {
+    const k = c.section_key ?? "?";
+    if (!bySec.has(k)) bySec.set(k, []);
+    bySec.get(k).push(c);
   }
-  return [...byFig.entries()]
-    .map(([fig, cells]) => ({ fig, cells, isTable: cells.some(c => c.row_idx != null) }))
-    .sort((a, b) => (a.fig | 0) - (b.fig | 0));
+  return [...bySec.entries()]
+    .map(([section_key, cells]) => ({ section_key, cells, isTable: cells.some(c => c.row_idx != null) }))
+    .sort((a, b) => String(a.section_key).localeCompare(String(b.section_key), undefined, { numeric: true }));
 }
 
 function render() {
-  const source = document.getElementById("src").value;
-  document.getElementById("openlink").href = source;
-  updateFrame(source);
-  const groups = groupsFor(source);
-  const nNums = (BY_SOURCE.get(source) || []).length;
+  const url = document.getElementById("src").value;
+  document.getElementById("openlink").href = url;
+  updateFrame(url);
+  const groups = groupsFor(url);
+  const nNums = (BY_SOURCE.get(url) || []).length;
   document.getElementById("count").textContent =
     `${groups.filter(g => g.isTable).length} tables · ${groups.filter(g => !g.isTable).length} graphs · ${nNums} numbers`;
-  document.getElementById("groups").innerHTML = groups.map(renderGroup).join("");
+  document.getElementById("groups").innerHTML = groups.map((g, i) => renderGroup(url, g, i)).join("");
 }
 
-// The original card, served from our own `cards` table via srcdoc — so it always
-// embeds (no X-Frame-Options), unlike framing the live URL. Falls back to the
-// live URL if we haven't stored a copy.
-async function cardHtml(source) {
-  if (CARDS.has(source)) return CARDS.get(source);
-  const { data } = await sb.from("cards").select("html").eq("source", source).maybeSingle();
-  CARDS.set(source, data?.html || null);
-  return CARDS.get(source);
+// The original card, served from our own `sources.blob` so it always embeds (no
+// X-Frame-Options): HTML via srcdoc, PDF via an object URL. Falls back to the live
+// URL if we haven't stored a copy.
+async function sourceDoc(url) {
+  if (SRC.has(url)) return SRC.get(url);
+  let rec = null;
+  try {
+    const { data } = await sb.from("sources").select("kind,blob").eq("origin_url", url).maybeSingle();
+    if (data?.blob) {
+      const bytes = hexToBytes(data.blob);
+      rec = data.kind === "pdf"
+        ? { kind: "pdf", src: URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })) }
+        : { kind: "html", html: new TextDecoder().decode(bytes) };
+    }
+  } catch (e) { console.warn("source blob unavailable:", e.message); }
+  SRC.set(url, rec);
+  return rec;
 }
 
-async function updateFrame(source) {
+// PostgREST returns a bytea column as a "\x…"-prefixed hex string.
+function hexToBytes(s) {
+  s = String(s).replace(/^\\x/, "");
+  const out = new Uint8Array(s.length >> 1);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+  return out;
+}
+
+async function updateFrame(url) {
   const frame = document.getElementById("frame"), note = document.querySelector(".left .framenote");
-  const html = await cardHtml(source);
-  if (document.getElementById("src").value !== source) return;   // selection changed while fetching
-  if (html) {
+  const rec = await sourceDoc(url);
+  if (document.getElementById("src").value !== url) return;   // selection changed while fetching
+  if (rec?.kind === "html") {
     frame.removeAttribute("src");
-    frame.srcdoc = html;
-    note.textContent = "Stored copy of the original (served from Supabase, so it always embeds).";
+    frame.srcdoc = rec.html;
+    note.textContent = "Stored copy of the original (HTML), served from Supabase, so it always embeds.";
+  } else if (rec?.kind === "pdf") {
+    frame.removeAttribute("srcdoc");
+    frame.src = rec.src;
+    note.textContent = "Stored copy of the original (PDF).";
   } else {
     frame.removeAttribute("srcdoc");
-    frame.src = source;
+    frame.src = url;
     note.textContent = "No stored copy — embedding the live source, which may refuse to load. Use “open original ↗”.";
   }
 }
 
-function renderGroup(g) {
+function renderGroup(url, g, i) {
+  const tk = tableKey(url, g.section_key);
+  const rv = REVIEWS[tk];
   const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
   const kind = g.isTable
-    ? `<span class=kind>Table ${esc(g.fig)}</span>`
-    : `<span class="kind g">Figure ${esc(g.fig)}</span>`;
+    ? `<span class=kind>Table</span>`
+    : `<span class="kind g">Figure</span>`;
+  // table-level auto status: accepted only if every number is accepted.
+  const auto = g.cells.every(c => c.accepted) ? "accepted" : "needs_review";
+  const cur = rv
+    ? `<span class="flag s-${rv.status}">decision: ${rv.status}</span>
+       <span class=muted>by ${esc(rv.reviewer || "?")} · ${esc((rv.updated_at || "").slice(0, 16).replace("T", " "))}</span>`
+    : `<span class="flag s-${auto}">auto: ${auto}</span> <span class=muted>not yet reviewed</span>`;
   const head = `<div class=ghead>
-      <div><h3>${g.isTable ? "Table" : "Figure"} ${esc(g.fig)}</h3> ${kind}
-        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers</div></div>
-      <button class=acc onclick="accept('${esc(g.fig)}',this)">Accept → main ✓</button>
+      <div><h3>${esc(String(g.section_key))}</h3> ${kind}
+        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${cur}</div></div>
     </div>`;
-  return `<div class=grp>${head}<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div></div>`;
+  const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
+  const decided = s => rv && rv.status === s ? " disabled" : "";
+  const bar = `<div class=bar>
+      <button class="dec acc" onclick="decide('${esc(tk)}','accepted','note${i}')"${decided("accepted")}>Accept</button>
+      <button class="dec needs" onclick="decide('${esc(tk)}','needs_review','note${i}')"${decided("needs_review")}>Needs review</button>
+      <button class="dec rej" onclick="decide('${esc(tk)}','rejected','note${i}')"${decided("rejected")}>Reject</button>
+      <input id=note${i} class=note placeholder="optional note…" value="${esc(rv?.note || "")}">
+    </div>`;
+  return `<div class=grp>${head}${grid}${bar}</div>`;
 }
 
-// Accept a figure: promote its rows into `metrics` (status=accepted, so the
-// dashboard shows them) and delete them from `pending`.
-async function accept(figStr, btn) {
-  const source = document.getElementById("src").value;
-  const g = groupsFor(source).find(x => String(x.fig) === String(figStr));
-  if (!g) return;
-  const srcId = SRC_ID.get(source);
-  if (srcId == null) { alert("No `sources` row for this URL, so it can't be promoted to the dashboard. Ingest the source first."); return; }
-  if (btn) { btn.disabled = true; btn.textContent = "Accepting…"; }
-  const base = Date.now() * 1000;   // metrics.id has no default; mint stable-ish ids
-  const rows = g.cells.map((p, i) => ({
-    id: base + i, source_id: srcId, crop_url: "", status: "accepted",
-    model: p.model, condition: p.condition || "", benchmark: p.benchmark,
-    value: p.value, units: p.units || "", row_idx: p.row_idx, col_idx: p.col_idx,
-    section_key: "fig:" + p.fig_num, section_title: (g.isTable ? "Table " : "Figure ") + p.fig_num,
-  }));
-  const ids = g.cells.map(c => c.id);
-  const ins = await sb.from("metrics").insert(rows);
-  if (ins.error) { alert("Accept failed (insert into metrics): " + ins.error.message); if (btn) { btn.disabled = false; btn.textContent = "Accept → main ✓"; } return; }
-  const del = await sb.from("pending").delete().in("id", ids);
-  if (del.error) alert("Promoted to the dashboard, but failed to remove from pending: " + del.error.message);
-  const gone = new Set(ids);
-  PENDING = PENDING.filter(r => !gone.has(r.id));
-  regroup();
+// Save a table-level decision into `reviews` (keyed by the stable table key), then
+// re-render so the badge + disabled state update.
+async function decide(tk, status, noteId) {
+  const row = { table_key: tk, status, note: document.getElementById(noteId).value.trim() || null,
+                reviewer: SESSION.user.email, updated_at: new Date().toISOString() };
+  const { error } = await sb.from("reviews").upsert(row, { onConflict: "table_key" });
+  if (error) { alert("Save failed: " + error.message + "\n\nHas the reviews table + RLS been created?"); return; }
+  REVIEWS[tk] = row;
+  render();
 }
 
 // Descriptive tokens of a cell, used to derive row/column headers.
@@ -274,7 +280,7 @@ function reconTable(cells) {
   return html + "</table>";
 }
 
-// Graphs: one row per data point, in the pending schema.
+// Graphs: one row per data point, in the long-format schema.
 function schemaTable(cells) {
   let html = "<table class=schema><tr><th>model<th>condition<th>benchmark<th>value<th>units</tr>";
   for (const c of cells) {
