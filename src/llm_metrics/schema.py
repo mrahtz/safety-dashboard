@@ -41,10 +41,10 @@ CREATE TABLE IF NOT EXISTS metrics (
 
 CREATE TABLE IF NOT EXISTS reviews (
     table_key   TEXT PRIMARY KEY,
-    accepted    BOOLEAN NOT NULL,
+    status      TEXT NOT NULL CHECK (status IN ('accepted', 'rejected', 'needs_review')),
     note        TEXT,
     reviewer    TEXT,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """
 

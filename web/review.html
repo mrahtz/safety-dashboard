@@ -86,8 +86,7 @@ async function loadAll() {
     const url = c.sources?.origin_url || "?", skey = c.section_key || "_";
     const tk = tableKey(url, skey);
     if (!byTable.has(tk))
-      byTable.set(tk, { tableKey: tk, url, label: sourceLabel(url), section_key: skey,
-        title: c.section_title || "Table", shot: c.crop_url || "", items: [] });
+      byTable.set(tk, { tableKey: tk, url, label: sourceLabel(url), section_key: skey, items: [] });
     byTable.get(tk).items.push(c);
   }
   TABLES = [...byTable.values()].sort((a, b) =>
@@ -115,23 +114,21 @@ function renderTable() {
   const t = QUEUE[idx], rv = REVIEWS[t.tableKey];
   let rows = "";
   for (const c of t.items) {
-    rows += `<tr><td>${c.crop_url ? `<a class=pop href="${esc(c.crop_url)}" target=_blank>
-        <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a>` : ""}</td>
+    const metricStatus = c.accepted ? "accepted" : "needs_review";
+    rows += `<tr>
       <td class=raw>${esc(fmtVal(c.value, c.units))}</td>
       <td>${esc((c.benchmark || "").slice(0, 90))}</td>
       <td>${esc((c.model || "").slice(0, 60))}</td>
       <td>${esc(c.condition || "—")}</td>
-      <td><span class="flag s-${c.status}">${c.status}</span></td></tr>`;
+      <td><span class="flag s-${metricStatus}">${metricStatus}</span></td></tr>`;
   }
   const cur = rv ? `<span class="flag s-${rv.status}">current: ${rv.status}</span>
       <span class=muted>by ${esc(rv.reviewer || "?")} · ${esc((rv.updated_at || "").slice(0, 16).replace("T", " "))}</span>` : `<span class=muted>not yet reviewed</span>`;
   card.innerHTML = `
     <div class=muted>${esc(SESSION.user.email)} · <a href=# onclick="signOut();return false">sign out</a></div>
-    <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(t.label)} — ${esc(t.title)}</div>
+    <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(t.label)}</div>
     <div class=muted>${t.items.length} numbers · ${cur}</div>
-    ${t.shot ? `<img class=shot loading=lazy src="${esc(t.shot)}">`
-             : `<div class=muted style="padding:8px 0">(screenshot not available — re-run the refresh workflow)</div>`}
-    <table class=nums><tr><th>crop<th>value<th>benchmark<th>model<th>condition<th>auto status</tr>${rows}</table>
+    <table class=nums><tr><th>value<th>benchmark<th>model<th>condition<th>auto status</tr>${rows}</table>
     <div class="bar" style="margin-top:12px">
       <button class=big-accept onclick="decide('accepted')">Accept table</button>
       <button class=big-needs onclick="decide('needs_review')">Needs review</button>

@@ -6,8 +6,8 @@
 const SUPABASE_URL = "https://rapkltwpfvzleejytgmq.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcGtsdHdwZnZ6bGVlanl0Z21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTY4MjksImV4cCI6MjA5NjI5MjgyOX0.DbXAds_FJmhB5RbhbMUpMjoBe7wZ6H6vOiBJtRs7wfE";
 
-const TRUST = ["verified", "accepted"];
-const STATUS_ORDER = { verified: 0, accepted: 1, needs_review: 2, pending: 3, rejected: 4 };
+const TRUST = ["accepted"];
+const STATUS_ORDER = { accepted: 0, needs_review: 1, rejected: 2 };
 
 // Friendly titles for each source card (falls back to a prettified URL).
 const SOURCE_LABELS = {
@@ -60,8 +60,8 @@ async function sbGetAll(table, select) {
 
 async function loadMetrics() {
   return sbGetAll("metrics",
-    "id,model,condition,benchmark,value,units,row_idx,col_idx,status,crop_url," +
-    "section_key,section_title,source_id,sources(origin_url)");
+    "id,model,condition,benchmark,value,units,row_idx,col_idx,accepted," +
+    "section_key,source_id,sources(origin_url)");
 }
 // Back-compat alias for any older caller.
 const loadCandidates = loadMetrics;
@@ -70,7 +70,7 @@ const loadCandidates = loadMetrics;
 // reviews table not existing yet (returns {} so read-only pages still work).
 async function loadReviews() {
   try {
-    const rows = await sbGet("reviews?select=table_key,status,note,reviewer,updated_at");
+    const rows = await sbGet("reviews?select=*");
     const m = {};
     for (const r of rows) m[r.table_key] = r;
     return m;
@@ -80,7 +80,7 @@ async function loadReviews() {
 // A table-level review decision overrides each number's automatic status.
 function effectiveStatus(cand, reviews) {
   const r = reviews[tableKey(cand.sources?.origin_url, cand.section_key)];
-  return r ? r.status : cand.status;
+  return r ? r.status : (cand.accepted ? "accepted" : "needs_review");
 }
 
 // Render a value with its units: "75.0%", "$5478.16", "2439 Elo", or bare.
