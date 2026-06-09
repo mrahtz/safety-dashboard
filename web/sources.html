@@ -43,7 +43,7 @@ async function load() {
     const s = bySource.get(url);
     const skey = c.section_key || "_";
     if (!s.sections.has(skey))
-      s.sections.set(skey, { key: skey, title: c.section_title || "Table", shot: c.crop_url || "", items: [] });
+      s.sections.set(skey, { key: skey, items: [] });
     s.sections.get(skey).items.push(c);
   }
   SRC = [...bySource.values()].sort((a, b) => a.label.localeCompare(b.label));
@@ -75,11 +75,8 @@ function pick(i) {
   for (const sec of sections) {
     const rv = REVIEWS[tableKey(s.url, sec.key)];
     const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
-    html += `<div class=section><h3>${esc(sec.title)} ${badge}</h3>
+    html += `<div class=section><h3>Table ${esc(sec.key)} ${badge}</h3>
       <div class=muted>${sec.items.length} numbers · VLM-transcribed</div>`;
-    if (sec.shot)
-      html += `<details><summary>source screenshot the model read</summary>
-        <img class=shot loading=lazy src="${esc(sec.shot)}"></details>`;
     html += numsTable(sec.items) + `</div>`;
   }
   document.getElementById("content").innerHTML = html;

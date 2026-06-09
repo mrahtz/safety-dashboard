@@ -24,7 +24,8 @@ def _tables(src: corpus.Source, blob_path: str) -> list[dict]:
 def ingest(conn, src: corpus.Source) -> tuple[int, int]:
     """Freeze, screenshot each table/page, VLM-transcribe to long format, persist."""
     fr = freeze.freeze(src.origin_url)
-    sid = db.upsert_source(conn, src.kind, src.origin_url, fr.sha256, fr.retrieved_at, fr.blob_path)
+    blob = pathlib.Path(fr.blob_path).read_bytes()
+    sid = db.upsert_source(conn, src.kind, src.origin_url, fr.sha256, blob, fr.retrieved_at)
     n = 0
     for t in _tables(src, fr.blob_path):
         img = t["image"]
@@ -35,10 +36,8 @@ def ingest(conn, src: corpus.Source) -> tuple[int, int]:
             print(f"    ! {src.model_id} {t['section_key']}: {type(e).__name__}: {str(e)[:120]}", flush=True)
             continue
         for m in vlm_table.parse_long(csv_text):
-            m["crop_path"] = img        # provenance = the whole-table/page screenshot
             m["section_key"] = t["section_key"]
-            m["section_title"] = t.get("section_title", "")
-            db.insert_metric(conn, sid, m, status="accepted")
+            db.insert_metric(conn, sid, m, accepted=True)
             n += 1
     return sid, n
 
