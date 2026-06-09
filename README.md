@@ -51,9 +51,9 @@ and the CSV it produced, not to a per-cell bounding box.
    `table_key = origin_url || '::' || section_key` in a separate `reviews` table,
    so re-ingest never wipes them; the sign-off badge overlays the other pages.
 
-Section/table metadata (screenshot URL, CSV URL, `section_key`, `section_title`)
-rides inside the candidate's `context` JSONB — the IR and DB schema stay frozen
-contracts (`ir.py`, `schema.py`); extras are merged in `db.insert_candidate`.
+Table identification uses `section_key` (e.g., `p0_t0` for page 0 table 0) to
+persist across re-ingests. Review decisions are stored in a separate `reviews` table
+keyed by `table_key = origin_url || '::' || section_key`.
 
 ## Corpus
 
@@ -96,20 +96,3 @@ Secrets required: `CLAUDE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`.
 - Supabase → Authentication: enable Email/magic-link and add the deployed
   `…/review.html` URL to the redirect allowlist.
 
-## Two readers (note for maintainers)
-
-This repo currently contains **two** ways to read tables:
-- **VLM transcription** (`vlm_table.py` + `*.list_tables` + `pipeline.py`) — the
-  shipped path described above.
-- **Structural extraction** (`extract_html.extract*`, `extract_pdf.extract*`,
-  `serde.py`, `runner.run_html*`, `ocr.py`, `normalize.py`) — reads DOM/PDF cells
-  with exact coordinates and tight per-cell crops. It powers the local Flask app
-  (`app.py`, `scripts/serve.sh`) and is the **exact-values reference** the audit
-  uses. It's the basis for the recommended "structural values for HTML" step.
-
-The old single-crop VLM cross-check (`verify.py`/`vlm.py`) has been removed.
-
-## Offline export
-
-`./scripts/export.sh` renders the DB to a self-contained `var/export/index.html`
-(+ `crops/`) — viewable with no server (`export_static.py`).
