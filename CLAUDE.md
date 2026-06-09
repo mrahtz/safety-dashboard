@@ -108,6 +108,29 @@ Never do a full `refresh` just to test one thing.
   301-redirects it to the custom domain. (Alternatives if ever needed: purge
   Cloudflare via API, or drop the custom domain to serve straight from github.io.)
 
+## Auth (review page)
+
+`review.html` is reviewer-only: it reads the staged `pending` table behind a
+Supabase **email magic-link** login (`signInWithOtp`, `shouldCreateUser:false`).
+Who can get in is governed by **Supabase Auth project config**, not the code:
+
+- **Signups are disabled** (`disable_signup: true`) and there is a single allowed
+  user, `matthew.rahtz@gmail.com`. New emails can't self-register; add reviewers
+  in Dashboard → Authentication → Users (and to the allowlist below).
+- **Defense in depth:** the `pending` RLS read policy also gates on the email
+  (`lower(auth.jwt()->>'email') = 'matthew.rahtz@gmail.com'`), so even an
+  authenticated session from any other account reads nothing. Add emails to that
+  policy (`supabase/`… or the skill's `pending_table.sql`) to grant access.
+- **Magic-link redirect** must point at the live page or the link breaks (it
+  defaulted to `http://localhost:3000`). Fixed via Auth config:
+  `site_url = http://amid.fish/safety-dashboard/review.html` and
+  `uri_allow_list = http://amid.fish/safety-dashboard/**,https://amid.fish/safety-dashboard/**,http://localhost:3000/**`.
+  The app passes `emailRedirectTo = origin+pathname`; it's honoured only if it
+  matches the allow-list, else Supabase falls back to `site_url`.
+- These live in **Auth config**, settable via the Management API
+  (`PATCH /v1/projects/<ref>/config/auth`, needs an `sbp_…` token) or
+  Dashboard → Authentication → URL Configuration / Providers.
+
 ## Keys & secrets
 
 Five credentials make the pipeline + site go. CI reads them from **GitHub Actions

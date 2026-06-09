@@ -81,8 +81,10 @@ function showLogin(msg) {
 async function sendLink() {
   const email = document.getElementById("email").value.trim();
   if (!email) return;
+  // shouldCreateUser:false — signups are disabled (reviewer allowlist), so a
+  // non-allowed email gets a clear error instead of a dangling unconfirmed user.
   const { error } = await sb.auth.signInWithOtp(
-    { email, options: { emailRedirectTo: location.origin + location.pathname } });
+    { email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: false } });
   document.getElementById("loginmsg").textContent =
     error ? ("Error: " + error.message) : "Check your email for the sign-in link, then return here.";
 }

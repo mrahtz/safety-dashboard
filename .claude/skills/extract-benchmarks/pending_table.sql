@@ -29,7 +29,9 @@ alter table public.pending enable row level security;
 
 -- service_role (used by upload_pending.py) bypasses RLS, so no write policy is
 -- needed. Staged rows are reviewer-only: the review page reads them as the
--- signed-in user, so grant SELECT to `authenticated` (NOT anon).
+-- signed-in user, and only the allowlisted reviewer email may read them (defense
+-- in depth on top of disabled signups — see CLAUDE.md "Auth (review page)").
 drop policy if exists pending_read on public.pending;
 create policy pending_read on public.pending
-    for select to authenticated using (true);
+    for select to authenticated
+    using (lower(auth.jwt() ->> 'email') = 'matthew.rahtz@gmail.com');
