@@ -19,37 +19,26 @@ def connect(path: pathlib.Path | None = None) -> sqlite3.Connection:
     return conn
 
 
-def upsert_source(conn, kind, origin_url, sha256, retrieved_at, blob_path) -> int:
+def upsert_source(conn, kind, origin_url, sha256, blob, retrieved_at) -> int:
     row = conn.execute("SELECT id FROM sources WHERE sha256=?", (sha256,)).fetchone()
     if row:
-        sid = row["id"]
-        conn.execute("DELETE FROM metrics WHERE source_id=?", (sid,))   # idempotent re-ingest
-        conn.execute("UPDATE sources SET origin_url=?, retrieved_at=?, blob_path=? WHERE id=?",
-                     (origin_url, retrieved_at, blob_path, sid))
-        conn.commit()
-        return sid
-    cur = conn.execute("INSERT INTO sources(kind,origin_url,sha256,retrieved_at,blob_path)"
-                       " VALUES(?,?,?,?,?)", (kind, origin_url, sha256, retrieved_at, blob_path))
+        return row["id"]
+    cur = conn.execute("INSERT INTO sources(kind,origin_url,sha256,blob,retrieved_at)"
+                       " VALUES(?,?,?,?,?)", (kind, origin_url, sha256, blob, retrieved_at))
     conn.commit()
     return int(cur.lastrowid)
 
 
-def insert_metric(conn, source_id: int, m: dict, status: str = "accepted") -> int:
+def insert_metric(conn, source_id: int, m: dict, accepted: bool = False) -> int:
     """Insert one long-format metric row. ``m`` has model/condition/benchmark/
-    value/units/row_idx/col_idx and optionally crop_path/section_key/section_title."""
+    value/units/row_idx/col_idx."""
     cur = conn.execute(
-        "INSERT INTO metrics(source_id,model,condition,benchmark,value,units,row_idx,col_idx,"
-        "crop_path,section_key,section_title,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO metrics(source_id,model,condition,benchmark,value,units,row_idx,col_idx,accepted)"
+        " VALUES(?,?,?,?,?,?,?,?,?)",
         (source_id, m["model"], m.get("condition", ""), m["benchmark"], m["value"],
-         m.get("units", ""), m.get("row_idx"), m.get("col_idx"),
-         str(m.get("crop_path", "")), m.get("section_key"), m.get("section_title"), status))
+         m.get("units", ""), m.get("row_idx"), m.get("col_idx"), accepted))
     conn.commit()
     return int(cur.lastrowid)
-
-
-def set_status(conn, metric_id: int, status: str) -> None:
-    conn.execute("UPDATE metrics SET status=? WHERE id=?", (status, metric_id))
-    conn.commit()
 
 
 def sources(conn) -> list[sqlite3.Row]:
@@ -65,8 +54,3 @@ def metrics(conn, source_id: int | None = None) -> list[sqlite3.Row]:
         q += " WHERE m.source_id=?"
         args.append(source_id)
     return conn.execute(q + " ORDER BY m.source_id, m.id", args).fetchall()
-
-
-def status_counts(conn) -> dict[str, int]:
-    rows = conn.execute("SELECT status, COUNT(*) n FROM metrics GROUP BY status").fetchall()
-    return {r["status"]: r["n"] for r in rows}

@@ -8,8 +8,6 @@ screenshot (crop_path locally, rewritten to crop_url on publish).
 
 import sqlite3
 
-# status ∈ {pending, accepted, rejected, verified, needs_review}
-STATUSES: tuple[str, ...] = ("pending", "accepted", "rejected", "verified", "needs_review")
 SOURCE_KINDS: tuple[str, ...] = ("html", "pdf")
 
 
@@ -22,9 +20,9 @@ CREATE TABLE IF NOT EXISTS sources (
     id           INTEGER PRIMARY KEY,
     kind         TEXT    NOT NULL CHECK ({_in_list('kind', SOURCE_KINDS)}),
     origin_url   TEXT    NOT NULL,
-    sha256       TEXT    NOT NULL,
-    retrieved_at TEXT    NOT NULL,
-    blob_path    TEXT    NOT NULL
+    sha256       TEXT    NOT NULL UNIQUE,
+    blob         BLOB    NOT NULL,
+    retrieved_at TEXT    NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS metrics (
@@ -37,11 +35,7 @@ CREATE TABLE IF NOT EXISTS metrics (
     units         TEXT    NOT NULL DEFAULT '',
     row_idx       INTEGER,
     col_idx       INTEGER,
-    crop_path     TEXT    NOT NULL DEFAULT '',
-    section_key   TEXT,
-    section_title TEXT,
-    status        TEXT    NOT NULL DEFAULT 'accepted'
-                          CHECK ({_in_list('status', STATUSES)})
+    accepted      BOOLEAN NOT NULL DEFAULT FALSE
 );
 """
 
