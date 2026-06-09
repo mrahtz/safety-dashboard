@@ -9,10 +9,13 @@
  .left .framenote{font-size:12px;color:#566;margin:6px 2px}
  .right{min-width:0}
  .grp{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px;margin:0 0 14px}
- .grp h3{margin:0 0 2px;font-size:15px}
- .grp .sub{color:#566;font-size:12px;margin-bottom:8px}
+ .ghead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+ .grp h3{margin:0 0 2px;font-size:15px;display:inline}
+ .grp .sub{color:#566;font-size:12px;margin:2px 0 8px}
  .grp .kind{font-size:11px;padding:1px 7px;border-radius:10px;background:#eef1f5;color:#445;margin-left:6px;vertical-align:middle}
  .kind.g{background:#fff3da;color:#8a5a00}
+ button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
+ button.acc:disabled{opacity:.6;cursor:default}
  table.recon,table.schema{border-collapse:collapse;font-size:12px;width:100%}
  table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;padding:4px 7px;text-align:left;vertical-align:top}
  table.recon th,table.schema th{background:#f3f6fb;font-weight:600}
@@ -28,8 +31,8 @@
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — staged extractions (<code>pending</code>)</div>
    <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
-     extractor pulled from it stacks on the right. Tables are redrawn in their original row/column layout;
-     graphs are listed as one row per data point (the <code>pending</code> schema).</div>
+     extractor pulled from it stacks on the right. <b>Accept → main</b> promotes a figure's numbers into the
+     <code>metrics</code> table (the dashboard) and removes them from <code>pending</code>.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
@@ -40,8 +43,8 @@
  <div id=gate class=card>Loading…</div>
  <div id=app class=split style=display:none>
    <div class=left>
-     <iframe id=frame referrerpolicy=no-referrer></iframe>
-     <div class=framenote>If the original looks blank, the source forbids embedding — use “open original ↗”.</div>
+     <iframe id=frame sandbox="allow-same-origin" referrerpolicy=no-referrer></iframe>
+     <div class=framenote></div>
    </div>
    <div class=right id=groups></div>
  </div>
@@ -50,6 +53,8 @@
 <script src="common.js?v=20260608"></script>
 <script>
 let sb, SESSION = null, PENDING = [], BY_SOURCE = new Map();
+let SRC_ID = new Map();        // origin_url -> sources.id (for promotion to metrics)
+const CARDS = new Map();       // origin_url -> stored card HTML (or null if none)
 
 async function boot() {
   mountChrome("review.html");
@@ -107,25 +112,37 @@ async function fetchPending() {
 }
 
 async function loadData() {
-  PENDING = await fetchPending();
+  const [pend, srcs] = await Promise.all([fetchPending(), sb.from("sources").select("id,origin_url")]);
+  PENDING = pend;
+  SRC_ID = new Map((srcs.data || []).map(s => [s.origin_url, s.id]));
+  document.getElementById("who").textContent = SESSION.user.email;
+  regroup();
+}
+
+// Rebuild the source grouping + dropdown from PENDING and re-render. Called on
+// load and after each accept (so a promoted figure / emptied source drops out).
+function regroup() {
+  const prev = document.getElementById("src").value;
   BY_SOURCE = new Map();
   for (const r of PENDING) {
     if (!BY_SOURCE.has(r.source)) BY_SOURCE.set(r.source, []);
     BY_SOURCE.get(r.source).push(r);
   }
-  document.getElementById("who").textContent = SESSION.user.email;
+  const keys = [...BY_SOURCE.keys()].sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)));
   const sel = document.getElementById("src");
-  sel.innerHTML = [...BY_SOURCE.keys()]
-    .sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)))
-    .map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
-  document.getElementById("picker").style.display = "";
-  if (!PENDING.length) {
-    document.getElementById("gate").style.display = "";
-    document.getElementById("gate").innerHTML =
-      "<b>No staged rows.</b> The <code>pending</code> table is empty (or its read policy isn't applied yet).";
+  if (!keys.length) {
+    document.getElementById("app").style.display = "none";
+    document.getElementById("picker").style.display = "none";
+    const g = document.getElementById("gate");
+    g.style.display = "";
+    g.innerHTML = "<b>Nothing left in <code>pending</code>.</b> Every staged figure has been accepted (or none was ingested).";
     return;
   }
+  sel.innerHTML = keys.map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
+  sel.value = keys.includes(prev) ? prev : keys[0];
+  document.getElementById("picker").style.display = "";
   document.getElementById("app").style.display = "";
+  document.getElementById("gate").style.display = "none";
   render();
 }
 
@@ -145,8 +162,8 @@ function groupsFor(source) {
 
 function render() {
   const source = document.getElementById("src").value;
-  document.getElementById("frame").src = source;
   document.getElementById("openlink").href = source;
+  updateFrame(source);
   const groups = groupsFor(source);
   const nNums = (BY_SOURCE.get(source) || []).length;
   document.getElementById("count").textContent =
@@ -154,14 +171,68 @@ function render() {
   document.getElementById("groups").innerHTML = groups.map(renderGroup).join("");
 }
 
+// The original card, served from our own `cards` table via srcdoc — so it always
+// embeds (no X-Frame-Options), unlike framing the live URL. Falls back to the
+// live URL if we haven't stored a copy.
+async function cardHtml(source) {
+  if (CARDS.has(source)) return CARDS.get(source);
+  const { data } = await sb.from("cards").select("html").eq("source", source).maybeSingle();
+  CARDS.set(source, data?.html || null);
+  return CARDS.get(source);
+}
+
+async function updateFrame(source) {
+  const frame = document.getElementById("frame"), note = document.querySelector(".left .framenote");
+  const html = await cardHtml(source);
+  if (document.getElementById("src").value !== source) return;   // selection changed while fetching
+  if (html) {
+    frame.removeAttribute("src");
+    frame.srcdoc = html;
+    note.textContent = "Stored copy of the original (served from Supabase, so it always embeds).";
+  } else {
+    frame.removeAttribute("srcdoc");
+    frame.src = source;
+    note.textContent = "No stored copy — embedding the live source, which may refuse to load. Use “open original ↗”.";
+  }
+}
+
 function renderGroup(g) {
   const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
   const kind = g.isTable
     ? `<span class=kind>Table ${esc(g.fig)}</span>`
     : `<span class="kind g">Figure ${esc(g.fig)}</span>`;
-  const head = `<h3>${g.isTable ? "Table" : "Figure"} ${esc(g.fig)} ${kind}</h3>
-    <div class=sub>${esc(benches.join(" · ").slice(0, 160))}</div>`;
+  const head = `<div class=ghead>
+      <div><h3>${g.isTable ? "Table" : "Figure"} ${esc(g.fig)}</h3> ${kind}
+        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers</div></div>
+      <button class=acc onclick="accept('${esc(g.fig)}',this)">Accept → main ✓</button>
+    </div>`;
   return `<div class=grp>${head}<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div></div>`;
+}
+
+// Accept a figure: promote its rows into `metrics` (status=accepted, so the
+// dashboard shows them) and delete them from `pending`.
+async function accept(figStr, btn) {
+  const source = document.getElementById("src").value;
+  const g = groupsFor(source).find(x => String(x.fig) === String(figStr));
+  if (!g) return;
+  const srcId = SRC_ID.get(source);
+  if (srcId == null) { alert("No `sources` row for this URL, so it can't be promoted to the dashboard. Ingest the source first."); return; }
+  if (btn) { btn.disabled = true; btn.textContent = "Accepting…"; }
+  const base = Date.now() * 1000;   // metrics.id has no default; mint stable-ish ids
+  const rows = g.cells.map((p, i) => ({
+    id: base + i, source_id: srcId, crop_url: "", status: "accepted",
+    model: p.model, condition: p.condition || "", benchmark: p.benchmark,
+    value: p.value, units: p.units || "", row_idx: p.row_idx, col_idx: p.col_idx,
+    section_key: "fig:" + p.fig_num, section_title: (g.isTable ? "Table " : "Figure ") + p.fig_num,
+  }));
+  const ids = g.cells.map(c => c.id);
+  const ins = await sb.from("metrics").insert(rows);
+  if (ins.error) { alert("Accept failed (insert into metrics): " + ins.error.message); if (btn) { btn.disabled = false; btn.textContent = "Accept → main ✓"; } return; }
+  const del = await sb.from("pending").delete().in("id", ids);
+  if (del.error) alert("Promoted to the dashboard, but failed to remove from pending: " + del.error.message);
+  const gone = new Set(ids);
+  PENDING = PENDING.filter(r => !gone.has(r.id));
+  regroup();
 }
 
 // Descriptive tokens of a cell, used to derive row/column headers.

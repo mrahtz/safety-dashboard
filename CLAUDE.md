@@ -34,7 +34,9 @@ numbers stored as `accepted` → `publish.py` pushes to Supabase. Provenance is
 - `web/` — `index.html` (matrix), `sources.html`, `review.html`, `common.js`.
 - `scripts/` — `ingest.sh`, `publish.sh`, `dump_tables.py`, `probe_supabase.py`, `serve.sh`, `export.sh`.
 - `.github/workflows/` — `refresh` (full), `dev-ingest` (fast, no publish), `probe`, `pages`.
-- `supabase/reviews.sql` — the one piece of Supabase DDL (reviews table + RLS).
+- `supabase/` — Supabase DDL: `reviews.sql` (reviews table + RLS) and
+  `promote.sql` (review-page "Accept → main" policies on metrics/pending + the
+  `cards` table that backs the embeddable source iframe).
 
 ## Iterate FAST (don't re-run the full pipeline)
 

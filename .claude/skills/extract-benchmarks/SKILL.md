@@ -142,6 +142,30 @@ sends the `apikey` header (Storage/PostgREST 401s without it), and retries
 transient 5xx/429 — same conventions as `publish.py`. It tags every row with the
 `source` you pass so a run is identifiable and re-runnable.
 
+**Also store the card for the review iframe.** The review page embeds the
+original on the left from a `cards` table (see `supabase/promote.sql`), because
+the live source usually refuses framing and Supabase Storage neuters served HTML
+(`content-security-policy: default-src 'none'; sandbox`). So for an HTML source,
+save the fetched page with a `<base href="<origin>/">` injected after `<head>`
+(so its root-relative assets still resolve) and upsert it:
+
+```bash
+python3 - "$SOURCE_URL" var/extract/<slug>/page.html <<'PY'
+import json, sys, urllib.parse, pathlib
+url, html_path = sys.argv[1], sys.argv[2]
+origin = "{0.scheme}://{0.netloc}/".format(urllib.parse.urlparse(url))
+html = pathlib.Path(html_path).read_text(encoding="utf-8").replace(
+    "<head>", '<head><base href="%s">' % origin, 1)
+pathlib.Path("/tmp/card.json").write_text(json.dumps({"source": url, "html": html}))
+PY
+curl -sS -X POST "$SUPABASE_URL/rest/v1/cards" \
+  -H "Authorization: Bearer $SERVICE" -H "apikey: $SERVICE" \
+  -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates,return=minimal" \
+  --data-binary @/tmp/card.json
+```
+
+(For a PDF source, store/point at the PDF instead — PDFs frame fine.)
+
 ## Done
 
 Report: source ingested, # tables and # graphs read, # rows extracted, how many

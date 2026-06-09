@@ -35,3 +35,6 @@ drop policy if exists pending_read on public.pending;
 create policy pending_read on public.pending
     for select to authenticated
     using (lower(auth.jwt() ->> 'email') = 'matthew.rahtz@gmail.com');
+
+-- The review page's "Accept → main" also deletes accepted rows from here; that
+-- policy lives in supabase/promote.sql alongside the metrics insert policy.
