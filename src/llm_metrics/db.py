@@ -41,12 +41,6 @@ def insert_metric(conn, source_id: int, m: dict, accepted: bool = False) -> int:
     return int(cur.lastrowid)
 
 
-def sources(conn) -> list[sqlite3.Row]:
-    return conn.execute(
-        "SELECT s.*, (SELECT COUNT(*) FROM metrics m WHERE m.source_id=s.id) n_metrics"
-        " FROM sources s ORDER BY s.id").fetchall()
-
-
 def metrics(conn, source_id: int | None = None) -> list[sqlite3.Row]:
     q = "SELECT m.*, s.origin_url, s.kind src_kind FROM metrics m JOIN sources s ON s.id=m.source_id"
     args: list = []
