@@ -66,14 +66,6 @@ async function loadMetrics() {
 // Back-compat alias for any older caller.
 const loadCandidates = loadMetrics;
 
-// Staged extractions from the `pending` table (extract-benchmarks skill output).
-// One row per data point; table rows carry row_idx/col_idx, graph rows carry only
-// fig_num. Ordered by id so a table's cells come back in their insertion order.
-async function loadPending() {
-  return sbGetAll("pending",
-    "id,source,model,condition,benchmark,value,units,fig_num,row_idx,col_idx");
-}
-
 // Returns { table_key: {status, note, reviewer, updated_at} }. Tolerates the
 // reviews table not existing yet (returns {} so read-only pages still work).
 async function loadReviews() {

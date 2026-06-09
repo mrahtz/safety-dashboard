@@ -20,18 +20,22 @@
  table.recon th.rh{background:#f8fafc;font-weight:600;white-space:nowrap}
  .wrap{overflow-x:auto}
  .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+ .login{max-width:420px}
+ .note{min-width:240px}
+ .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — staged extractions (<code>pending</code>)</div>
-   <div class=muted>The original source on the left; every table and graph the extractor pulled from it on the
-     right, stacked top to bottom. Tables are redrawn in their original row/column layout; graphs are
-     listed as one row per data point (the <code>pending</code> schema).</div>
+   <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
+     extractor pulled from it stacks on the right. Tables are redrawn in their original row/column layout;
+     graphs are listed as one row per data point (the <code>pending</code> schema).</div>
  </div>
- <div class="card picker">
+ <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
    <a id=openlink class=muted href=# target=_blank rel=noopener>open original ↗</a>
-   <span id=count class=muted style="margin-left:auto"></span>
+   <span id=count class=muted></span>
+   <span style="margin-left:auto" class=muted><span id=who></span> · <a href=# onclick="signOut();return false">sign out</a></span>
  </div>
  <div id=gate class=card>Loading…</div>
  <div id=app class=split style=display:none>
@@ -42,27 +46,83 @@
    <div class=right id=groups></div>
  </div>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src=common.js></script>
 <script>
-let PENDING = [], BY_SOURCE = new Map();
+let sb, SESSION = null, PENDING = [], BY_SOURCE = new Map();
 
 async function boot() {
   mountChrome("review.html");
-  PENDING = await loadPending();
+  sb = supabase.createClient(SUPABASE_URL, ANON);
+  const { data: { session } } = await sb.auth.getSession();
+  SESSION = session;
+  if (location.hash.includes("access_token")) history.replaceState({}, "", location.pathname);
+  sb.auth.onAuthStateChange((_e, s) => { if ((s && !SESSION) || (!s && SESSION)) { SESSION = s; start(); } });
+  start();
+}
+
+async function start() {
+  if (!SESSION) return showLogin();
+  document.getElementById("gate").style.display = "none";
+  await loadData();
+}
+
+function showLogin(msg) {
+  for (const id of ["app", "picker"]) document.getElementById(id).style.display = "none";
+  const g = document.getElementById("gate");
+  g.style.display = "";
+  g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
+    <p class=muted>Staged extractions are reviewer-only. Enter your email for a magic link.</p>
+    <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
+      <button class=on onclick=sendLink()>Send magic link</button></div>
+    <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
+}
+
+async function sendLink() {
+  const email = document.getElementById("email").value.trim();
+  if (!email) return;
+  const { error } = await sb.auth.signInWithOtp(
+    { email, options: { emailRedirectTo: location.origin + location.pathname } });
+  document.getElementById("loginmsg").textContent =
+    error ? ("Error: " + error.message) : "Check your email for the sign-in link, then return here.";
+}
+
+async function signOut() { await sb.auth.signOut(); SESSION = null; PENDING = []; showLogin("Signed out."); }
+
+// Read the pending table AS THE SIGNED-IN USER (role=authenticated), so the
+// RLS policy — which only exposes rows to authenticated — actually returns data.
+async function fetchPending() {
+  const out = [], step = 1000;
+  for (let from = 0; ; from += step) {
+    const { data, error } = await sb.from("pending")
+      .select("id,source,model,condition,benchmark,value,units,fig_num,row_idx,col_idx")
+      .order("id").range(from, from + step - 1);
+    if (error) throw new Error(error.message);
+    out.push(...data);
+    if (data.length < step) break;
+  }
+  return out;
+}
+
+async function loadData() {
+  PENDING = await fetchPending();
+  BY_SOURCE = new Map();
   for (const r of PENDING) {
     if (!BY_SOURCE.has(r.source)) BY_SOURCE.set(r.source, []);
     BY_SOURCE.get(r.source).push(r);
   }
+  document.getElementById("who").textContent = SESSION.user.email;
   const sel = document.getElementById("src");
   sel.innerHTML = [...BY_SOURCE.keys()]
     .sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)))
     .map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
+  document.getElementById("picker").style.display = "";
   if (!PENDING.length) {
+    document.getElementById("gate").style.display = "";
     document.getElementById("gate").innerHTML =
-      "<b>No staged rows.</b> The <code>pending</code> table is empty (or the anon read policy isn't applied yet).";
+      "<b>No staged rows.</b> The <code>pending</code> table is empty (or its read policy isn't applied yet).";
     return;
   }
-  document.getElementById("gate").style.display = "none";
   document.getElementById("app").style.display = "";
   render();
 }
@@ -84,8 +144,7 @@ function groupsFor(source) {
 function render() {
   const source = document.getElementById("src").value;
   document.getElementById("frame").src = source;
-  const link = document.getElementById("openlink");
-  link.href = source;
+  document.getElementById("openlink").href = source;
   const groups = groupsFor(source);
   const nNums = (BY_SOURCE.get(source) || []).length;
   document.getElementById("count").textContent =
