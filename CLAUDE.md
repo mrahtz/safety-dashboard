@@ -80,15 +80,14 @@ Never do a full `refresh` just to test one thing.
   **anon** key (read-only). Service key lives only in CI secrets.
 - Live site is the custom domain **`http://amid.fish/safety-dashboard/`** (not the
   `github.io` URL — that 301s here).
-- **Pages deploy is branch-gated and easy to mistake for "slow".** `pages.yml`
-  deploys `web/` on push to `main`, but the **`github-pages` environment has a
-  deployment-branch policy** that historically only allowed
-  `claude/llm-metrics-ingestion-frdmg`. A deploy from a disallowed branch is
-  **rejected in ~2s with zero steps run** (looks like a failure, not a block). To
-  deploy from `main` permanently, add `main` under *Settings → Environments →
-  github-pages → Deployment branches and tags*. Stopgap without that change:
-  force-push the commit onto the allowed branch and `workflow_dispatch` `pages.yml`
-  on it (the env permits that ref).
+- **Pages deploys from `main`.** `pages.yml` deploys `web/` on push to `main`,
+  and the **`github-pages` environment now allows `main`** (it was added to the
+  deployment-branch policy — confirmed by successful `main` deploys from 2026-06-08
+  on). So the path to live is simply: land your `web/` change on `main` and the
+  push triggers the deploy. (The env still also permits the legacy
+  `claude/llm-metrics-ingestion-frdmg` ref.) Note a deploy from a *disallowed*
+  branch is **rejected in ~2s with zero steps run** — that looks like a failure,
+  not a block, so if a deploy mysteriously no-ops, check the branch first.
 - **Verifying a deploy:** use the `check-site` skill, not an open-ended poll loop.
   `.claude/skills/check-site/await_deploy.sh` waits (bounded) for the new build to
   serve, then runs `check_site.py` (headless browser; flags console errors, failed
