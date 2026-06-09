@@ -20,15 +20,15 @@
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Numbers by source</div>
-   <div class=muted>Pick a card on the left. Each table/page is shown as a <b>screenshot</b> the
-     model read, followed by every number extracted from it (model · condition · benchmark · value).</div>
+   <div class=muted>Pick a card on the left to see every number extracted from it, grouped by
+     table/figure (model · condition · benchmark · value).</div>
  </div>
  <div class=layout>
    <div class=side id=side></div>
    <div id=content class=card>Loading from Supabase…</div>
  </div>
 </main>
-<script src="common.js?v=20260609"></script>
+<script src="common.js?v=20260609a"></script>
 <script>
 let SRC = [], REVIEWS = {}, current = null;
 
@@ -38,7 +38,7 @@ async function load() {
   REVIEWS = reviews;
   const bySource = new Map();
   for (const c of data) {
-    const url = c.sources?.origin_url || "?";
+    const url = c.source_url || "?";
     if (!bySource.has(url)) bySource.set(url, { url, label: sourceLabel(url), sections: new Map() });
     const s = bySource.get(url);
     const skey = c.section_key || "_";
@@ -76,7 +76,7 @@ function pick(i) {
     const rv = REVIEWS[tableKey(s.url, sec.key)];
     const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
     html += `<div class=section><h3>Table ${esc(sec.key)} ${badge}</h3>
-      <div class=muted>${sec.items.length} numbers · VLM-transcribed</div>`;
+      <div class=muted>${sec.items.length} numbers</div>`;
     html += numsTable(sec.items) + `</div>`;
   }
   document.getElementById("content").innerHTML = html;

@@ -8,8 +8,10 @@ Serves three static dashboards from `web/` backed by Supabase. Benchmark data
 enters via the `extract-benchmarks` skill (human-driven, not automated).
 
 **Data path:** use `/extract-benchmarks` skill with a model/system card URL or
-PDF → extracts every benchmark result → staged to Supabase `pending` table →
-reviewed in `review.html` → promoted to `metrics` table → live on the dashboard.
+PDF → extracts every benchmark result → uploaded straight to the Supabase
+`metrics` table with `accepted = false` → reviewer signs each table off in
+`review.html` (decision recorded in the `reviews` table) → trusted rows show on
+the dashboard. There is no staging table; the skill is the only writer.
 
 ## Repo map
 
@@ -17,7 +19,7 @@ reviewed in `review.html` → promoted to `metrics` table → live on the dashbo
 - `supabase/` — Supabase DDL:
   - `metrics.sql` — canonical schema for `sources` + `metrics` tables.
   - `reviews.sql` — `reviews` table + RLS (human accept/reject decisions).
-  - `promote.sql` — review-page policies + `cards` table (embeddable source iframe).
+  - `promote.sql` — `cards` table + RLS (embeddable source iframe for review).
 - `.github/workflows/pages.yml` — deploys `web/` to GitHub Pages on push to `main`.
 - `.claude/skills/extract-benchmarks/` — the ingestion skill (standalone, no pipeline deps).
 - `.claude/skills/check-site/` — headless smoke-check of the live site.
@@ -28,9 +30,9 @@ Run the `/extract-benchmarks` skill. It will:
 1. Check for `var/supabase.env`; if missing, ask for credentials and write it.
 2. Extract every benchmark number from the source into a normalized CSV.
 3. Verify the CSV in a double-check loop.
-4. Upload to the `pending` table.
+4. Upload to the `metrics` table with `accepted = false`.
 
-Then review in `review.html` and promote to `metrics`.
+Then sign tables off in `review.html`; trusted rows appear on the dashboard.
 
 ## Frontend changes
 
@@ -61,8 +63,8 @@ runs a headless browser check. A green Actions run is not proof the site works.
 
 - Signups disabled (`disable_signup: true`). Single allowed user:
   `matthew.rahtz@gmail.com`. Add reviewers in Dashboard → Authentication → Users.
-- RLS on `pending` also gates on email — add new emails to that policy
-  (`supabase/promote.sql` or the skill's `pending_table.sql`).
+- RLS on `cards` (the review iframe source) gates on email — add new reviewer
+  emails to that policy in `supabase/promote.sql`.
 - Magic-link redirect config: `site_url = http://amid.fish/safety-dashboard/review.html`,
   `uri_allow_list` includes `http://amid.fish/safety-dashboard/**` and
   `https://amid.fish/safety-dashboard/**`. Settable via Management API
@@ -73,7 +75,7 @@ runs a headless browser check. A green Actions run is not proof the site works.
 
 | Key | Used for | Where it lives |
 | --- | --- | --- |
-| **Supabase `service_role`** | all writes — PostgREST upserts (`upload_pending.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). |
+| **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). |
 | **Supabase `anon`** | public read-only key shipped in `web/common.js`. | hardcoded in `web/common.js` (safe to publish). |
 | **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `var/supabase.env`; `web/common.js`. |
 | **Supabase personal token** (`sbp_…`) | Management API only — run DDL/migrations via `curl`. Ad-hoc, generate per-use. | not stored; generate at supabase.com/dashboard/account/tokens. |

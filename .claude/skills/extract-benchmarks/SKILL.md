@@ -1,6 +1,6 @@
 ---
 name: extract-benchmarks
-description: Ingest a model/system card or web page and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and stage it to the Supabase `pending` table. Use when the user gives you a card/paper/page (URL, PDF, or local file/image) and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
+description: Ingest a model/system card or web page and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and upload it to the Supabase `metrics` table (accepted=false, pending reviewer sign-off). Use when the user gives you a card/paper/page (URL, PDF, or local file/image) and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
 ---
 
 # Extracting benchmark results from a card or web page
@@ -138,35 +138,29 @@ Do **not** trust the first pass. Loop:
 Briefly note in your reply what you changed between passes (e.g. "pass 2 fixed 3
 transposed digits and renamed `GPQA` → `GPQA Diamond`").
 
-## 5. Stage to Supabase (`pending` table)
+## 5. Upload to Supabase (`metrics` table)
 
-The verified CSV is uploaded to a dedicated Supabase staging table named
-`pending` (separate from the live `metrics`/`candidates` tables).
-
-**One-time:** create the table if it doesn't exist yet. It's DDL, so it goes
-through the Management API with `curl` (see CLAUDE.md "Keys & secrets" — a
-`sbp_…` token, *not* the service key, and `curl` because Cloudflare blocks
-urllib):
-
-```bash
-# needs a short-lived sbp_… personal token + the project ref (rapkltwpfvzleejytgmq)
-curl -sS https://api.supabase.com/v1/projects/$PROJECT_REF/database/query \
-  -H "Authorization: Bearer $SBP_TOKEN" -H "Content-Type: application/json" \
-  --data @<(jq -Rs '{query: .}' < .claude/skills/extract-benchmarks/pending_table.sql)
-```
+The verified CSV goes straight into the live `metrics` table with
+`accepted = false`. Nothing else writes to the database — there is no separate
+staging table. The rows show up immediately in `review.html`, where a reviewer
+signs each table off (the decision is recorded in the `reviews` table and drives
+the dashboard's "trusted only" view). The `metrics` schema lives in
+`supabase/metrics.sql`; if the table doesn't exist yet, run that file once via
+the Management API (`sbp_…` token + `curl`, see CLAUDE.md "Keys & secrets").
 
 **Every run:** push the CSV rows (PostgREST insert, service-role key from
-`var/supabase.env` — same auth pattern as `publish.py`):
+`var/supabase.env`):
 
 ```bash
-python3 .claude/skills/extract-benchmarks/upload_pending.py \
+python3 .claude/skills/extract-benchmarks/upload_metrics.py \
   var/extract/<slug>/result.csv  "<source-url-or-name>"
 ```
 
 The script reads `var/supabase.env` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`),
-sends the `apikey` header (Storage/PostgREST 401s without it), and retries
-transient 5xx/429 — same conventions as `publish.py`. It tags every row with the
-`source` you pass so a run is identifiable and re-runnable.
+maps the CSV to the `metrics` columns (`fig_num` → `section_key`), sets
+`accepted = false`, and tags every row with the `source_url` you pass so a run is
+identifiable and re-runnable. It sends the `apikey` header (PostgREST 401s
+without it) and retries transient 5xx/429.
 
 **Also store the card for the review iframe.** The review page embeds the
 original on the left from a `cards` table (see `supabase/promote.sql`), because
@@ -196,5 +190,5 @@ curl -sS -X POST "$SUPABASE_URL/rest/v1/cards" \
 
 Report: source ingested, # tables and # graphs read, # rows extracted, how many
 verify passes it took and what they fixed, any names you appended to the canon
-files, and the upload result (row count inserted into `pending`). Don't open a
+files, and the upload result (row count inserted into `metrics`). Don't open a
 PR or push unless asked.

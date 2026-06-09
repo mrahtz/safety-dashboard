@@ -53,7 +53,7 @@
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260609"></script>
+<script src="common.js?v=20260609a"></script>
 <script>
 let sb, SESSION = null, METRICS = [], REVIEWS = {}, BY_SOURCE = new Map();
 const SRC = new Map();   // origin_url -> {kind, html|src} stored-source preview (or null)
@@ -109,7 +109,7 @@ function regroup() {
   const prev = document.getElementById("src").value;
   BY_SOURCE = new Map();
   for (const c of METRICS) {
-    const url = c.sources?.origin_url || "?";
+    const url = c.source_url || "?";
     if (!BY_SOURCE.has(url)) BY_SOURCE.set(url, []);
     BY_SOURCE.get(url).push(c);
   }
@@ -156,31 +156,19 @@ function render() {
   document.getElementById("groups").innerHTML = groups.map((g, i) => renderGroup(url, g, i)).join("");
 }
 
-// The original card, served from our own `sources.blob` so it always embeds (no
-// X-Frame-Options): HTML via srcdoc, PDF via an object URL. Falls back to the live
-// URL if we haven't stored a copy.
+// The original card, served from our own `cards` table so an HTML source always
+// embeds (no X-Frame-Options): the skill stores the page HTML (with a <base href>
+// injected) when it ingests. Falls back to embedding the live URL if we have no
+// stored copy (e.g. a PDF source, which frames fine on its own).
 async function sourceDoc(url) {
   if (SRC.has(url)) return SRC.get(url);
   let rec = null;
   try {
-    const { data } = await sb.from("sources").select("kind,blob").eq("origin_url", url).maybeSingle();
-    if (data?.blob) {
-      const bytes = hexToBytes(data.blob);
-      rec = data.kind === "pdf"
-        ? { kind: "pdf", src: URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })) }
-        : { kind: "html", html: new TextDecoder().decode(bytes) };
-    }
-  } catch (e) { console.warn("source blob unavailable:", e.message); }
+    const { data } = await sb.from("cards").select("html").eq("source", url).maybeSingle();
+    if (data?.html) rec = { kind: "html", html: data.html };
+  } catch (e) { console.warn("card unavailable:", e.message); }
   SRC.set(url, rec);
   return rec;
-}
-
-// PostgREST returns a bytea column as a "\x…"-prefixed hex string.
-function hexToBytes(s) {
-  s = String(s).replace(/^\\x/, "");
-  const out = new Uint8Array(s.length >> 1);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
-  return out;
 }
 
 async function updateFrame(url) {
@@ -191,10 +179,6 @@ async function updateFrame(url) {
     frame.removeAttribute("src");
     frame.srcdoc = rec.html;
     note.textContent = "Stored copy of the original (HTML), served from Supabase, so it always embeds.";
-  } else if (rec?.kind === "pdf") {
-    frame.removeAttribute("srcdoc");
-    frame.src = rec.src;
-    note.textContent = "Stored copy of the original (PDF).";
   } else {
     frame.removeAttribute("srcdoc");
     frame.src = url;

@@ -61,7 +61,7 @@ async function sbGetAll(table, select) {
 async function loadMetrics() {
   return sbGetAll("metrics",
     "id,model,condition,benchmark,value,units,row_idx,col_idx,accepted," +
-    "section_key,source_id,sources(origin_url)");
+    "section_key,source_url");
 }
 // Back-compat alias for any older caller.
 const loadCandidates = loadMetrics;
@@ -79,7 +79,7 @@ async function loadReviews() {
 
 // A table-level review decision overrides each number's automatic status.
 function effectiveStatus(cand, reviews) {
-  const r = reviews[tableKey(cand.sources?.origin_url, cand.section_key)];
+  const r = reviews[tableKey(cand.source_url, cand.section_key)];
   return r ? r.status : (cand.accepted ? "accepted" : "needs_review");
 }
 

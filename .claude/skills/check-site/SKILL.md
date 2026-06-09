@@ -59,8 +59,8 @@ the `?v=` token in all three pages when `common.js` changes (see CLAUDE.md).
   is stale. Check the deployed file: `curl -sSL http://amid.fish/safety-dashboard/common.js`.
 - A **404 on `/rest/v1/reviews`** is expected and tolerated — the reviews table is
   optional; `loadReviews()` swallows it. Not a real failure.
-- Empty **crop thumbnails** are expected when rows were loaded "figures only" (no
-  Storage upload); `crop_url` is blank by design until a full CI publish runs.
+- An **empty dashboard** is expected when no data has been ingested yet — run the
+  `extract-benchmarks` skill to populate `metrics`.
 
 ## Gotchas
 
@@ -68,7 +68,7 @@ the `?v=` token in all three pages when `common.js` changes (see CLAUDE.md).
   with `ERR_CERT_AUTHORITY_INVALID` and masks the real error. The script already
   launches with `--ignore-certificate-errors` + `ignore_https_errors` to see through it.
 - Pages deploys (`.github/workflows/pages.yml`) only publish `web/`; data lives in
-  Supabase. If the HTML/JS is right but there's no data, run/inspect the `refresh`
-  workflow or the Supabase tables instead.
+  Supabase. If the HTML/JS is right but there's no data, ingest a source with the
+  `extract-benchmarks` skill or inspect the `metrics` table directly.
 - The browser binary is auto-located under `/opt/pw-browsers/`; if Playwright isn't
   installed in the environment, `pip install playwright` first.
