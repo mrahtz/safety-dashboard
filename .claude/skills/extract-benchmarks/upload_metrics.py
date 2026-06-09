@@ -1,20 +1,20 @@
 """Insert an extracted-benchmark CSV into the Supabase `metrics` table.
 
 Used by the extract-benchmarks skill after the extract -> double-check loop has
-produced a clean CSV. Rows land with `accepted = false`; a reviewer signs tables
-off in review.html (recorded in the `reviews` table), which is what drives the
-dashboard's "trusted only" view. Each row is tagged with the `source_url` it came
-from so a run is identifiable and re-runnable.
+produced a clean CSV. First upserts a row in `sources` (by origin_url), then
+inserts one `metrics` row per CSV row, linked via source_id. Rows land with
+`accepted = false`; a reviewer flips sections to true in review.html.
 
 CSV columns (exact): model,condition,benchmark,value,units,fig_num,row_idx,col_idx
-  - fig_num is the source table/figure number (always set) -> stored as section_key;
-  - a table row also sets row_idx/col_idx; a graph row leaves them empty.
+  - fig_num -> stored as section_key (groups a table's cells for the review page)
+  - row_idx/col_idx: table rows only; graph rows leave them empty
 
 Auth/retry: service-role key from var/supabase.env, the `apikey` header (PostgREST
 401s without it), and a small backoff on transient 5xx/429. stdlib only.
 
 Usage:
-    python3 upload_metrics.py <result.csv> "<source-url-or-name>"
+    python3 upload_metrics.py <result.csv> <source-url> <kind>
+    kind: "html" or "pdf"
 """
 
 import csv
@@ -26,8 +26,6 @@ import urllib.error
 import urllib.request
 
 ENV_PATH = pathlib.Path("var/supabase.env")
-# CSV column -> metrics column. fig_num maps to section_key (the grouping key the
-# dashboard/review pages use); the rest map straight through.
 _TEXT = ("model", "condition", "benchmark", "value", "units")
 _INT = ("row_idx", "col_idx")
 
@@ -57,7 +55,7 @@ def _req(method: str, url: str, headers: dict, data: bytes | None = None, tries:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504) and attempt < tries - 1:
-                time.sleep(2 ** attempt); continue   # transient gateway/rate errors
+                time.sleep(2 ** attempt); continue
             raise RuntimeError(f"{method} {url} -> {e.code}: {e.read()[:200]!r}") from e
         except urllib.error.URLError:
             if attempt < tries - 1:
@@ -66,10 +64,22 @@ def _req(method: str, url: str, headers: dict, data: bytes | None = None, tries:
     raise RuntimeError("unreachable")
 
 
-def _row(record: dict, source: str) -> dict:
-    """One CSV record -> one `metrics` row. Empty cells become NULL; row_idx/col_idx
-    are typed as ints; fig_num becomes the text section_key; accepted starts false."""
-    out = {"source_url": source, "accepted": False}
+def upsert_source(env: dict, origin_url: str, kind: str) -> int:
+    """Upsert a sources row (by origin_url) and return its id."""
+    url = f"{env['SUPABASE_URL']}/rest/v1/sources?on_conflict=origin_url"
+    headers = {
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
+        "apikey": env["SUPABASE_SERVICE_ROLE"],
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation",
+    }
+    body = json.dumps([{"origin_url": origin_url, "kind": kind}]).encode()
+    result = json.loads(_req("POST", url, headers, body))
+    return result[0]["id"]
+
+
+def _metric_row(record: dict, source_id: int) -> dict:
+    out = {"source_id": source_id, "accepted": False}
     for col in _TEXT:
         raw = (record.get(col) or "").strip()
         out[col] = raw or None
@@ -81,29 +91,32 @@ def _row(record: dict, source: str) -> dict:
     return out
 
 
-def upload(csv_path: pathlib.Path, source: str) -> int:
+def upload(csv_path: pathlib.Path, source_url: str, kind: str) -> int:
     env = _env()
+    source_id = upsert_source(env, source_url, kind)
     with csv_path.open(newline="") as f:
-        rows = [_row(rec, source) for rec in csv.DictReader(f)]
+        rows = [_metric_row(rec, source_id) for rec in csv.DictReader(f)]
     if not rows:
         print(f"{csv_path}: no rows to upload")
         return 0
     url = f"{env['SUPABASE_URL']}/rest/v1/metrics"
-    headers = {"Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
-               "apikey": env["SUPABASE_SERVICE_ROLE"],
-               "Content-Type": "application/json", "Prefer": "return=minimal"}
-    # Chunk so a big card doesn't make one oversized request.
+    headers = {
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE']}",
+        "apikey": env["SUPABASE_SERVICE_ROLE"],
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
     for i in range(0, len(rows), 200):
         _req("POST", url, headers, json.dumps(rows[i:i + 200]).encode())
-    print(f"inserted {len(rows)} rows into metrics (accepted=false, source_url={source!r})")
+    print(f"source_id={source_id} — inserted {len(rows)} rows into metrics (accepted=false)")
     return len(rows)
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
+    if len(argv) != 4:
         print(__doc__)
         return 2
-    upload(pathlib.Path(argv[1]), argv[2])
+    upload(pathlib.Path(argv[1]), argv[2], argv[3])
     return 0
 
 

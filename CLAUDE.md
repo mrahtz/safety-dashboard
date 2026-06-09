@@ -8,18 +8,17 @@ Serves three static dashboards from `web/` backed by Supabase. Benchmark data
 enters via the `extract-benchmarks` skill (human-driven, not automated).
 
 **Data path:** use `/extract-benchmarks` skill with a model/system card URL or
-PDF → extracts every benchmark result → uploaded straight to the Supabase
-`metrics` table with `accepted = false` → reviewer signs each table off in
-`review.html` (decision recorded in the `reviews` table) → trusted rows show on
-the dashboard. There is no staging table; the skill is the only writer.
+PDF → extracts every benchmark result → upserts a `sources` row then inserts
+`metrics` rows with `accepted = false` → reviewer accepts each table in
+`review.html` (flips `accepted = true` directly on the rows) → trusted rows
+show on the dashboard. Two tables, one boolean, no staging.
 
 ## Repo map
 
 - `web/` — `index.html` (matrix), `sources.html`, `review.html`, `common.js`.
 - `supabase/` — Supabase DDL:
   - `metrics.sql` — canonical schema for `sources` + `metrics` tables.
-  - `reviews.sql` — `reviews` table + RLS (human accept/reject decisions).
-  - `promote.sql` — `cards` table + RLS (embeddable source iframe for review).
+  - `promote.sql` — reviewer UPDATE policy on `metrics`.
 - `.github/workflows/pages.yml` — deploys `web/` to GitHub Pages on push to `main`.
 - `.claude/skills/extract-benchmarks/` — the ingestion skill (standalone, no pipeline deps).
 - `.claude/skills/check-site/` — headless smoke-check of the live site.
@@ -63,8 +62,8 @@ runs a headless browser check. A green Actions run is not proof the site works.
 
 - Signups disabled (`disable_signup: true`). Single allowed user:
   `matthew.rahtz@gmail.com`. Add reviewers in Dashboard → Authentication → Users.
-- RLS on `cards` (the review iframe source) gates on email — add new reviewer
-  emails to that policy in `supabase/promote.sql`.
+- RLS on `sources` allows anon + authenticated read (set in `supabase/metrics.sql`).
+  Add new reviewer emails to the `metrics_update` policy in `supabase/promote.sql`.
 - Magic-link redirect config: `site_url = http://amid.fish/safety-dashboard/review.html`,
   `uri_allow_list` includes `http://amid.fish/safety-dashboard/**` and
   `https://amid.fish/safety-dashboard/**`. Settable via Management API

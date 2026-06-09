@@ -7,7 +7,7 @@ const SUPABASE_URL = "https://rapkltwpfvzleejytgmq.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcGtsdHdwZnZ6bGVlanl0Z21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTY4MjksImV4cCI6MjA5NjI5MjgyOX0.DbXAds_FJmhB5RbhbMUpMjoBe7wZ6H6vOiBJtRs7wfE";
 
 const TRUST = ["accepted"];
-const STATUS_ORDER = { accepted: 0, needs_review: 1, rejected: 2 };
+const STATUS_ORDER = { accepted: 0, needs_review: 1 };
 
 // Friendly titles for each source card (falls back to a prettified URL).
 const SOURCE_LABELS = {
@@ -33,8 +33,7 @@ function sourceLabel(url) { return SOURCE_LABELS[url] || prettyFromUrl(url); }
 const esc = s => (s ?? "").toString().replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-// Stable key for a table/section, used to attach review decisions so the weekly
-// re-ingest (which rebuilds candidate rows) does not wipe them.
+// Stable key for a section: used to group rows back into their source table.
 function tableKey(originUrl, sectionKey) { return originUrl + "::" + (sectionKey || "?"); }
 
 async function sbGet(path) {
@@ -60,27 +59,12 @@ async function sbGetAll(table, select) {
 
 async function loadMetrics() {
   return sbGetAll("metrics",
-    "id,model,condition,benchmark,value,units,row_idx,col_idx,accepted," +
-    "section_key,source_url");
-}
-// Back-compat alias for any older caller.
-const loadCandidates = loadMetrics;
-
-// Returns { table_key: {status, note, reviewer, updated_at} }. Tolerates the
-// reviews table not existing yet (returns {} so read-only pages still work).
-async function loadReviews() {
-  try {
-    const rows = await sbGet("reviews?select=*");
-    const m = {};
-    for (const r of rows) m[r.table_key] = r;
-    return m;
-  } catch (e) { console.warn("reviews unavailable:", e.message); return {}; }
+    "id,source_id,model,condition,benchmark,value,units,row_idx,col_idx,accepted," +
+    "section_key,sources(origin_url)");
 }
 
-// A table-level review decision overrides each number's automatic status.
-function effectiveStatus(cand, reviews) {
-  const r = reviews[tableKey(cand.source_url, cand.section_key)];
-  return r ? r.status : (cand.accepted ? "accepted" : "needs_review");
+function effectiveStatus(cand) {
+  return cand.accepted ? "accepted" : "needs_review";
 }
 
 // Render a value with its units: "75.0%", "$5478.16", "2439 Elo", or bare.

@@ -28,17 +28,16 @@
    <div id=content class=card>Loading from Supabase…</div>
  </div>
 </main>
-<script src="common.js?v=20260609a"></script>
+<script src="common.js?v=20260609b"></script>
 <script>
-let SRC = [], REVIEWS = {}, current = null;
+let SRC = [], current = null;
 
 async function load() {
   mountChrome("sources.html");
-  const [data, reviews] = await Promise.all([loadMetrics(), loadReviews()]);
-  REVIEWS = reviews;
+  const data = await loadMetrics();
   const bySource = new Map();
   for (const c of data) {
-    const url = c.source_url || "?";
+    const url = c.sources?.origin_url || "?";
     if (!bySource.has(url)) bySource.set(url, { url, label: sourceLabel(url), sections: new Map() });
     const s = bySource.get(url);
     const skey = c.section_key || "_";
@@ -73,8 +72,8 @@ function pick(i) {
   let html = `<div style="font-size:17px;font-weight:700">${esc(s.label)}</div>
     <div class=muted><a href="${esc(s.url)}" target=_blank>${esc(s.url)}</a> — ${sections.length} table(s)</div>`;
   for (const sec of sections) {
-    const rv = REVIEWS[tableKey(s.url, sec.key)];
-    const badge = rv ? `<span class="flag s-${rv.status}">reviewed: ${rv.status}</span>` : "";
+    const allAccepted = sec.items.every(c => c.accepted);
+    const badge = allAccepted ? `<span class="flag s-accepted">accepted</span>` : "";
     html += `<div class=section><h3>Table ${esc(sec.key)} ${badge}</h3>
       <div class=muted>${sec.items.length} numbers</div>`;
     html += numsTable(sec.items) + `</div>`;

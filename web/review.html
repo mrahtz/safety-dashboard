@@ -25,17 +25,16 @@
  .note{min-width:240px}
  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
  button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
- button.needs{background:#8a5a00;border-color:#8a5a00;color:#fff;white-space:nowrap}
- button.rej{background:#c0143c;border-color:#c0143c;color:#fff;white-space:nowrap}
- button.dec:disabled{opacity:.6;cursor:default}
+ button.rej{background:#8a5a00;border-color:#8a5a00;color:#fff;white-space:nowrap}
+ button.dec:disabled{opacity:.4;cursor:default}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — table-level sign-off</div>
    <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
-     extractor pulled from it stacks on the right. Judge each table as a whole — <b>Accept</b>,
-     <b>Needs review</b>, or <b>Reject</b>. The decision is saved against a stable table key (so the weekly
-     re-ingest won't wipe it) and shows as a sign-off badge across the other pages.</div>
+     extractor pulled from it stacks on the right. <b>Accept</b> a table to mark all its numbers as
+     trusted — they'll show on the dashboard. <b>Undo</b> to revert. Accepted numbers show in blue on
+     the main dashboard; unaccepted show in yellow.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
@@ -53,10 +52,10 @@
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260609a"></script>
+<script src="common.js?v=20260609b"></script>
 <script>
-let sb, SESSION = null, METRICS = [], REVIEWS = {}, BY_SOURCE = new Map();
-const SRC = new Map();   // origin_url -> {kind, html|src} stored-source preview (or null)
+let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
+const SRC = new Map();   // origin_url -> {kind, html} stored-source preview (or null)
 
 async function boot() {
   mountChrome("review.html");
@@ -99,7 +98,7 @@ async function sendLink() {
 async function signOut() { await sb.auth.signOut(); SESSION = null; METRICS = []; showLogin("Signed out."); }
 
 async function loadData() {
-  [METRICS, REVIEWS] = await Promise.all([loadMetrics(), loadReviews()]);
+  METRICS = await loadMetrics();
   document.getElementById("who").textContent = SESSION.user.email;
   regroup();
 }
@@ -109,7 +108,7 @@ function regroup() {
   const prev = document.getElementById("src").value;
   BY_SOURCE = new Map();
   for (const c of METRICS) {
-    const url = c.source_url || "?";
+    const url = c.sources?.origin_url || "?";
     if (!BY_SOURCE.has(url)) BY_SOURCE.set(url, []);
     BY_SOURCE.get(url).push(c);
   }
@@ -164,9 +163,9 @@ async function sourceDoc(url) {
   if (SRC.has(url)) return SRC.get(url);
   let rec = null;
   try {
-    const { data } = await sb.from("cards").select("html").eq("source", url).maybeSingle();
+    const { data } = await sb.from("sources").select("kind,html").eq("origin_url", url).maybeSingle();
     if (data?.html) rec = { kind: "html", html: data.html };
-  } catch (e) { console.warn("card unavailable:", e.message); }
+  } catch (e) { console.warn("source unavailable:", e.message); }
   SRC.set(url, rec);
   return rec;
 }
@@ -187,41 +186,38 @@ async function updateFrame(url) {
 }
 
 function renderGroup(url, g, i) {
-  const tk = tableKey(url, g.section_key);
-  const rv = REVIEWS[tk];
   const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
   const kind = g.isTable
     ? `<span class=kind>Table</span>`
     : `<span class="kind g">Figure</span>`;
-  // table-level auto status: accepted only if every number is accepted.
-  const auto = g.cells.every(c => c.accepted) ? "accepted" : "needs_review";
-  const cur = rv
-    ? `<span class="flag s-${rv.status}">decision: ${rv.status}</span>
-       <span class=muted>by ${esc(rv.reviewer || "?")} · ${esc((rv.updated_at || "").slice(0, 16).replace("T", " "))}</span>`
-    : `<span class="flag s-${auto}">auto: ${auto}</span> <span class=muted>not yet reviewed</span>`;
+  const allAccepted = g.cells.every(c => c.accepted);
+  const status = allAccepted ? "accepted" : "needs_review";
+  const badge = `<span class="flag s-${status}">${status}</span>`;
   const head = `<div class=ghead>
       <div><h3>${esc(String(g.section_key))}</h3> ${kind}
-        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${cur}</div></div>
+        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${badge}</div></div>
     </div>`;
   const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
-  const decided = s => rv && rv.status === s ? " disabled" : "";
+  const sourceId = g.cells[0]?.source_id;
   const bar = `<div class=bar>
-      <button class="dec acc" onclick="decide('${esc(tk)}','accepted','note${i}')"${decided("accepted")}>Accept</button>
-      <button class="dec needs" onclick="decide('${esc(tk)}','needs_review','note${i}')"${decided("needs_review")}>Needs review</button>
-      <button class="dec rej" onclick="decide('${esc(tk)}','rejected','note${i}')"${decided("rejected")}>Reject</button>
-      <input id=note${i} class=note placeholder="optional note…" value="${esc(rv?.note || "")}">
+      <button class="dec acc"${allAccepted ? " disabled" : ""}
+        onclick="decide(${sourceId},'${esc(g.section_key)}',true)">Accept</button>
+      <button class="dec rej"${!allAccepted ? " disabled" : ""}
+        onclick="decide(${sourceId},'${esc(g.section_key)}',false)">Undo</button>
     </div>`;
   return `<div class=grp>${head}${grid}${bar}</div>`;
 }
 
-// Save a table-level decision into `reviews` (keyed by the stable table key), then
-// re-render so the badge + disabled state update.
-async function decide(tk, status, noteId) {
-  const row = { table_key: tk, status, note: document.getElementById(noteId).value.trim() || null,
-                reviewer: SESSION.user.email, updated_at: new Date().toISOString() };
-  const { error } = await sb.from("reviews").upsert(row, { onConflict: "table_key" });
-  if (error) { alert("Save failed: " + error.message + "\n\nHas the reviews table + RLS been created?"); return; }
-  REVIEWS[tk] = row;
+// Flip accepted on all rows in a section, then re-render.
+async function decide(sourceId, sectionKey, accepted) {
+  const { error } = await sb.from("metrics")
+    .update({ accepted })
+    .eq("source_id", sourceId)
+    .eq("section_key", sectionKey);
+  if (error) { alert("Save failed: " + error.message); return; }
+  for (const c of METRICS) {
+    if (c.source_id === sourceId && c.section_key === sectionKey) c.accepted = accepted;
+  }
   render();
 }
 

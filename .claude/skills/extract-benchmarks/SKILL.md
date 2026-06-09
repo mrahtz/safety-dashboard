@@ -138,53 +138,55 @@ Do **not** trust the first pass. Loop:
 Briefly note in your reply what you changed between passes (e.g. "pass 2 fixed 3
 transposed digits and renamed `GPQA` → `GPQA Diamond`").
 
-## 5. Upload to Supabase (`metrics` table)
+## 5. Upload to Supabase (`sources` + `metrics` tables)
 
-The verified CSV goes straight into the live `metrics` table with
-`accepted = false`. Nothing else writes to the database — there is no separate
-staging table. The rows show up immediately in `review.html`, where a reviewer
-signs each table off (the decision is recorded in the `reviews` table and drives
-the dashboard's "trusted only" view). The `metrics` schema lives in
-`supabase/metrics.sql`; if the table doesn't exist yet, run that file once via
-the Management API (`sbp_…` token + `curl`, see CLAUDE.md "Keys & secrets").
+The two live tables are `sources` (one row per card) and `metrics` (one row per
+data point). The upload script upserts into `sources` first (idempotent by
+`origin_url`), gets back the `source_id`, then inserts all `metrics` rows with
+`accepted = false`. A reviewer flips sections to `accepted = true` in
+`review.html`; the dashboard's "trusted only" view is driven by that boolean —
+there is no separate reviews or pending table.
 
-**Every run:** push the CSV rows (PostgREST insert, service-role key from
-`var/supabase.env`):
+The `sources` + `metrics` schema lives in `supabase/metrics.sql`; if the tables
+don't exist yet, run that file once via the Management API (`sbp_…` token +
+`curl`, see CLAUDE.md "Keys & secrets").
+
+**Every run:**
 
 ```bash
 python3 .claude/skills/extract-benchmarks/upload_metrics.py \
-  var/extract/<slug>/result.csv  "<source-url-or-name>"
+  var/extract/<slug>/result.csv  "<source-url>"  <kind>
+# kind: "html" or "pdf"
 ```
 
-The script reads `var/supabase.env` (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE`),
-maps the CSV to the `metrics` columns (`fig_num` → `section_key`), sets
-`accepted = false`, and tags every row with the `source_url` you pass so a run is
-identifiable and re-runnable. It sends the `apikey` header (PostgREST 401s
-without it) and retries transient 5xx/429.
+The script reads `var/supabase.env`, upserts `sources`, maps the CSV
+(`fig_num` → `section_key`), and inserts into `metrics`.
 
-**Also store the card for the review iframe.** The review page embeds the
-original on the left from a `cards` table (see `supabase/promote.sql`), because
-the live source usually refuses framing and Supabase Storage neuters served HTML
-(`content-security-policy: default-src 'none'; sandbox`). So for an HTML source,
-save the fetched page with a `<base href="<origin>/">` injected after `<head>`
-(so its root-relative assets still resolve) and upsert it:
+**For HTML sources — also store the card HTML in `sources.html`** so the review
+page can embed it (live sources refuse framing). Inject `<base href="<origin>/">`
+after `<head>` so root-relative assets resolve, then patch the `sources` row:
 
 ```bash
 python3 - "$SOURCE_URL" var/extract/<slug>/page.html <<'PY'
-import json, sys, urllib.parse, pathlib
+import json, sys, urllib.parse, pathlib, urllib.request, urllib.error
 url, html_path = sys.argv[1], sys.argv[2]
 origin = "{0.scheme}://{0.netloc}/".format(urllib.parse.urlparse(url))
 html = pathlib.Path(html_path).read_text(encoding="utf-8").replace(
     "<head>", '<head><base href="%s">' % origin, 1)
-pathlib.Path("/tmp/card.json").write_text(json.dumps({"source": url, "html": html}))
+env = dict(l.split("=",1) for l in pathlib.Path("var/supabase.env").read_text().splitlines() if "=" in l)
+body = json.dumps([{"origin_url": url, "kind": "html", "html": html}]).encode()
+req = urllib.request.Request(
+    env["SUPABASE_URL"] + "/rest/v1/sources?on_conflict=origin_url", data=body, method="POST",
+    headers={"Authorization": "Bearer " + env["SUPABASE_SERVICE_ROLE"],
+             "apikey": env["SUPABASE_SERVICE_ROLE"], "Content-Type": "application/json",
+             "Prefer": "resolution=merge-duplicates,return=minimal"})
+urllib.request.urlopen(req, timeout=60)
+print("sources.html updated")
 PY
-curl -sS -X POST "$SUPABASE_URL/rest/v1/cards" \
-  -H "Authorization: Bearer $SERVICE" -H "apikey: $SERVICE" \
-  -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates,return=minimal" \
-  --data-binary @/tmp/card.json
 ```
 
-(For a PDF source, store/point at the PDF instead — PDFs frame fine.)
+(For PDF sources, `sources.html` stays null and the iframe falls back to the live
+URL — PDFs frame fine.)
 
 ## Done
 
