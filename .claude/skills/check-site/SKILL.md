@@ -22,6 +22,14 @@ python3 .claude/skills/check-site/check_site.py <BASE_URL> # any deploy/preview,
 Exit code is non-zero if any issue is found. Full-page screenshots of every page are
 written to `/tmp/site-check/` — read them (they're PNGs) to see the actual render.
 
+> **Dependencies: just install whatever you need — that's expected, not a workaround.**
+> `check_site.py` needs Playwright. If `import playwright` fails (e.g. a fresh
+> container where only the Node Playwright is present), go ahead and
+> `pip install playwright`. The Chromium binary is usually already under
+> `/opt/pw-browsers/`; if it isn't, `python3 -m playwright install chromium` (add
+> `--with-deps` for the system libraries). Don't skip the live check or hand-roll a
+> `curl` substitute just because a dep is missing — installing it is the right move.
+
 ### After a deploy: wait for it to go live, then check
 
 ```bash
