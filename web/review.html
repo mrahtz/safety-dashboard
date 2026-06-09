@@ -2,43 +2,54 @@
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>LLM safety-metrics — review</title>
 <style>
- .shot{border:1px solid #c9d2df;border-radius:8px;max-width:100%;margin:8px 0;background:#fff}
- table.nums{border-collapse:collapse;width:100%;font-size:13px}
- table.nums th,table.nums td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
- table.nums th{background:#f3f6fb} td.raw{font-weight:700;white-space:nowrap}
- .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
- .big-accept{background:#0a7d28;border-color:#0a7d28;color:#fff}
- .big-reject{background:#c0143c;border-color:#c0143c;color:#fff}
- .big-needs{background:#8a5a00;border-color:#8a5a00;color:#fff}
+ main{max-width:none}
+ .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+ .left{position:sticky;top:14px;height:calc(100vh - 96px)}
+ .left iframe{width:100%;height:100%;border:1px solid #c9d2df;border-radius:10px;background:#fff}
+ .left .framenote{font-size:12px;color:#566;margin:6px 2px}
+ .right{min-width:0}
+ .grp{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px;margin:0 0 14px}
+ .grp h3{margin:0 0 2px;font-size:15px}
+ .grp .sub{color:#566;font-size:12px;margin-bottom:8px}
+ .grp .kind{font-size:11px;padding:1px 7px;border-radius:10px;background:#eef1f5;color:#445;margin-left:6px;vertical-align:middle}
+ .kind.g{background:#fff3da;color:#8a5a00}
+ table.recon,table.schema{border-collapse:collapse;font-size:12px;width:100%}
+ table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;padding:4px 7px;text-align:left;vertical-align:top}
+ table.recon th,table.schema th{background:#f3f6fb;font-weight:600}
+ table.recon td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+ table.recon th.rh{background:#f8fafc;font-weight:600;white-space:nowrap}
+ .wrap{overflow-x:auto}
+ .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
  .login{max-width:420px}
  .note{min-width:240px}
- progress{width:200px}
+ .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 </style></head><body>
 <main>
  <div class=card>
-   <div style="font-size:18px;font-weight:700">Review — one table at a time</div>
-   <div class=muted>Sign in, then judge each table as a whole: its screenshot, every number in it, and a
-     single decision. Decisions are stored against a stable table key, so the weekly re-ingest won't wipe
-     them, and they show up as a sign-off badge across the other pages.</div>
+   <div style="font-size:18px;font-weight:700">Review — staged extractions (<code>pending</code>)</div>
+   <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
+     extractor pulled from it stacks on the right. Tables are redrawn in their original row/column layout;
+     graphs are listed as one row per data point (the <code>pending</code> schema).</div>
+ </div>
+ <div id=picker class="card picker" style=display:none>
+   <label>Source <select id=src onchange=render()></select></label>
+   <a id=openlink class=muted href=# target=_blank rel=noopener>open original ↗</a>
+   <span id=count class=muted></span>
+   <span style="margin-left:auto" class=muted><span id=who></span> · <a href=# onclick="signOut();return false">sign out</a></span>
  </div>
  <div id=gate class=card>Loading…</div>
- <div id=app style=display:none>
-   <div class="card bar">
-     <button onclick=move(-1)>◀ prev</button>
-     <button onclick=move(1)>next ▶</button>
-     <progress id=prog value=0 max=1></progress>
-     <span id=count class=muted></span>
-     <label style="margin-left:auto"><input type=checkbox id=unrev onchange=rebuild()> unreviewed only</label>
+ <div id=app class=split style=display:none>
+   <div class=left>
+     <iframe id=frame referrerpolicy=no-referrer></iframe>
+     <div class=framenote>If the original looks blank, the source forbids embedding — use “open original ↗”.</div>
    </div>
-   <div id=tablecard class=card></div>
+   <div class=right id=groups></div>
  </div>
 </main>
-<div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
-  <div class=modal id=modalBody></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="common.js?v=20260608"></script>
 <script>
-let sb, SESSION = null, DATA = [], REVIEWS = {}, TABLES = [], QUEUE = [], idx = 0;
+let sb, SESSION = null, PENDING = [], BY_SOURCE = new Map();
 
 async function boot() {
   mountChrome("review.html");
@@ -53,16 +64,15 @@ async function boot() {
 async function start() {
   if (!SESSION) return showLogin();
   document.getElementById("gate").style.display = "none";
-  document.getElementById("app").style.display = "";
-  await loadAll();
+  await loadData();
 }
 
 function showLogin(msg) {
-  document.getElementById("app").style.display = "none";
+  for (const id of ["app", "picker"]) document.getElementById(id).style.display = "none";
   const g = document.getElementById("gate");
   g.style.display = "";
   g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
-    <p class=muted>Enter your email and we'll send a magic link. Only signed-in reviewers can save decisions.</p>
+    <p class=muted>Staged extractions are reviewer-only. Enter your email for a magic link.</p>
     <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
       <button class=on onclick=sendLink()>Send magic link</button></div>
     <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
@@ -77,77 +87,128 @@ async function sendLink() {
     error ? ("Error: " + error.message) : "Check your email for the sign-in link, then return here.";
 }
 
-async function signOut() { await sb.auth.signOut(); SESSION = null; showLogin("Signed out."); }
+async function signOut() { await sb.auth.signOut(); SESSION = null; PENDING = []; showLogin("Signed out."); }
 
-async function loadAll() {
-  [DATA, REVIEWS] = await Promise.all([loadMetrics(), loadReviews()]);
-  const byTable = new Map();
-  for (const c of DATA) {
-    const url = c.sources?.origin_url || "?", skey = c.section_key || "_";
-    const tk = tableKey(url, skey);
-    if (!byTable.has(tk))
-      byTable.set(tk, { tableKey: tk, url, label: sourceLabel(url), section_key: skey,
-        title: c.section_title || "Table", shot: c.crop_url || "", items: [] });
-    byTable.get(tk).items.push(c);
+// Read the pending table AS THE SIGNED-IN USER (role=authenticated), so the
+// RLS policy — which only exposes rows to authenticated — actually returns data.
+async function fetchPending() {
+  const out = [], step = 1000;
+  for (let from = 0; ; from += step) {
+    const { data, error } = await sb.from("pending")
+      .select("id,source,model,condition,benchmark,value,units,fig_num,row_idx,col_idx")
+      .order("id").range(from, from + step - 1);
+    if (error) throw new Error(error.message);
+    out.push(...data);
+    if (data.length < step) break;
   }
-  TABLES = [...byTable.values()].sort((a, b) =>
-    a.label.localeCompare(b.label) || a.section_key.localeCompare(b.section_key, undefined, { numeric: true }));
-  rebuild();
+  return out;
 }
 
-function rebuild() {
-  const unrev = document.getElementById("unrev").checked;
-  QUEUE = TABLES.filter(t => !unrev || !REVIEWS[t.tableKey]);
-  if (idx >= QUEUE.length) idx = Math.max(0, QUEUE.length - 1);
-  renderTable();
+async function loadData() {
+  PENDING = await fetchPending();
+  BY_SOURCE = new Map();
+  for (const r of PENDING) {
+    if (!BY_SOURCE.has(r.source)) BY_SOURCE.set(r.source, []);
+    BY_SOURCE.get(r.source).push(r);
+  }
+  document.getElementById("who").textContent = SESSION.user.email;
+  const sel = document.getElementById("src");
+  sel.innerHTML = [...BY_SOURCE.keys()]
+    .sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)))
+    .map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
+  document.getElementById("picker").style.display = "";
+  if (!PENDING.length) {
+    document.getElementById("gate").style.display = "";
+    document.getElementById("gate").innerHTML =
+      "<b>No staged rows.</b> The <code>pending</code> table is empty (or its read policy isn't applied yet).";
+    return;
+  }
+  document.getElementById("app").style.display = "";
+  render();
 }
 
-function move(d) { idx = Math.min(QUEUE.length - 1, Math.max(0, idx + d)); renderTable(); }
+// fig groups for a source, ordered by fig_num. A group is a "table" if any of its
+// rows has a row_idx (graphs leave row_idx/col_idx null).
+function groupsFor(source) {
+  const byFig = new Map();
+  for (const r of BY_SOURCE.get(source) || []) {
+    const k = r.fig_num ?? "?";
+    if (!byFig.has(k)) byFig.set(k, []);
+    byFig.get(k).push(r);
+  }
+  return [...byFig.entries()]
+    .map(([fig, cells]) => ({ fig, cells, isTable: cells.some(c => c.row_idx != null) }))
+    .sort((a, b) => (a.fig | 0) - (b.fig | 0));
+}
 
-function renderTable() {
-  const reviewed = TABLES.filter(t => REVIEWS[t.tableKey]).length;
-  document.getElementById("prog").max = TABLES.length || 1;
-  document.getElementById("prog").value = reviewed;
+function render() {
+  const source = document.getElementById("src").value;
+  document.getElementById("frame").src = source;
+  document.getElementById("openlink").href = source;
+  const groups = groupsFor(source);
+  const nNums = (BY_SOURCE.get(source) || []).length;
   document.getElementById("count").textContent =
-    `${reviewed}/${TABLES.length} tables reviewed · showing ${QUEUE.length ? idx + 1 : 0}/${QUEUE.length}`;
-  const card = document.getElementById("tablecard");
-  if (!QUEUE.length) { card.innerHTML = "<b>Nothing to review here.</b> Untick 'unreviewed only' to revisit decisions."; return; }
-  const t = QUEUE[idx], rv = REVIEWS[t.tableKey];
-  let rows = "";
-  for (const c of t.items) {
-    rows += `<tr><td>${c.crop_url ? `<a class=pop href="${esc(c.crop_url)}" target=_blank>
-        <img class=thumb src="${esc(c.crop_url)}"><span class=big><img src="${esc(c.crop_url)}"></span></a>` : ""}</td>
-      <td class=raw>${esc(fmtVal(c.value, c.units))}</td>
-      <td>${esc((c.benchmark || "").slice(0, 90))}</td>
-      <td>${esc((c.model || "").slice(0, 60))}</td>
-      <td>${esc(c.condition || "—")}</td>
-      <td><span class="flag s-${c.status}">${c.status}</span></td></tr>`;
-  }
-  const cur = rv ? `<span class="flag s-${rv.status}">current: ${rv.status}</span>
-      <span class=muted>by ${esc(rv.reviewer || "?")} · ${esc((rv.updated_at || "").slice(0, 16).replace("T", " "))}</span>` : `<span class=muted>not yet reviewed</span>`;
-  card.innerHTML = `
-    <div class=muted>${esc(SESSION.user.email)} · <a href=# onclick="signOut();return false">sign out</a></div>
-    <div style="font-size:16px;font-weight:700;margin-top:4px">${esc(t.label)} — ${esc(t.title)}</div>
-    <div class=muted>${t.items.length} numbers · ${cur}</div>
-    ${t.shot ? `<img class=shot loading=lazy src="${esc(t.shot)}">`
-             : `<div class=muted style="padding:8px 0">(screenshot not available — re-run the refresh workflow)</div>`}
-    <table class=nums><tr><th>crop<th>value<th>benchmark<th>model<th>condition<th>auto status</tr>${rows}</table>
-    <div class="bar" style="margin-top:12px">
-      <button class=big-accept onclick="decide('accepted')">Accept table</button>
-      <button class=big-needs onclick="decide('needs_review')">Needs review</button>
-      <button class=big-reject onclick="decide('rejected')">Reject table</button>
-      <input id=note class=note placeholder="optional note…" value="${esc(rv?.note || "")}">
-    </div>`;
+    `${groups.filter(g => g.isTable).length} tables · ${groups.filter(g => !g.isTable).length} graphs · ${nNums} numbers`;
+  document.getElementById("groups").innerHTML = groups.map(renderGroup).join("");
 }
 
-async function decide(status) {
-  const t = QUEUE[idx];
-  const row = { table_key: t.tableKey, status, note: document.getElementById("note").value.trim() || null,
-                reviewer: SESSION.user.email, updated_at: new Date().toISOString() };
-  const { error } = await sb.from("reviews").upsert(row, { onConflict: "table_key" });
-  if (error) { alert("Save failed: " + error.message + "\n\nHas the reviews table + RLS been created?"); return; }
-  REVIEWS[t.tableKey] = row;
-  if (document.getElementById("unrev").checked) rebuild(); else move(1);
+function renderGroup(g) {
+  const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
+  const kind = g.isTable
+    ? `<span class=kind>Table ${esc(g.fig)}</span>`
+    : `<span class="kind g">Figure ${esc(g.fig)}</span>`;
+  const head = `<h3>${g.isTable ? "Table" : "Figure"} ${esc(g.fig)} ${kind}</h3>
+    <div class=sub>${esc(benches.join(" · ").slice(0, 160))}</div>`;
+  return `<div class=grp>${head}<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div></div>`;
+}
+
+// Descriptive tokens of a cell, used to derive row/column headers.
+function tokensOf(c) {
+  return [c.model && "m:" + c.model, c.benchmark && "b:" + c.benchmark,
+    ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s)]
+    .filter(Boolean);
+}
+const intersect = sets => sets.length ? sets.reduce((a, b) => a.filter(x => b.includes(x))) : [];
+const stripPfx = arr => arr.map(t => t.slice(2)).join(" · ");
+
+// Redraw a table in its original layout: each value sits at (row_idx,col_idx).
+// Row/column headers are derived from the metadata that is constant down a column
+// (model, reasoning effort…) or across a row (benchmark, language, metric…).
+function reconTable(cells) {
+  const rows = [...new Set(cells.map(c => c.row_idx))].sort((a, b) => a - b);
+  const cols = [...new Set(cells.map(c => c.col_idx))].sort((a, b) => a - b);
+  const grid = new Map();
+  cells.forEach(c => grid.set(c.row_idx + "," + c.col_idx, c));
+  const tableWide = intersect(cells.map(tokensOf));
+  const colHdr = {}, rowHdr = {};
+  cols.forEach(c => colHdr[c] = intersect(cells.filter(x => x.col_idx === c).map(tokensOf))
+    .filter(t => !tableWide.includes(t)));
+  rows.forEach(r => rowHdr[r] = intersect(cells.filter(x => x.row_idx === r).map(tokensOf))
+    .filter(t => !tableWide.includes(t)));
+  // tableWide tokens (e.g. the single benchmark) are already shown in the group
+  // subtitle, so the grid itself starts straight at the header row.
+  let html = "<table class=recon><tr><th></th>" +
+    cols.map(c => `<th>${esc(stripPfx(colHdr[c])) || ("col " + c)}</th>`).join("") + "</tr>";
+  for (const r of rows) {
+    html += `<tr><th class=rh>${esc(stripPfx(rowHdr[r])) || ("row " + r)}</th>` +
+      cols.map(c => {
+        const cell = grid.get(r + "," + c);
+        return cell
+          ? `<td class=v title="${esc(cell.model + " · " + cell.benchmark + " · " + (cell.condition || ""))}">${esc(fmtVal(cell.value, cell.units))}</td>`
+          : "<td></td>";
+      }).join("") + "</tr>";
+  }
+  return html + "</table>";
+}
+
+// Graphs: one row per data point, in the pending schema.
+function schemaTable(cells) {
+  let html = "<table class=schema><tr><th>model<th>condition<th>benchmark<th>value<th>units</tr>";
+  for (const c of cells) {
+    html += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td>` +
+      `<td>${esc(c.benchmark)}</td><td>${esc(c.value)}</td><td>${esc(c.units || "")}</td></tr>`;
+  }
+  return html + "</table>";
 }
 
 boot().catch(err => document.getElementById("gate").innerHTML =
