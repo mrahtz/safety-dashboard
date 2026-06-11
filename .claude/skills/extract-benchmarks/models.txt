@@ -9,6 +9,7 @@
 # different size or release into one row (e.g. gpt-oss-120b != gpt-oss-20b).
 
 # --- OpenAI ---
+GPT-5.4
 GPT-5
 GPT-5 mini | GPT-5-mini
 GPT-5 nano | GPT-5-nano
@@ -23,6 +24,12 @@ gpt-oss-120b | gpt-oss 120b
 gpt-oss-20b | gpt-oss 20b
 
 # --- Anthropic ---
+Claude Mythos Preview
+Claude Opus 4.6
+Claude Sonnet 4.6
+Claude Opus 4.5
+Claude Sonnet 4.4
+Claude Haiku 4.6
 Claude Opus 4.1
 Claude Opus 4
 Claude Sonnet 4.5 | Claude Sonnet 4.5 (new)
@@ -31,6 +38,7 @@ Claude Haiku 4.5
 Claude 3.5 Sonnet
 
 # --- Google DeepMind ---
+Gemini 3.1 Pro
 Gemini 2.5 Pro
 Gemini 2.5 Flash
 Gemini 2.0 Flash
