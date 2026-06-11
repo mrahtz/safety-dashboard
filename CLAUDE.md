@@ -84,6 +84,11 @@ only). `service_role`/`sb_secret_…` keys can't run DDL. PostgREST needs the
 `apikey` header, not just `Authorization`. Management API blocks `python-urllib`
 UA (Cloudflare 1010) — POST DDL with `curl` instead.
 
+DDL (CREATE/ALTER/DROP TABLE, CREATE POLICY, etc.) changes the schema and must
+go through the Management API with the `sbp_…` token. DML (INSERT/UPDATE/DELETE/
+SELECT) reads and writes rows and uses the `service_role` key via PostgREST.
+The two are not interchangeable.
+
 ## Branch / git
 
 Push to `main`. Don't open PRs unless asked.
