@@ -47,11 +47,10 @@ value. Once the file exists, proceed.
 
 ## 1. Canonical name files (read these first, keep them growing)
 
-Two files in `web/` are the source of truth for names (they live there so the
-DB-state page can serve them via GitHub Pages):
+Two files in this skill dir are the source of truth for names:
 
-- `web/benchmarks.txt` — canonical **eval** names.
-- `web/models.txt` — canonical **model** names.
+- `benchmarks.txt` — canonical **eval** names.
+- `models.txt` — canonical **model** names.
 
 Format (both files): one canonical name per line; `#` starts a comment; an
 optional `|`-separated tail lists aliases that map to that canonical name, e.g.

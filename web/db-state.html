@@ -11,8 +11,6 @@
  .tag{display:inline-block;background:#eef5ff;color:#1356b3;border-radius:10px;
    padding:1px 8px;font-size:12px;margin:2px 2px;white-space:nowrap}
  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
- .canon-list{font-size:13px;line-height:1.9}
- .canon-list .alias{color:#899;font-size:12px;margin-left:6px}
  @media(max-width:680px){.two-col{grid-template-columns:1fr}}
 </style></head><body>
 <main>
@@ -71,51 +69,22 @@
  </div>
 
  <div class=card>
-   <h2>Canonical names <span class=muted style="font-weight:400;font-size:13px">(web/models.txt · web/benchmarks.txt — read + auto-appended by the extract-benchmarks skill)</span></h2>
-   <div class=two-col>
-     <div>
-       <div style="font-weight:600;margin-bottom:8px" id=models-hdr>Models</div>
-       <div class=canon-list id=models-list><span class=muted>Loading…</span></div>
-     </div>
-     <div>
-       <div style="font-weight:600;margin-bottom:8px" id=benchmarks-hdr>Benchmarks</div>
-       <div class=canon-list id=benchmarks-list><span class=muted>Loading…</span></div>
-     </div>
+   <h2>Canonical names</h2>
+   <div class=muted style="margin-bottom:8px">Read + auto-appended by the extract-benchmarks skill.</div>
+   <div style="display:flex;gap:18px;font-size:14px">
+     <a href="https://github.com/mrahtz/safety-dashboard/blob/main/.claude/skills/extract-benchmarks/models.txt" target=_blank>models.txt</a>
+     <a href="https://github.com/mrahtz/safety-dashboard/blob/main/.claude/skills/extract-benchmarks/benchmarks.txt" target=_blank>benchmarks.txt</a>
    </div>
  </div>
 </main>
 <script src="common.js?v=20260611b"></script>
 <script>
-function parseTxt(raw) {
-  return raw.split("\n")
-    .filter(l => l.trim() && !l.trim().startsWith("#"))
-    .map(l => {
-      const parts = l.split("|").map(s => s.trim());
-      return { canonical: parts[0], aliases: parts.slice(1) };
-    });
-}
-
-function renderCanonical(listId, hdrId, entries) {
-  document.getElementById(hdrId).textContent = entries[0]?.canonical
-    ? document.getElementById(hdrId).textContent + ` (${entries.length})`
-    : document.getElementById(hdrId).textContent;
-  document.getElementById(listId).innerHTML = entries.map(e =>
-    `<div><b>${esc(e.canonical)}</b>` +
-    (e.aliases.length
-      ? `<span class=alias>${e.aliases.map(a => esc(a)).join(" · ")}</span>`
-      : "") +
-    `</div>`
-  ).join("");
-}
-
 async function load() {
   mountChrome("db-state.html");
 
-  const [sources, metrics, modelsRaw, benchmarksRaw] = await Promise.all([
+  const [sources, metrics] = await Promise.all([
     sbGetAll("sources", "id,kind,origin_url"),
     sbGetAll("metrics", "id,source_id,model,benchmark,accepted"),
-    fetch("models.txt").then(r => { if (!r.ok) throw new Error("models.txt " + r.status); return r.text(); }),
-    fetch("benchmarks.txt").then(r => { if (!r.ok) throw new Error("benchmarks.txt " + r.status); return r.text(); }),
   ]);
 
   // KPI summary
@@ -162,9 +131,6 @@ async function load() {
       </div>
     </div>`;
 
-  // Canonical name lists
-  renderCanonical("models-list", "models-hdr", parseTxt(modelsRaw));
-  renderCanonical("benchmarks-list", "benchmarks-hdr", parseTxt(benchmarksRaw));
 }
 
 load().catch(err => {
