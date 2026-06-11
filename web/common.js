@@ -100,6 +100,7 @@ const NAV = [
   ["index.html", "Dashboard"],
   ["sources.html", "Sources"],
   ["review.html", "Review"],
+  ["db-state.html", "DB state"],
 ];
 function mountChrome(active) {
   const css = document.createElement("style");

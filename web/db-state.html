@@ -1,0 +1,174 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>LLM safety-metrics — DB state</title>
+<style>
+ .kpi{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+ .kpi .box b{font-size:24px;display:block} .kpi .box div{color:#566}
+ h2{font-size:15px;font-weight:700;margin:0 0 10px;color:#1b2b44}
+ table.st{border-collapse:collapse;width:100%;font-size:13px}
+ table.st th,table.st td{border:1px solid #e6eaf1;padding:5px 8px;text-align:left;vertical-align:top}
+ table.st th{background:#f3f6fb;font-weight:600}
+ .tag{display:inline-block;background:#eef5ff;color:#1356b3;border-radius:10px;
+   padding:1px 8px;font-size:12px;margin:2px 2px;white-space:nowrap}
+ .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+ .canon-list{font-size:13px;line-height:1.9}
+ .canon-list .alias{color:#899;font-size:12px;margin-left:6px}
+ @media(max-width:680px){.two-col{grid-template-columns:1fr}}
+</style></head><body>
+<main>
+ <div class=card>
+   <div style="font-size:18px;font-weight:700">DB state</div>
+   <div class=muted>Live snapshot of Supabase tables, schema, and canonical name lists.</div>
+ </div>
+
+ <div class="card kpi" id=kpi><div class=muted>Loading…</div></div>
+
+ <div class=card>
+   <h2>Schema</h2>
+   <div class=two-col>
+     <div>
+       <div style="font-weight:600;margin-bottom:8px">sources</div>
+       <table class=st>
+         <thead><tr><th>column<th>type<th>notes</tr></thead>
+         <tbody>
+           <tr><td>id<td>bigint<td>PK, auto
+           <tr><td>kind<td>text<td>'html' or 'pdf'
+           <tr><td>origin_url<td>text<td>UNIQUE
+           <tr><td>html<td>text<td>nullable; stored card HTML with &lt;base href&gt;
+         </tbody>
+       </table>
+     </div>
+     <div>
+       <div style="font-weight:600;margin-bottom:8px">metrics</div>
+       <table class=st>
+         <thead><tr><th>column<th>type<th>notes</tr></thead>
+         <tbody>
+           <tr><td>id<td>bigint<td>PK, auto
+           <tr><td>source_id<td>bigint<td>FK → sources
+           <tr><td>model<td>text<td>canonical model name
+           <tr><td>condition<td>text<td>e.g. 'low', 'high', 'with tools'
+           <tr><td>benchmark<td>text<td>canonical benchmark name
+           <tr><td>value<td>text<td>exact printed value
+           <tr><td>units<td>text<td>'%', '$', 'Elo', …
+           <tr><td>row_idx<td>integer<td>nullable; 0-based row in source table
+           <tr><td>col_idx<td>integer<td>nullable; 0-based col in source table
+           <tr><td>section_key<td>text<td>e.g. 'Table 1', 'Figure 2'
+           <tr><td>accepted<td>boolean<td>default false; reviewer sign-off flag
+         </tbody>
+       </table>
+     </div>
+   </div>
+ </div>
+
+ <div class=card>
+   <h2 id=src-hdr>sources</h2>
+   <div id=tbl-sources><span class=muted>Loading…</span></div>
+ </div>
+
+ <div class=card>
+   <h2 id=met-hdr>metrics</h2>
+   <div id=tbl-metrics><span class=muted>Loading…</span></div>
+ </div>
+
+ <div class=card>
+   <h2>Canonical names <span class=muted style="font-weight:400;font-size:13px">(web/models.txt · web/benchmarks.txt — read + auto-appended by the extract-benchmarks skill)</span></h2>
+   <div class=two-col>
+     <div>
+       <div style="font-weight:600;margin-bottom:8px" id=models-hdr>Models</div>
+       <div class=canon-list id=models-list><span class=muted>Loading…</span></div>
+     </div>
+     <div>
+       <div style="font-weight:600;margin-bottom:8px" id=benchmarks-hdr>Benchmarks</div>
+       <div class=canon-list id=benchmarks-list><span class=muted>Loading…</span></div>
+     </div>
+   </div>
+ </div>
+</main>
+<script src="common.js?v=20260611b"></script>
+<script>
+function parseTxt(raw) {
+  return raw.split("\n")
+    .filter(l => l.trim() && !l.trim().startsWith("#"))
+    .map(l => {
+      const parts = l.split("|").map(s => s.trim());
+      return { canonical: parts[0], aliases: parts.slice(1) };
+    });
+}
+
+function renderCanonical(listId, hdrId, entries) {
+  document.getElementById(hdrId).textContent = entries[0]?.canonical
+    ? document.getElementById(hdrId).textContent + ` (${entries.length})`
+    : document.getElementById(hdrId).textContent;
+  document.getElementById(listId).innerHTML = entries.map(e =>
+    `<div><b>${esc(e.canonical)}</b>` +
+    (e.aliases.length
+      ? `<span class=alias>${e.aliases.map(a => esc(a)).join(" · ")}</span>`
+      : "") +
+    `</div>`
+  ).join("");
+}
+
+async function load() {
+  mountChrome("db-state.html");
+
+  const [sources, metrics, modelsRaw, benchmarksRaw] = await Promise.all([
+    sbGetAll("sources", "id,kind,origin_url"),
+    sbGetAll("metrics", "id,source_id,model,benchmark,accepted"),
+    fetch("models.txt").then(r => { if (!r.ok) throw new Error("models.txt " + r.status); return r.text(); }),
+    fetch("benchmarks.txt").then(r => { if (!r.ok) throw new Error("benchmarks.txt " + r.status); return r.text(); }),
+  ]);
+
+  // KPI summary
+  const accepted = metrics.filter(m => m.accepted).length;
+  document.getElementById("kpi").innerHTML = `
+    <div class=box><b>${sources.length}</b><div>sources</div></div>
+    <div class=box><b>${metrics.length}</b><div>metrics</div></div>
+    <div class=box><b>${accepted}</b><div>accepted</div></div>
+    <div class=box><b>${metrics.length - accepted}</b><div>pending review</div></div>`;
+
+  // Per-source metric counts
+  const metsBySrc = new Map();
+  for (const m of metrics) {
+    if (!metsBySrc.has(m.source_id)) metsBySrc.set(m.source_id, []);
+    metsBySrc.get(m.source_id).push(m);
+  }
+
+  // Sources table
+  document.getElementById("src-hdr").textContent = `sources (${sources.length} rows)`;
+  let h = `<table class=st><thead><tr><th>id<th>kind<th>origin_url<th>metrics<th>accepted</tr></thead><tbody>`;
+  for (const s of sources) {
+    const rows = metsBySrc.get(s.id) || [];
+    const acc = rows.filter(m => m.accepted).length;
+    h += `<tr><td>${s.id}<td>${esc(s.kind)}`
+       + `<td><a href="${esc(s.origin_url)}" target=_blank style="word-break:break-all">${esc(s.origin_url)}</a>`
+       + `<td>${rows.length}<td>${acc}</tr>`;
+  }
+  h += "</tbody></table>";
+  document.getElementById("tbl-sources").innerHTML = h;
+
+  // Metrics breakdown
+  const uniqueModels = [...new Set(metrics.map(m => m.model))].sort((a, b) => a.localeCompare(b));
+  const uniqueBenchmarks = [...new Set(metrics.map(m => m.benchmark))].sort((a, b) => a.localeCompare(b));
+  document.getElementById("met-hdr").textContent = `metrics (${metrics.length} rows)`;
+  document.getElementById("tbl-metrics").innerHTML = `
+    <div class=two-col>
+      <div>
+        <div style="font-weight:600;margin-bottom:8px">Unique models (${uniqueModels.length})</div>
+        <div>${uniqueModels.map(m => `<span class=tag>${esc(m)}</span>`).join("")}</div>
+      </div>
+      <div>
+        <div style="font-weight:600;margin-bottom:8px">Unique benchmarks (${uniqueBenchmarks.length})</div>
+        <div>${uniqueBenchmarks.map(b => `<span class=tag>${esc(b)}</span>`).join("")}</div>
+      </div>
+    </div>`;
+
+  // Canonical name lists
+  renderCanonical("models-list", "models-hdr", parseTxt(modelsRaw));
+  renderCanonical("benchmarks-list", "benchmarks-hdr", parseTxt(benchmarksRaw));
+}
+
+load().catch(err => {
+  document.getElementById("kpi").innerHTML =
+    `<span style="color:#c0143c">Load failed: ${esc(err.message || err)}</span>`;
+});
+</script></body></html>
