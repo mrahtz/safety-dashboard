@@ -25,6 +25,7 @@ HellaSwag
 TruthfulQA
 SimpleQA
 Humanity's Last Exam | HLE
+USAMO 2026
 
 # --- Math ---
 MATH | MATH-500 | MATH 500
@@ -38,11 +39,17 @@ HumanEval
 MBPP
 SWE-bench Verified | SWE-bench-Verified
 SWE-bench
+SWE-bench Pro
+SWE-bench Multilingual
+SWE-bench Multimodal
 LiveCodeBench | LCB
 Aider Polyglot | Aider-Polyglot
 Codeforces
 Terminal-bench | Terminal Bench
+Terminal-bench 2.0 | Terminal-Bench 2.0
 Tau-bench | TauBench | τ-bench
+OSWorld
+GraphWalks BFS | GraphWalks BFS 2508-1M
 
 # --- Multimodal ---
 MMMU
@@ -50,11 +57,18 @@ MathVista
 DocVQA
 ChartQA
 VQAv2
+ScreenSpot-Pro
+LAB-Bench FigQA | FigQA
+CharXiv Reasoning
 
 # --- Instruction following / multilingual ---
 IFEval
 Multilingual MMLU | MMMLU
 MMLU (multilingual)
+
+# --- Cyber (public) ---
+Cybench | CyberBench
+CyberGym
 
 # --- Safety / refusal (public, shared evals) ---
 WMDP
@@ -62,6 +76,7 @@ StrongREJECT
 HarmBench
 XSTest
 AdvBench
+BBQ | Bias Benchmark for Question Answering
 
 # --- Company-internal safety evals (namespaced; add the owner) ---
 # Examples — extend as cards introduce them:
@@ -70,6 +85,40 @@ OpenAI Hate
 OpenAI Harassment
 OpenAI Self-harm
 OpenAI Disallowed Content
+
+# --- Anthropic-internal safety evals (from Mythos Preview system card) ---
+Anthropic Violative Requests Harmlessness
+Anthropic Benign Requests Refusal Rate
+Anthropic Higher-Difficulty Violative Harmlessness
+Anthropic Higher-Difficulty Benign Refusal Rate
+Anthropic Child Safety Harmlessness
+Anthropic Child Safety Benign Refusal Rate
+Anthropic Child Safety Multi-turn
+Anthropic Suicide/Self-harm Harmlessness
+Anthropic Suicide/Self-harm Benign Refusal Rate
+Anthropic Suicide/Self-harm Multi-turn
+Anthropic Disordered Eating Harmlessness
+Anthropic Disordered Eating Benign Refusal Rate
+Anthropic Political Bias Evenhandedness
+Anthropic Political Bias Opposing Perspectives
+Anthropic Political Bias Refusals
+Anthropic Malicious Code Refusal Rate
+Anthropic Malicious Code Dual-use Success Rate
+Anthropic Malicious Computer Use Refusal Rate
+Anthropic Malicious Agentic Influence Task Completion
+Anthropic Firefox 147 Full Exploitation
+Anthropic Firefox 147 Partial Exploitation
+Anthropic Shade Coding IPI Attack Success
+Anthropic Shade Computer Use IPI Attack Success
+Anthropic Shade Browser Use IPI Attack Success
+
+# --- Anthropic-internal AI R&D evals (from Mythos Preview system card) ---
+Anthropic AI R&D Kernel Task
+Anthropic AI R&D Time Series Forecasting
+Anthropic AI R&D LLM Training
+Anthropic AI R&D Quadruped RL
+Anthropic AI R&D Novel Compiler
+Anthropic AI R&D Internal Suite 2
 
 # --- Added from gpt-oss system card (2026-06) ---
 HealthBench
