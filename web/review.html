@@ -52,13 +52,19 @@
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260609b"></script>
+<script src="common.js?v=20260611"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
 const SRC = new Map();   // origin_url -> {kind, html} stored-source preview (or null)
 
 async function boot() {
   mountChrome("review.html");
+  // Delegated handler for the Accept/Undo buttons (rebuilt on every render).
+  document.getElementById("groups").addEventListener("click", e => {
+    const btn = e.target.closest("button.dec");
+    if (!btn || btn.disabled) return;
+    decide(Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
+  });
   sb = supabase.createClient(SUPABASE_URL, ANON);
   const { data: { session } } = await sb.auth.getSession();
   SESSION = session;
@@ -106,12 +112,7 @@ async function loadData() {
 // Group every metric by its source URL, then (re)build the dropdown + render.
 function regroup() {
   const prev = document.getElementById("src").value;
-  BY_SOURCE = new Map();
-  for (const c of METRICS) {
-    const url = c.sources?.origin_url || "?";
-    if (!BY_SOURCE.has(url)) BY_SOURCE.set(url, []);
-    BY_SOURCE.get(url).push(c);
-  }
+  BY_SOURCE = groupBySource(METRICS);
   const keys = [...BY_SOURCE.keys()].sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)));
   const sel = document.getElementById("src");
   if (!keys.length) {
@@ -133,13 +134,7 @@ function regroup() {
 // Section groups for a source, ordered by section_key. A group is a "table" if any
 // of its rows has a row_idx (graphs leave row_idx/col_idx null).
 function groupsFor(url) {
-  const bySec = new Map();
-  for (const c of BY_SOURCE.get(url) || []) {
-    const k = c.section_key ?? "?";
-    if (!bySec.has(k)) bySec.set(k, []);
-    bySec.get(k).push(c);
-  }
-  return [...bySec.entries()]
+  return [...groupBySection(BY_SOURCE.get(url) || []).entries()]
     .map(([section_key, cells]) => ({ section_key, cells, isTable: cells.some(c => c.row_idx != null) }))
     .sort((a, b) => String(a.section_key).localeCompare(String(b.section_key), undefined, { numeric: true }));
 }
@@ -199,11 +194,12 @@ function renderGroup(url, g, i) {
     </div>`;
   const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
   const sourceId = g.cells[0]?.source_id;
+  // section_key carries via a data-* attribute (HTML-escaped) rather than being
+  // interpolated into a JS-string onclick, so odd characters can't break out.
+  const data = `data-source="${sourceId}" data-section="${esc(String(g.section_key))}"`;
   const bar = `<div class=bar>
-      <button class="dec acc"${allAccepted ? " disabled" : ""}
-        onclick="decide(${sourceId},'${esc(g.section_key)}',true)">Accept</button>
-      <button class="dec rej"${!allAccepted ? " disabled" : ""}
-        onclick="decide(${sourceId},'${esc(g.section_key)}',false)">Undo</button>
+      <button class="dec acc" ${data} data-accept="1"${allAccepted ? " disabled" : ""}>Accept</button>
+      <button class="dec rej" ${data} data-accept="0"${!allAccepted ? " disabled" : ""}>Undo</button>
     </div>`;
   return `<div class=grp>${head}${grid}${bar}</div>`;
 }

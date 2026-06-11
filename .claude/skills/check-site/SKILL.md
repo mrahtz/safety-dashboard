@@ -57,8 +57,6 @@ the `?v=` token in all three pages when `common.js` changes (see CLAUDE.md).
 - `Could not find the table 'public.<x>'` (PGRST205) → the deployed `web/common.js`
   queries a table the DB no longer has. Either the schema changed or the Pages deploy
   is stale. Check the deployed file: `curl -sSL http://amid.fish/safety-dashboard/common.js`.
-- A **404 on `/rest/v1/reviews`** is expected and tolerated — the reviews table is
-  optional; `loadReviews()` swallows it. Not a real failure.
 - An **empty dashboard** is expected when no data has been ingested yet — run the
   `extract-benchmarks` skill to populate `metrics`.
 

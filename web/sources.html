@@ -28,26 +28,18 @@
    <div id=content class=card>Loading from Supabase…</div>
  </div>
 </main>
-<script src="common.js?v=20260609b"></script>
+<script src="common.js?v=20260611"></script>
 <script>
 let SRC = [], current = null;
 
 async function load() {
   mountChrome("sources.html");
   const data = await loadMetrics();
-  const bySource = new Map();
-  for (const c of data) {
-    const url = c.sources?.origin_url || "?";
-    if (!bySource.has(url)) bySource.set(url, { url, label: sourceLabel(url), sections: new Map() });
-    const s = bySource.get(url);
-    const skey = c.section_key || "_";
-    if (!s.sections.has(skey))
-      s.sections.set(skey, { key: skey, items: [] });
-    s.sections.get(skey).items.push(c);
-  }
-  SRC = [...bySource.values()].sort((a, b) => a.label.localeCompare(b.label));
+  SRC = [...groupBySource(data).entries()]
+    .map(([url, items]) => ({ url, label: sourceLabel(url), sections: groupBySection(items, "_") }))
+    .sort((a, b) => a.label.localeCompare(b.label));
   document.getElementById("side").innerHTML = SRC.map((s, i) => {
-    const n = [...s.sections.values()].reduce((t, x) => t + x.items.length, 0);
+    const n = [...s.sections.values()].reduce((t, items) => t + items.length, 0);
     return `<button class=src id=src${i} onclick=pick(${i})>${esc(s.label)}<span class=n>${n}</span></button>`;
   }).join("");
   if (SRC.length) pick(0); else document.getElementById("content").innerHTML = "<span class=muted>No data.</span>";
@@ -67,16 +59,16 @@ function pick(i) {
   current = i;
   SRC.forEach((_, j) => document.getElementById("src" + j).classList.toggle("on", j === i));
   const s = SRC[i];
-  const sections = [...s.sections.values()].sort((a, b) =>
-    a.key.localeCompare(b.key, undefined, { numeric: true }));
+  const sections = [...s.sections.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true }));
   let html = `<div style="font-size:17px;font-weight:700">${esc(s.label)}</div>
     <div class=muted><a href="${esc(s.url)}" target=_blank>${esc(s.url)}</a> — ${sections.length} table(s)</div>`;
-  for (const sec of sections) {
-    const allAccepted = sec.items.every(c => c.accepted);
+  for (const [key, items] of sections) {
+    const allAccepted = items.every(c => c.accepted);
     const badge = allAccepted ? `<span class="flag s-accepted">accepted</span>` : "";
-    html += `<div class=section><h3>Table ${esc(sec.key)} ${badge}</h3>
-      <div class=muted>${sec.items.length} numbers</div>`;
-    html += numsTable(sec.items) + `</div>`;
+    html += `<div class=section><h3>Table ${esc(key)} ${badge}</h3>
+      <div class=muted>${items.length} numbers</div>`;
+    html += numsTable(items) + `</div>`;
   }
   document.getElementById("content").innerHTML = html;
 }

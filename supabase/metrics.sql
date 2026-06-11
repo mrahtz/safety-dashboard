@@ -52,12 +52,8 @@ alter table public.metrics enable row level security;
 drop policy if exists metrics_read on public.metrics;
 create policy metrics_read on public.metrics for select to anon, authenticated using (true);
 
--- Reviewer can flip accepted on any row (authenticated + allowlisted email).
-drop policy if exists metrics_update on public.metrics;
-create policy metrics_update on public.metrics
-    for update to authenticated
-    using  (lower(auth.jwt() ->> 'email') = 'matthew.rahtz@gmail.com')
-    with check (lower(auth.jwt() ->> 'email') = 'matthew.rahtz@gmail.com');
+-- The reviewer UPDATE policy (lets review.html flip `accepted`) lives in
+-- promote.sql — its single home, so the allowlisted email isn't edited twice.
 
 -- Reconcile an already-existing table to this shape. Idempotent.
 alter table public.metrics add column if not exists source_id bigint references public.sources(id);

@@ -33,8 +33,29 @@ function sourceLabel(url) { return SOURCE_LABELS[url] || prettyFromUrl(url); }
 const esc = s => (s ?? "").toString().replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-// Stable key for a section: used to group rows back into their source table.
-function tableKey(originUrl, sectionKey) { return originUrl + "::" + (sectionKey || "?"); }
+// Group metrics by their source's origin_url. Returns Map(url -> cells[]).
+// Shared by sources.html and review.html so the two stay in sync.
+function groupBySource(metrics, fallback = "?") {
+  const m = new Map();
+  for (const c of metrics) {
+    const url = c.sources?.origin_url || fallback;
+    if (!m.has(url)) m.set(url, []);
+    m.get(url).push(c);
+  }
+  return m;
+}
+
+// Group a source's cells by section_key (its original table/figure). Returns
+// Map(section_key -> cells[]).
+function groupBySection(cells, fallback = "?") {
+  const m = new Map();
+  for (const c of cells) {
+    const k = c.section_key ?? fallback;
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(c);
+  }
+  return m;
+}
 
 async function sbGet(path) {
   const res = await fetch(SUPABASE_URL + "/rest/v1/" + path,
@@ -95,12 +116,7 @@ function mountChrome(active) {
    button,input,select{font:inherit;padding:6px 10px;border:1px solid #b9c2d0;border-radius:7px;background:#fff;cursor:pointer}
    button.on{background:#1565d8;color:#fff;border-color:#1565d8}
    .flag{font-size:12px;padding:1px 7px;border-radius:10px;white-space:nowrap}
-   .s-verified{background:#d7f5dd;color:#0a7d28}.s-needs_review{background:#ffe7b3;color:#8a5a00}
-   .s-accepted{background:#dbeafe;color:#1356b3}.s-rejected{background:#fde2e2;color:#c0143c}.s-pending{background:#eee;color:#555}
-   .thumb{height:30px;border:1px solid #ccd;border-radius:3px;vertical-align:middle;background:#fff}
-   .pop{position:relative}.pop .big{display:none;position:absolute;z-index:30;left:0;top:34px;
-     box-shadow:0 8px 30px rgba(0,0,0,.35);border:1px solid #999;background:#fff}
-   .pop:hover .big{display:block}.pop .big img{max-width:420px;display:block}
+   .s-needs_review{background:#ffe7b3;color:#8a5a00}.s-accepted{background:#dbeafe;color:#1356b3}
    .modal-bg{position:fixed;inset:0;background:rgba(8,14,26,.55);display:none;z-index:50;padding:28px;overflow:auto}
    .modal-bg.show{display:block}
    .modal{background:#fff;max-width:760px;margin:0 auto;border-radius:12px;padding:18px}

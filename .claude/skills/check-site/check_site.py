@@ -8,9 +8,10 @@ Usage:  python3 .claude/skills/check-site/check_site.py [BASE_URL]
         BASE_URL defaults to the production custom domain.
 """
 import glob
+import pathlib
 import sys
 
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
 
 BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://amid.fish/safety-dashboard/").rstrip("/") + "/"
 PAGES = ["index.html", "sources.html", "review.html"]
@@ -27,7 +28,6 @@ def find_browser() -> str | None:
 
 
 def check() -> int:
-    import pathlib
     pathlib.Path(OUT).mkdir(parents=True, exist_ok=True)
     issues: list[tuple[str, str]] = []
     with sync_playwright() as p:
@@ -45,11 +45,9 @@ def check() -> int:
             bad: list[str] = []
             page.on("console", lambda m, L=cons: L.append(m.text) if m.type == "error" else None)
             page.on("pageerror", lambda e, L=perr: L.append(str(e)))
-            # flag real 4xx/5xx (Supabase, JS, CSS, images). Ignore favicon noise
-            # and the optional `reviews` table 404 (loadReviews() tolerates it).
+            # flag real 4xx/5xx (Supabase, JS, CSS, images). Ignore favicon noise.
             page.on("response", lambda r, L=bad: L.append(f"{r.status} {r.url}")
-                    if r.status >= 400 and "favicon" not in r.url
-                    and "/rest/v1/reviews" not in r.url else None)
+                    if r.status >= 400 and "favicon" not in r.url else None)
             try:
                 page.goto(url, wait_until="networkidle", timeout=30000)
             except Exception as e:
@@ -62,10 +60,10 @@ def check() -> int:
                                 if any(k in ln.lower() for k in ("load failed", "no cells", "no data"))), "")
                 issues.append((name, f"visible error/empty state: {snippet[:160]}"))
             page.screenshot(path=f"{OUT}/{name.replace('.html', '')}.png", full_page=True)
-            for e in cons:
-                issues.append((name, f"console error: {e[:200]}"))
-            for e in perr:
-                issues.append((name, f"uncaught exception: {e[:200]}"))
+            for msg in cons:
+                issues.append((name, f"console error: {msg[:200]}"))
+            for pe in perr:
+                issues.append((name, f"uncaught exception: {pe[:200]}"))
             for r in bad:
                 issues.append((name, f"failed request: {r[:200]}"))
             page.close()

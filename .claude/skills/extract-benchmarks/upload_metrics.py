@@ -39,7 +39,7 @@ def _env() -> dict[str, str]:
             f"  echo 'SUPABASE_SERVICE_ROLE=<service_role_key>' >> {ENV_PATH}\n"
             f"(service_role key from Supabase dashboard → Settings → API keys)"
         )
-    out = {}
+    out: dict[str, str] = {}
     for line in ENV_PATH.read_text().splitlines():
         if "=" in line:
             k, v = line.split("=", 1)
@@ -47,24 +47,26 @@ def _env() -> dict[str, str]:
     return out
 
 
-def _req(method: str, url: str, headers: dict, data: bytes | None = None, tries: int = 4) -> bytes:
+def _req(method: str, url: str, headers: dict[str, str], data: bytes | None = None, tries: int = 4) -> bytes:
     for attempt in range(tries):
         req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=90) as r:
-                return r.read()
+                return bytes(r.read())
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504) and attempt < tries - 1:
-                time.sleep(2 ** attempt); continue
+                time.sleep(2 ** attempt)
+                continue
             raise RuntimeError(f"{method} {url} -> {e.code}: {e.read()[:200]!r}") from e
         except urllib.error.URLError:
             if attempt < tries - 1:
-                time.sleep(2 ** attempt); continue
+                time.sleep(2 ** attempt)
+                continue
             raise
     raise RuntimeError("unreachable")
 
 
-def upsert_source(env: dict, origin_url: str, kind: str) -> int:
+def upsert_source(env: dict[str, str], origin_url: str, kind: str) -> int:
     """Upsert a sources row (by origin_url) and return its id."""
     url = f"{env['SUPABASE_URL']}/rest/v1/sources?on_conflict=origin_url"
     headers = {
@@ -75,11 +77,11 @@ def upsert_source(env: dict, origin_url: str, kind: str) -> int:
     }
     body = json.dumps([{"origin_url": origin_url, "kind": kind}]).encode()
     result = json.loads(_req("POST", url, headers, body))
-    return result[0]["id"]
+    return int(result[0]["id"])
 
 
-def _metric_row(record: dict, source_id: int) -> dict:
-    out = {"source_id": source_id, "accepted": False}
+def _metric_row(record: dict[str, str], source_id: int) -> dict[str, object]:
+    out: dict[str, object] = {"source_id": source_id, "accepted": False}
     for col in _TEXT:
         raw = (record.get(col) or "").strip()
         out[col] = raw or None
