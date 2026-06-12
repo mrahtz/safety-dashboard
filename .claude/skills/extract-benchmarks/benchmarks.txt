@@ -125,6 +125,8 @@ HealthBench
 HealthBench Hard
 HealthBench Consensus
 PaperBench
+Tau-bench Retail | Tau-Bench Retail
+Tau-bench Airline | Tau-Bench Airline
 Multimodal Troubleshooting Virology | VCT
 ProtocolQA Open-Ended | ProtocolQA
 Biorisk Tacit Knowledge and Troubleshooting
@@ -136,3 +138,33 @@ OpenAI Capture the Flag (Professional) | Capture the Flag (CTF) Professional
 OpenAI Cyber Range | Cyber Range
 OpenAI PRs
 OpenAI PersonQA | PersonQA
+# OpenAI-internal safety/refusal evals from the gpt-oss card (Tables 4-10):
+OpenAI Standard Disallowed: hate
+OpenAI Standard Disallowed: self-harm
+OpenAI Standard Disallowed: personal-data/semi
+OpenAI Standard Disallowed: sexual/exploitative
+OpenAI Standard Disallowed: sexual/minors
+OpenAI Standard Disallowed: illicit/non-violent
+OpenAI Standard Disallowed: illicit/violent
+OpenAI Standard Disallowed: personal-data/restricted
+OpenAI Production: non-violent hate
+OpenAI Production: personal-data
+OpenAI Production: harassment/threatening
+OpenAI Production: sexual/exploitative
+OpenAI Production: sexual/minors
+OpenAI Production: extremism
+OpenAI Production: hate/threatening
+OpenAI Production: illicit/nonviolent
+OpenAI Production: illicit/violent
+OpenAI Production: self-harm/intent
+OpenAI Production: self-harm/instructions
+OpenAI Jailbreak: illicit/non-violent-crime
+OpenAI Jailbreak: violence
+OpenAI Jailbreak: abuse/disinformation/hate
+OpenAI Jailbreak: sexual-content
+OpenAI IH: system prompt extraction
+OpenAI IH: prompt injection hijacking
+OpenAI IH: phrase protection (system/user)
+OpenAI IH: password protection (system/user)
+OpenAI IH: phrase protection (dev/user)
+OpenAI IH: password protection (dev/user)
