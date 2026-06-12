@@ -5,16 +5,16 @@ produced a clean CSV. First upserts a row in `sources` (by origin_url), then
 inserts one `metrics` row per CSV row, linked via source_id. Rows land with
 `accepted = false`; a reviewer flips sections to true in review.html.
 
-CSV columns (exact): model,condition,benchmark,value,units,fig_num,row_idx,col_idx
-  - fig_num -> stored as section_key (groups a table's cells for the review page)
+CSV columns (exact): model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
+  - fig_num    -> stored as section_key (groups a table's cells for the review page)
   - row_idx/col_idx: table rows only; graph rows leave them empty
+  - page_num:  1-based PDF page the table/figure appears on; always set
 
 Auth/retry: service-role key from var/supabase.env, the `apikey` header (PostgREST
 401s without it), and a small backoff on transient 5xx/429. stdlib only.
 
 Usage:
-    python3 upload_metrics.py <result.csv> <source-url> <kind>
-    kind: "html" or "pdf"
+    python3 upload_metrics.py <result.csv> <source-url> <num_pages_total>
 """
 
 import csv
@@ -27,7 +27,7 @@ import urllib.request
 
 ENV_PATH = pathlib.Path("var/supabase.env")
 _TEXT = ("model", "condition", "benchmark", "value", "units")
-_INT = ("row_idx", "col_idx")
+_INT = ("row_idx", "col_idx", "page_num")
 
 
 def _env() -> dict[str, str]:
@@ -66,7 +66,7 @@ def _req(method: str, url: str, headers: dict[str, str], data: bytes | None = No
     raise RuntimeError("unreachable")
 
 
-def upsert_source(env: dict[str, str], origin_url: str, kind: str) -> int:
+def upsert_source(env: dict[str, str], origin_url: str, num_pages_total: int) -> int:
     """Upsert a sources row (by origin_url) and return its id."""
     url = f"{env['SUPABASE_URL']}/rest/v1/sources?on_conflict=origin_url"
     headers = {
@@ -75,7 +75,7 @@ def upsert_source(env: dict[str, str], origin_url: str, kind: str) -> int:
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=representation",
     }
-    body = json.dumps([{"origin_url": origin_url, "kind": kind}]).encode()
+    body = json.dumps([{"origin_url": origin_url, "num_pages_total": num_pages_total}]).encode()
     result = json.loads(_req("POST", url, headers, body))
     return int(result[0]["id"])
 
@@ -93,9 +93,9 @@ def _metric_row(record: dict[str, str], source_id: int) -> dict[str, object]:
     return out
 
 
-def upload(csv_path: pathlib.Path, source_url: str, kind: str) -> int:
+def upload(csv_path: pathlib.Path, source_url: str, num_pages_total: int) -> int:
     env = _env()
-    source_id = upsert_source(env, source_url, kind)
+    source_id = upsert_source(env, source_url, num_pages_total)
     with csv_path.open(newline="") as f:
         rows = [_metric_row(rec, source_id) for rec in csv.DictReader(f)]
     if not rows:
@@ -118,7 +118,7 @@ def main(argv: list[str]) -> int:
     if len(argv) != 4:
         print(__doc__)
         return 2
-    upload(pathlib.Path(argv[1]), argv[2], argv[3])
+    upload(pathlib.Path(argv[1]), argv[2], int(argv[3]))
     return 0
 
 

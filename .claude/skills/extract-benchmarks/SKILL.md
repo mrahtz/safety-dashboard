@@ -6,17 +6,16 @@ description: Ingest a model/system card or web page and extract every benchmark 
 # Extracting benchmark results from a card or web page
 
 You are the reader. Given one source (a model/system card, a paper, or a web
-page — as a URL, a PDF, or a local file/image), pull **every** benchmark number
-out of its **tables** and its **number-labeled graphs**, normalize the names,
-verify the result, and stage it to Supabase. The output is a CSV with these
-exact columns:
+page — as a URL or a PDF), pull **every** benchmark number out of its **tables**
+and its **number-labeled graphs**, normalize the names, verify the result, and
+stage it to Supabase. The output is a CSV with these exact columns:
 
 ```
-model,condition,benchmark,value,units,fig_num,row_idx,col_idx
+model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
 ```
 
 Work in a scratch dir (e.g. `var/extract/<source-slug>/`) — keep the source,
-the page/figure images, and the CSV together so the verify pass can re-look.
+the page images, and the CSV together so the verify pass can re-look.
 
 ## 0. Credentials — set up `var/supabase.env` if missing
 
@@ -66,12 +65,14 @@ verify pass instead of polluting the canon files.
 
 Whatever the input, turn it into something you can actually read closely:
 
+- **PDF.** Rasterize the pages to PNGs and read the images (graphs only exist as
+  pixels): `pdftoppm -png -r 150 card.pdf page` → `page-01.png`, … Read each
+  page image. The filename suffix (zero-padded, e.g. `01`) gives the 1-based
+  `page_num` for every table/figure on that page.
 - **Web page (HTML).** The DOM has exact values — prefer them over a screenshot.
   Fetch the page (WebFetch, or `curl -sL <url> -o page.html`) and read the raw
   table markup. Also grab a rendered screenshot if the layout/graphs matter.
-- **PDF.** Rasterize the pages to PNGs and read the images (graphs only exist as
-  pixels): `pdftoppm -png -r 150 card.pdf page` → `page-01.png`, … Read each
-  page image.
+  HTML sources do not produce page images; leave `page_num` empty for all rows.
 - **Local file / image.** Read it directly.
 
 Read the **whole** source before you decide you're done — tables and graphs are
@@ -92,6 +93,7 @@ benchmark) data point. Column rules:
 | `fig_num` | **always set** (tables *and* graphs): the table/figure number the row came from. Use the source's printed number (Table 3 → `3`, Figure 2 → `2`); if the source doesn't number them, count from `1` in reading order — tables and figures each in their own sequence. |
 | `row_idx` | **tables only**: 0-based row of the cell within its table (so the table can be reconstructed). Empty for graph rows. |
 | `col_idx` | **tables only**: 0-based column of the cell within its table. Empty for graph rows. |
+| `page_num` | **PDF sources**: 1-based page number the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`, etc.). Empty for non-PDF sources. |
 
 So **every** row carries a `fig_num` identifying its source table/figure; a
 **table** row additionally sets `row_idx`/`col_idx`, a **graph** row leaves them
@@ -122,7 +124,8 @@ Do **not** trust the first pass. Loop:
 
 1. **Double-check every number.** Go cell-by-cell / point-by-point back to the
    source image or DOM and confirm the `value` (and its `units`, `condition`,
-   `fig_num`, and for tables its `row_idx`/`col_idx`) matches. Fix any mismatch.
+   `fig_num`, `page_num`, and for tables its `row_idx`/`col_idx`) matches. Fix
+   any mismatch.
 2. **Double-check every name** (`benchmark` and `model`). For each, confirm:
    - it **matches what the paper actually calls it** (right eval, right model —
      not a look-alike);
@@ -138,55 +141,44 @@ Do **not** trust the first pass. Loop:
 Briefly note in your reply what you changed between passes (e.g. "pass 2 fixed 3
 transposed digits and renamed `GPQA` → `GPQA Diamond`").
 
-## 5. Upload to Supabase (`sources` + `metrics` tables)
+## 5. Upload to Supabase (`sources` + `metrics` tables, page images to Storage)
 
 The two live tables are `sources` (one row per card) and `metrics` (one row per
 data point). The upload script upserts into `sources` first (idempotent by
 `origin_url`), gets back the `source_id`, then inserts all `metrics` rows with
 `accepted = false`. A reviewer flips sections to `accepted = true` in
-`review.html`; the dashboard's "trusted only" view is driven by that boolean —
-there is no separate reviews or pending table.
+`review.html`; the dashboard's "trusted only" view is driven by that boolean.
 
 The `sources` + `metrics` schema lives in `supabase/metrics.sql`; if the tables
 don't exist yet, run that file once via the Management API (`sbp_…` token +
 `curl`, see CLAUDE.md "Keys & secrets").
 
-**Every run:**
+**Set up variables:**
+```bash
+SLUG=<slug>          # short identifier, e.g. gemini-2-5-pro
+SOURCE_URL=<url>     # the canonical source URL
+```
 
+**Count pages (PDF only):**
+```bash
+NUM_PAGES=$(ls var/extract/$SLUG/page-*.png | wc -l)
+```
+
+**Create Storage bucket (idempotent — safe to re-run):**
+```bash
+python3 .claude/skills/extract-benchmarks/create_bucket.py
+```
+
+**Upload metrics** (prints `source_id=<N>` — note the number):
 ```bash
 python3 .claude/skills/extract-benchmarks/upload_metrics.py \
-  var/extract/<slug>/result.csv  "<source-url>"  <kind>
-# kind: "html" or "pdf"
+  var/extract/$SLUG/result.csv "$SOURCE_URL" $NUM_PAGES
 ```
 
-The script reads `var/supabase.env`, upserts `sources`, maps the CSV
-(`fig_num` → `section_key`), and inserts into `metrics`.
-
-**For HTML sources — also store the card HTML in `sources.html`** so the review
-page can embed it (live sources refuse framing). Inject `<base href="<origin>/">`
-after `<head>` so root-relative assets resolve, then patch the `sources` row:
-
+**Upload page images** (PDF only; substitute `<N>` with the source_id printed above):
 ```bash
-python3 - "$SOURCE_URL" var/extract/<slug>/page.html <<'PY'
-import json, sys, urllib.parse, pathlib, urllib.request, urllib.error
-url, html_path = sys.argv[1], sys.argv[2]
-origin = "{0.scheme}://{0.netloc}/".format(urllib.parse.urlparse(url))
-html = pathlib.Path(html_path).read_text(encoding="utf-8").replace(
-    "<head>", '<head><base href="%s">' % origin, 1)
-env = dict(l.split("=",1) for l in pathlib.Path("var/supabase.env").read_text().splitlines() if "=" in l)
-body = json.dumps([{"origin_url": url, "kind": "html", "html": html}]).encode()
-req = urllib.request.Request(
-    env["SUPABASE_URL"] + "/rest/v1/sources?on_conflict=origin_url", data=body, method="POST",
-    headers={"Authorization": "Bearer " + env["SUPABASE_SERVICE_ROLE"],
-             "apikey": env["SUPABASE_SERVICE_ROLE"], "Content-Type": "application/json",
-             "Prefer": "resolution=merge-duplicates,return=minimal"})
-urllib.request.urlopen(req, timeout=60)
-print("sources.html updated")
-PY
+python3 .claude/skills/extract-benchmarks/upload_pages.py $SLUG <N>
 ```
-
-(For PDF sources, `sources.html` stays null and the iframe falls back to the live
-URL — PDFs frame fine.)
 
 ## Done
 

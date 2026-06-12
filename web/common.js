@@ -81,7 +81,7 @@ async function sbGetAll(table, select) {
 async function loadMetrics() {
   return sbGetAll("metrics",
     "id,source_id,model,condition,benchmark,value,units,row_idx,col_idx,accepted," +
-    "section_key,sources(origin_url)");
+    "section_key,page_num,sources(origin_url,num_pages_total)");
 }
 
 function effectiveStatus(cand) {

@@ -3,12 +3,12 @@
 <title>LLM safety-metrics — review</title>
 <style>
  main{max-width:none}
- .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
- .left{position:sticky;top:14px;height:calc(100vh - 96px)}
- .left .frame-wrap{width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;border:1px solid #c9d2df;border-radius:10px;background:#fff}
- .left iframe{width:100%;height:100%;border:none}
- .left .framenote{font-size:12px;color:#566;margin:6px 2px}
- .right{min-width:0}
+ .page-row{display:grid;grid-template-columns:420px 1fr;gap:14px;margin-bottom:24px;align-items:start}
+ .page-left{position:sticky;top:14px}
+ .page-left img{width:100%;border:1px solid #c9d2df;border-radius:8px;display:block;background:#f8fafc}
+ .page-left .page-label{font-size:12px;color:#566;text-align:center;margin-top:4px}
+ .page-left.no-img{border:1px dashed #c9d2df;border-radius:8px;padding:40px 20px;text-align:center;color:#899;font-size:13px}
+ .page-right{min-width:0}
  .grp{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px;margin:0 0 14px}
  .ghead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
  .grp h3{margin:0 0 2px;font-size:15px;display:inline}
@@ -32,10 +32,11 @@
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — table-level sign-off</div>
-   <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
-     extractor pulled from it stacks on the right. <b>Accept</b> a table to mark all its numbers as
-     trusted — they'll show on the dashboard. <b>Undo</b> to revert. Accepted numbers show in blue on
-     the main dashboard; unaccepted show in yellow.</div>
+   <div class=muted>Sign in to review. Each PDF page is shown on the left; the tables and
+     graphs extracted from that page stack on the right, aligned to their page.
+     <b>Accept</b> a table to mark all its numbers as trusted — they'll show on the
+     dashboard. <b>Undo</b> to revert. Accepted numbers show in blue on the main
+     dashboard; unaccepted show in yellow.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
@@ -44,26 +45,18 @@
    <span style="margin-left:auto" class=muted><span id=who></span> · <a href=# onclick="signOut();return false">sign out</a></span>
  </div>
  <div id=gate class=card>Loading…</div>
- <div id=app class=split style=display:none>
-   <div class=left>
-     <div class=frame-wrap>
-       <iframe id=frame sandbox="allow-same-origin" referrerpolicy=no-referrer></iframe>
-     </div>
-     <div class=framenote></div>
-   </div>
-   <div class=right id=groups></div>
+ <div id=app style=display:none>
+   <div id=pages></div>
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260611b"></script>
+<script src="common.js?v=20260612"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
-const SRC = new Map();   // origin_url -> {kind, html} stored-source preview (or null)
 
 async function boot() {
   mountChrome("review.html");
-  // Delegated handler for the Accept/Undo buttons (rebuilt on every render).
-  document.getElementById("groups").addEventListener("click", e => {
+  document.getElementById("pages").addEventListener("click", e => {
     const btn = e.target.closest("button.dec");
     if (!btn || btn.disabled) return;
     decide(Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
@@ -112,7 +105,6 @@ async function loadData() {
   regroup();
 }
 
-// Group every metric by its source URL, then (re)build the dropdown + render.
 function regroup() {
   const prev = document.getElementById("src").value;
   BY_SOURCE = groupBySource(METRICS);
@@ -134,56 +126,71 @@ function regroup() {
   render();
 }
 
-// Section groups for a source, ordered by section_key. A group is a "table" if any
-// of its rows has a row_idx (graphs leave row_idx/col_idx null).
+// Section groups for a source, ordered by section_key. Returns array of group
+// objects, each carrying page_num so render() can group them by page.
 function groupsFor(url) {
   return [...groupBySection(BY_SOURCE.get(url) || []).entries()]
-    .map(([section_key, cells]) => ({ section_key, cells, isTable: cells.some(c => c.row_idx != null) }))
+    .map(([section_key, cells]) => ({
+      section_key, cells,
+      isTable: cells.some(c => c.row_idx != null),
+      page_num: cells[0]?.page_num ?? null,
+    }))
     .sort((a, b) => String(a.section_key).localeCompare(String(b.section_key), undefined, { numeric: true }));
 }
 
 function render() {
   const url = document.getElementById("src").value;
   document.getElementById("openlink").href = url;
-  updateFrame(url);
+  const allCells = BY_SOURCE.get(url) || [];
+  const sourceId = allCells[0]?.source_id;
+  const numPages = allCells[0]?.sources?.num_pages_total ?? null;
   const groups = groupsFor(url);
-  const nNums = (BY_SOURCE.get(url) || []).length;
+  const nNums = allCells.length;
   document.getElementById("count").textContent =
     `${groups.filter(g => g.isTable).length} tables · ${groups.filter(g => !g.isTable).length} graphs · ${nNums} numbers`;
-  document.getElementById("groups").innerHTML = groups.map((g, i) => renderGroup(url, g, i)).join("");
-}
 
-// The original card, served from our own `cards` table so an HTML source always
-// embeds (no X-Frame-Options): the skill stores the page HTML (with a <base href>
-// injected) when it ingests. Falls back to embedding the live URL if we have no
-// stored copy (e.g. a PDF source, which frames fine on its own).
-async function sourceDoc(url) {
-  if (SRC.has(url)) return SRC.get(url);
-  let rec = null;
-  try {
-    const { data } = await sb.from("sources").select("kind,html").eq("origin_url", url).maybeSingle();
-    if (data?.html) rec = { kind: "html", html: data.html };
-  } catch (e) { console.warn("source unavailable:", e.message); }
-  SRC.set(url, rec);
-  return rec;
-}
-
-async function updateFrame(url) {
-  const frame = document.getElementById("frame"), note = document.querySelector(".left .framenote");
-  const rec = await sourceDoc(url);
-  if (document.getElementById("src").value !== url) return;   // selection changed while fetching
-  if (rec?.kind === "html") {
-    frame.removeAttribute("src");
-    frame.srcdoc = rec.html;
-    note.textContent = "Stored copy of the original (HTML), served from Supabase, so it always embeds.";
-  } else {
-    frame.removeAttribute("srcdoc");
-    frame.src = url;
-    note.textContent = "No stored copy — embedding the live source, which may refuse to load. Use “open original ↗”.";
+  // Map page_num → [groups] for that page.
+  const byPage = new Map();
+  for (const g of groups) {
+    const key = g.page_num;
+    if (!byPage.has(key)) byPage.set(key, []);
+    byPage.get(key).push(g);
   }
+
+  // Build the list of page numbers to render. If we know the total, show every
+  // page (including ones with no extracted content). Otherwise just show pages
+  // that have content (null page_num groups go last).
+  let pageNums;
+  if (numPages != null) {
+    pageNums = Array.from({ length: numPages }, (_, i) => i + 1);
+    // Append any groups with null page_num at the end.
+    if (byPage.has(null)) pageNums.push(null);
+  } else {
+    pageNums = [...byPage.keys()].sort((a, b) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return a - b;
+    });
+  }
+
+  document.getElementById("pages").innerHTML = pageNums.map(pageNum => {
+    const imgUrl = pageNum != null && sourceId
+      ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${sourceId}/page-${pageNum}.png`
+      : null;
+    const leftHtml = imgUrl
+      ? `<div class="page-left">
+           <img src="${esc(imgUrl)}" alt="Page ${pageNum}"
+                onerror="this.closest('.page-left').classList.add('no-img');this.remove()">
+           <div class="page-label">Page ${pageNum}</div>
+         </div>`
+      : `<div class="page-left no-img">Page unknown</div>`;
+    const pageGroups = byPage.get(pageNum) || [];
+    const rightHtml = `<div class="page-right">${pageGroups.map(g => renderGroup(g)).join("")}</div>`;
+    return `<div class="page-row">${leftHtml}${rightHtml}</div>`;
+  }).join("");
 }
 
-function renderGroup(url, g, i) {
+function renderGroup(g) {
   const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
   const kind = g.isTable
     ? `<span class=kind>Table</span>`
@@ -197,8 +204,7 @@ function renderGroup(url, g, i) {
     </div>`;
   const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
   const sourceId = g.cells[0]?.source_id;
-  // section_key carries via a data-* attribute (HTML-escaped) rather than being
-  // interpolated into a JS-string onclick, so odd characters can't break out.
+  // section_key carried via data-* (HTML-escaped) so odd characters can't break out.
   const data = `data-source="${sourceId}" data-section="${esc(String(g.section_key))}"`;
   const bar = `<div class=bar>
       <button class="dec acc" ${data} data-accept="1"${allAccepted ? " disabled" : ""}>Accept</button>
@@ -207,7 +213,6 @@ function renderGroup(url, g, i) {
   return `<div class=grp>${head}${grid}${bar}</div>`;
 }
 
-// Flip accepted on all rows in a section, then re-render.
 async function decide(sourceId, sectionKey, accepted) {
   const { error } = await sb.from("metrics")
     .update({ accepted })
@@ -220,7 +225,6 @@ async function decide(sourceId, sectionKey, accepted) {
   render();
 }
 
-// Descriptive tokens of a cell, used to derive row/column headers.
 function tokensOf(c) {
   return [c.model && "m:" + c.model, c.benchmark && "b:" + c.benchmark,
     ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s)]
@@ -229,9 +233,6 @@ function tokensOf(c) {
 const intersect = sets => sets.length ? sets.reduce((a, b) => a.filter(x => b.includes(x))) : [];
 const stripPfx = arr => arr.map(t => t.slice(2)).join(" · ");
 
-// Redraw a table in its original layout: each value sits at (row_idx,col_idx).
-// Row/column headers are derived from the metadata that is constant down a column
-// (model, reasoning effort…) or across a row (benchmark, language, metric…).
 function reconTable(cells) {
   const rows = [...new Set(cells.map(c => c.row_idx))].sort((a, b) => a - b);
   const cols = [...new Set(cells.map(c => c.col_idx))].sort((a, b) => a - b);
@@ -243,8 +244,6 @@ function reconTable(cells) {
     .filter(t => !tableWide.includes(t)));
   rows.forEach(r => rowHdr[r] = intersect(cells.filter(x => x.row_idx === r).map(tokensOf))
     .filter(t => !tableWide.includes(t)));
-  // tableWide tokens (e.g. the single benchmark) are already shown in the group
-  // subtitle, so the grid itself starts straight at the header row.
   let html = "<table class=recon><tr><th></th>" +
     cols.map(c => `<th>${esc(stripPfx(colHdr[c])) || ("col " + c)}</th>`).join("") + "</tr>";
   for (const r of rows) {
@@ -259,7 +258,6 @@ function reconTable(cells) {
   return html + "</table>";
 }
 
-// Graphs: one row per data point, in the long-format schema.
 function schemaTable(cells) {
   let html = "<table class=schema><tr><th>model<th>condition<th>benchmark<th>value<th>units</tr>";
   for (const c of cells) {
