@@ -76,7 +76,7 @@ if it's missing (e.g. a fresh container), install it first
 
 ```bash
 curl -sL <url> -o var/extract/$SLUG/card.pdf
-pdftoppm -png -r 150 var/extract/$SLUG/card.pdf var/extract/$SLUG/page
+pdftoppm -png -r 300 var/extract/$SLUG/card.pdf var/extract/$SLUG/page
 # → page-01.png, page-02.png, …
 ```
 
