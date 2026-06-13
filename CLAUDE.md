@@ -106,10 +106,17 @@ failed deploy — check the Actions run / `curl` the page before assuming infra.
 
 | Key | Used for | Where it lives |
 | --- | --- | --- |
-| **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). |
+| **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). In the remote Claude Code environment also available as the `SUPABASE_SERVICE_ROLE_KEY` env var. |
 | **Supabase `anon`** | public read-only key shipped in `web/common.js`. | hardcoded in `web/common.js` (safe to publish). |
-| **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `var/supabase.env`; `web/common.js`. |
+| **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `var/supabase.env`; `web/common.js`. In the remote Claude Code environment also available as the `SUPABASE_URL` env var. |
 | **Supabase personal token** (`sbp_…`) | Management API only — run DDL/migrations via `curl`. | In the remote Claude Code environment this is available as `SUPABASE_ACCESS_TOKEN` env var. Otherwise generate at supabase.com/dashboard/account/tokens. |
+
+In the remote Claude Code environment, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+and `SUPABASE_ACCESS_TOKEN` are present as env vars, so a fresh container needs no
+`var/supabase.env` written by hand. The `check-site` skill reads `var/supabase.env`
+but falls back to `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` from the environment.
+(Note the env var is `SUPABASE_SERVICE_ROLE_KEY`; `var/supabase.env` and the upload
+scripts use the name `SUPABASE_SERVICE_ROLE` — same value, different name.)
 
 Sharp edges: `sbp_…` tokens don't work as a PostgREST `apikey` (Management API
 only). `service_role`/`sb_secret_…` keys can't run DDL. PostgREST needs the

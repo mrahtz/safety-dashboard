@@ -3,13 +3,14 @@
 console errors, uncaught exceptions, failed network requests, and visible
 "load failed" states, screenshots each page, and exits non-zero if anything
 looks wrong. Also does an authenticated check of review.html via a Supabase
-Admin magic link (requires var/supabase.env).
+Admin magic link (reads var/supabase.env, or the SUPABASE_* env vars).
 
 Usage:  python3 .claude/skills/check-site/check_site.py [BASE_URL]
         BASE_URL defaults to the production custom domain.
 """
 import glob
 import json
+import os
 import pathlib
 import sys
 import urllib.request
@@ -34,15 +35,25 @@ def find_browser() -> str | None:
 
 
 def load_supabase_env() -> dict[str, str]:
-    env_file = REPO_ROOT / "var" / "supabase.env"
-    if not env_file.exists():
-        return {}
+    """Supabase creds for the authenticated review check. Reads var/supabase.env
+    if present, then falls back to the environment (the remote Claude Code env
+    ships SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY directly), so the check
+    works in a fresh container with no var/supabase.env written yet."""
     result = {}
-    for line in env_file.read_text().splitlines():
-        if "=" in line and not line.startswith("#"):
-            k, _, v = line.partition("=")
-            result[k.strip()] = v.strip()
-    return result
+    env_file = REPO_ROOT / "var" / "supabase.env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if "=" in line and not line.startswith("#"):
+                k, _, v = line.partition("=")
+                result[k.strip()] = v.strip()
+    # Fill any gaps from the environment. SUPABASE_SERVICE_ROLE_KEY is the name
+    # used in the remote env; map it onto the SUPABASE_SERVICE_ROLE this script
+    # (and var/supabase.env) expects.
+    result.setdefault("SUPABASE_URL", os.environ.get("SUPABASE_URL", "").strip())
+    result.setdefault("SUPABASE_SERVICE_ROLE",
+                      (os.environ.get("SUPABASE_SERVICE_ROLE")
+                       or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")).strip())
+    return {k: v for k, v in result.items() if v}
 
 
 def check_review_authenticated(ctx, base_url: str) -> list[tuple[str, str]]:
