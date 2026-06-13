@@ -1,6 +1,6 @@
 ---
 name: extract-benchmarks
-description: Ingest a model/system card **PDF** and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and upload it to the Supabase `metrics` table (accepted=false, pending reviewer sign-off). Use when the user gives you a card/paper (a PDF, or a web page you first print to PDF) and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
+description: Ingest a model/system card **PDF** and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and upload it to the Supabase `metrics` table (accepted=false, pending reviewer sign-off). Use when the user gives you a card PDF and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. **PDF files only — web pages are not supported.** Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
 ---
 
 # Extracting benchmark results from a card PDF
@@ -10,11 +10,11 @@ paper), pull **every** benchmark number out of its **tables** and its
 **number-labeled graphs**, normalize the names, verify the result, and stage it
 to Supabase. The output is a CSV with these exact columns:
 
-> **PDF only.** This skill supports paginated PDF sources exclusively — the
-> review page pairs each PDF page image with the tables/figures extracted from
-> it, so every source must paginate. If the source is a web page, **print it to
-> PDF first** (§2) and treat the PDF as the source. There is no HTML/DOM path
-> and no "page_num empty" case: every row gets a real `page_num`.
+> **PDF files only.** This skill ingests PDF sources exclusively. Web pages are
+> not supported. If you only have a URL and no PDF, stop and tell the user —
+> do not attempt to print the page to PDF. The review page pairs each PDF page
+> image with the tables/figures extracted from it; every row must have a real
+> `page_num`.
 
 ```
 model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
@@ -67,28 +67,13 @@ are confident are the real canonical form — never invent canon to make a row
 fit. If you are unsure, leave the row's name as-written and flag it in the
 verify pass instead of polluting the canon files.
 
-## 2. Get the source as a PDF, then rasterize to page images
+## 2. Download the PDF, then rasterize to page images
 
-The source must be a **PDF** so it paginates. Get one, then rasterize every page
-to a PNG and read the images (graphs only exist as pixels):
-
-- **Already a PDF (URL or file).** Download if needed:
-  `curl -sL <url> -o var/extract/$SLUG/card.pdf`.
-- **A web page.** Print it to PDF with headless Chromium first, then proceed as a
-  PDF. Use the same Chromium that Playwright ships (see check-site skill for the
-  binary path) or any `chrome`/`chromium`:
-
-  ```bash
-  chromium --headless --no-sandbox --disable-gpu \
-    --print-to-pdf=var/extract/$SLUG/card.pdf "<url>"
-  ```
-
-  If a page lazy-loads content or paginates awkwardly, drive it with Playwright
-  and call `page.pdf(path=..., print_background=True)` after the content settles.
-
-Then rasterize:
+Download the PDF if needed, then rasterize every page to a PNG and read the
+images (graphs only exist as pixels):
 
 ```bash
+curl -sL <url> -o var/extract/$SLUG/card.pdf
 pdftoppm -png -r 150 var/extract/$SLUG/card.pdf var/extract/$SLUG/page
 # → page-01.png, page-02.png, …
 ```

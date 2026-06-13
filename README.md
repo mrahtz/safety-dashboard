@@ -17,9 +17,9 @@ in Supabase; every number is tied back to the source card and table it came from
   reviewer flips it to `true` in `review.html` and the row then shows on the
   dashboard. No staging or pipeline.
 - **Ingestion** — human-driven via the `extract-benchmarks` skill
-  (`.claude/skills/extract-benchmarks/`): point it at a card PDF (or a web page
-  to print to PDF), it extracts every benchmark result, normalizes names, uploads
-  per-page images to Supabase Storage, and inserts rows to `metrics`.
+  (`.claude/skills/extract-benchmarks/`): point it at a card **PDF**, it extracts
+  every benchmark result, normalizes names, uploads per-page images to Supabase
+  Storage, and inserts rows to `metrics`. Web pages are not supported.
 - **Deploy** — `.github/workflows/pages.yml` publishes `web/` to GitHub Pages on
   every push to `main`.
 

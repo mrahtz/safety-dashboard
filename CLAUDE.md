@@ -8,11 +8,11 @@ Serves three static dashboards from `web/` backed by Supabase. Benchmark data
 enters via the `extract-benchmarks` skill (human-driven, not automated).
 
 **Data path:** use `/extract-benchmarks` skill with a model/system card **PDF**
-(or a web page printed to PDF first) → extracts every benchmark result, stores
-per-page PNG images in Supabase Storage → upserts a `sources` row then inserts
-`metrics` rows with `accepted = false` → reviewer accepts each table in
-`review.html` (flips `accepted = true` directly on the rows) → trusted rows
-show on the dashboard. Two tables, one boolean, no staging.
+— **PDF files only, web pages are not supported** → extracts every benchmark
+result, stores per-page PNG images in Supabase Storage → upserts a `sources`
+row then inserts `metrics` rows with `accepted = false` → reviewer accepts each
+table in `review.html` (flips `accepted = true` directly on the rows) → trusted
+rows show on the dashboard. Two tables, one boolean, no staging.
 
 ## Repo map
 
@@ -28,7 +28,7 @@ show on the dashboard. Two tables, one boolean, no staging.
 
 Run the `/extract-benchmarks` skill. It will:
 1. Check for `var/supabase.env`; if missing, ask for credentials and write it.
-2. Get the source as a PDF (download it, or print a web page to PDF with headless Chromium/Playwright), rasterize every page to a PNG, and read every page image.
+2. Download the PDF, rasterize every page to a PNG with `pdftoppm`, and read every page image.
 3. Extract every benchmark number from the page images into a normalized CSV.
 4. Verify the CSV in a double-check loop.
 5. Upload: upsert the `sources` row, insert all `metrics` rows (`accepted=false`), upload page PNGs to the `page-images` Storage bucket.
