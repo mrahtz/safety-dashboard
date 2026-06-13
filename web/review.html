@@ -3,40 +3,57 @@
 <title>LLM safety-metrics — review</title>
 <style>
  main{max-width:none}
- .page-row{display:grid;grid-template-columns:420px 1fr;gap:14px;margin-bottom:24px;align-items:start}
- .page-left{position:sticky;top:14px}
- .page-left img{width:100%;border:1px solid #c9d2df;border-radius:8px;display:block;background:#f8fafc}
- .page-left .page-label{font-size:12px;color:#566;text-align:center;margin-top:4px}
- .page-left.no-img{border:1px dashed #c9d2df;border-radius:8px;padding:40px 20px;text-align:center;color:#899;font-size:13px}
- .page-right{min-width:0}
- .grp{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px;margin:0 0 14px}
- .ghead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
- .grp h3{margin:0 0 2px;font-size:15px;display:inline}
- .grp .sub{color:#566;font-size:12px;margin:2px 0 8px}
- .grp .kind{font-size:11px;padding:1px 7px;border-radius:10px;background:#eef1f5;color:#445;margin-left:6px;vertical-align:middle}
+
+ /* Page section: fixed-height card — pinch-zoom image left, scrollable groups right. */
+ .page-section{display:flex;background:#fff;border:1px solid #d7dee8;border-radius:10px;
+   overflow:hidden;height:460px;margin-bottom:16px}
+
+ /* Left: pinch-zoom + pan image panel. panzoom handles the gesture and applies it as a
+    transform to the <img>, so a pinch zooms the page render inside THIS panel only —
+    never the whole document. touch-action:none stops the browser hijacking the pinch. */
+ .img-panel{width:48%;flex-shrink:0;border-right:1px solid #d7dee8;overflow:hidden;
+   touch-action:none;position:relative;background:#f8fafc}
+ .img-panel img{width:100%;height:100%;object-fit:contain;display:block;
+   transform-origin:0 0;will-change:transform;user-select:none;-webkit-user-drag:none;cursor:grab}
+ .page-badge{position:absolute;top:8px;left:8px;z-index:5;display:inline-block;
+   background:rgba(11,19,32,.72);color:#fff;font-size:11px;font-weight:600;
+   padding:2px 8px;border-radius:8px;pointer-events:none}
+
+ /* Right: independently scrollable column of groups. */
+ .groups-panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-width:0}
+
+ .grp{border:1px solid #d7dee8;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+ .grp:last-child{margin-bottom:0}
+ .grp-head{margin-bottom:6px}
+ .grp-head h3{margin:0;font-size:13px;display:inline}
+ .grp .kind{font-size:10px;padding:1px 5px;border-radius:8px;background:#eef1f5;color:#445;
+   margin-left:4px;vertical-align:middle}
  .kind.g{background:#fff3da;color:#8a5a00}
- table.recon,table.schema{border-collapse:collapse;font-size:12px;width:100%}
- table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;padding:4px 7px;text-align:left;vertical-align:top}
+ .grp .sub{color:#566;font-size:10px;margin:3px 0 6px;line-height:1.4}
+ .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ table.recon,table.schema{border-collapse:collapse;font-size:11px;width:100%}
+ table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;
+   padding:4px 6px;text-align:left;vertical-align:top}
  table.recon th,table.schema th{background:#f3f6fb;font-weight:600}
  table.recon td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
  table.recon th.rh{background:#f8fafc;font-weight:600;white-space:nowrap}
- .wrap{overflow-x:auto}
+ .action-bar{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
+ button.acc{background:#0a7d28;border:none;color:#fff;padding:7px 18px;border-radius:6px}
+ button.rej{background:#8a5a00;border:none;color:#fff;padding:7px 18px;border-radius:6px}
+ button.dec:disabled{opacity:.4;cursor:default}
  .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
  .login{max-width:420px}
  .note{min-width:240px}
  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
- button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
- button.rej{background:#8a5a00;border-color:#8a5a00;color:#fff;white-space:nowrap}
- button.dec:disabled{opacity:.4;cursor:default}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — table-level sign-off</div>
-   <div class=muted>Sign in to review. Each PDF page is shown on the left; the tables and
-     graphs extracted from that page stack on the right, aligned to their page.
-     <b>Accept</b> a table to mark all its numbers as trusted — they'll show on the
-     dashboard. <b>Undo</b> to revert. Accepted numbers show in blue on the main
-     dashboard; unaccepted show in yellow.</div>
+   <div class=muted>Sign in to review. Each PDF page is shown on the left (pinch or
+     scroll-wheel to zoom, drag to pan); the tables and graphs extracted from that page
+     scroll alongside it on the right. <b>Accept</b> a table to mark all its numbers as
+     trusted — they'll show on the dashboard. <b>Undo</b> to revert. Accepted numbers
+     show in blue on the main dashboard; unaccepted show in yellow.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
@@ -50,6 +67,7 @@
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
 <script src="common.js?v=20260612"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
@@ -59,7 +77,7 @@ async function boot() {
   document.getElementById("pages").addEventListener("click", e => {
     const btn = e.target.closest("button.dec");
     if (!btn || btn.disabled) return;
-    decide(Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
+    decide(btn, Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
   });
   sb = supabase.createClient(SUPABASE_URL, ANON);
   const { data: { session } } = await sb.auth.getSession();
@@ -138,6 +156,16 @@ function groupsFor(url) {
     .sort((a, b) => String(a.section_key).localeCompare(String(b.section_key), undefined, { numeric: true }));
 }
 
+// Refresh the picker's "N tables · N graphs · X/Y accepted" tally for a source.
+function updateCount(url) {
+  const groups = groupsFor(url);
+  const nT = groups.filter(g => g.isTable).length;
+  const nF = groups.filter(g => !g.isTable).length;
+  const nA = groups.filter(g => g.cells.every(c => c.accepted)).length;
+  document.getElementById("count").textContent =
+    `${nT} tables · ${nF} graphs · ${nA}/${nT + nF} accepted`;
+}
+
 function render() {
   const url = document.getElementById("src").value;
   document.getElementById("openlink").href = url;
@@ -145,9 +173,7 @@ function render() {
   const sourceId = allCells[0]?.source_id;
   const numPages = allCells[0]?.sources?.num_pages_total ?? null;
   const groups = groupsFor(url);
-  const nNums = allCells.length;
-  document.getElementById("count").textContent =
-    `${groups.filter(g => g.isTable).length} tables · ${groups.filter(g => !g.isTable).length} graphs · ${nNums} numbers`;
+  updateCount(url);
 
   // Map page_num → [groups] for that page.
   const byPage = new Map();
@@ -157,13 +183,12 @@ function render() {
     byPage.get(key).push(g);
   }
 
-  // Build the list of page numbers to render. If we know the total, show every
-  // page (including ones with no extracted content). Otherwise just show pages
-  // that have content (null page_num groups go last).
+  // Order the pages: if we know the total, walk 1..N (null page_num groups last);
+  // otherwise just the pages we have. Then keep only pages with extracted content —
+  // blank pages are skipped so the reviewer scrolls through results, not whitespace.
   let pageNums;
   if (numPages != null) {
     pageNums = Array.from({ length: numPages }, (_, i) => i + 1);
-    // Append any groups with null page_num at the end.
     if (byPage.has(null)) pageNums.push(null);
   } else {
     pageNums = [...byPage.keys()].sort((a, b) => {
@@ -172,22 +197,34 @@ function render() {
       return a - b;
     });
   }
+  const activePageNums = pageNums.filter(n => byPage.has(n));
 
-  document.getElementById("pages").innerHTML = pageNums.map(pageNum => {
+  document.getElementById("pages").innerHTML = activePageNums.map(pageNum => {
     const imgUrl = pageNum != null && sourceId
       ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${sourceId}/page-${pageNum}.png`
       : null;
-    const leftHtml = imgUrl
-      ? `<div class="page-left">
-           <img src="${esc(imgUrl)}" alt="Page ${pageNum}"
-                onerror="this.closest('.page-left').classList.add('no-img');this.remove()">
-           <div class="page-label">Page ${pageNum}</div>
-         </div>`
-      : `<div class="page-left no-img">Page unknown</div>`;
-    const pageGroups = byPage.get(pageNum) || [];
-    const rightHtml = `<div class="page-right">${pageGroups.map(g => renderGroup(g)).join("")}</div>`;
-    return `<div class="page-row">${leftHtml}${rightHtml}</div>`;
+    const left = `<div class=img-panel>
+        <div class=page-badge>Page ${pageNum ?? "?"}</div>
+        ${imgUrl
+          ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}" onerror="this.style.display='none'">`
+          : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
+      </div>`;
+    const right = `<div class=groups-panel>${(byPage.get(pageNum) || []).map(renderGroup).join("")}</div>`;
+    return `<div class=page-section>${left}${right}</div>`;
   }).join("");
+
+  // Pinch-zoom + pan each page image, scoped to its own panel: panzoom does the
+  // gesture handling (pinch on touch, wheel / double-click on desktop) and applies
+  // the transform to just the <img>, so the page document itself never zooms.
+  document.querySelectorAll("#pages .img-panel img").forEach(img => {
+    if (img.dataset.pz) return;                // don't double-init on re-render
+    img.dataset.pz = "1";
+    panzoom(img, {
+      minZoom: 1, maxZoom: 8,                  // 1 = page fitted to panel; can't zoom out past it
+      bounds: true, boundsPadding: 0.15,       // keep the page from being dragged fully out
+      smoothScroll: false,
+    });
+  });
 }
 
 function renderGroup(g) {
@@ -197,23 +234,24 @@ function renderGroup(g) {
     : `<span class="kind g">Figure</span>`;
   const allAccepted = g.cells.every(c => c.accepted);
   const status = allAccepted ? "accepted" : "needs_review";
-  const badge = `<span class="flag s-${status}">${status}</span>`;
-  const head = `<div class=ghead>
-      <div><h3>${esc(String(g.section_key))}</h3> ${kind}
-        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${badge}</div></div>
-    </div>`;
-  const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
+  const badge = `<span class="flag s-${status}">${allAccepted ? "accepted" : "needs review"}</span>`;
   const sourceId = g.cells[0]?.source_id;
   // section_key carried via data-* (HTML-escaped) so odd characters can't break out.
   const data = `data-source="${sourceId}" data-section="${esc(String(g.section_key))}"`;
-  const bar = `<div class=bar>
+  return `<div class=grp>
+    <div class=grp-head>
+      <h3>${esc(String(g.section_key))}</h3>${kind}
+      <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${badge}</div>
+    </div>
+    <div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>
+    <div class=action-bar>
       <button class="dec acc" ${data} data-accept="1"${allAccepted ? " disabled" : ""}>Accept</button>
       <button class="dec rej" ${data} data-accept="0"${!allAccepted ? " disabled" : ""}>Undo</button>
-    </div>`;
-  return `<div class=grp>${head}${grid}${bar}</div>`;
+    </div>
+  </div>`;
 }
 
-async function decide(sourceId, sectionKey, accepted) {
+async function decide(btn, sourceId, sectionKey, accepted) {
   const { error } = await sb.from("metrics")
     .update({ accepted })
     .eq("source_id", sourceId)
@@ -222,7 +260,17 @@ async function decide(sourceId, sectionKey, accepted) {
   for (const c of METRICS) {
     if (c.source_id === sourceId && c.section_key === sectionKey) c.accepted = accepted;
   }
-  render();
+  // Re-render just this group's card so the page image keeps its pan/zoom state.
+  const url = document.getElementById("src").value;
+  const cells = (BY_SOURCE.get(url) || [])
+    .filter(c => c.source_id === sourceId && c.section_key === sectionKey);
+  const g = {
+    section_key: sectionKey, cells,
+    isTable: cells.some(c => c.row_idx != null),
+    page_num: cells[0]?.page_num ?? null,
+  };
+  btn.closest(".grp").outerHTML = renderGroup(g);
+  updateCount(url);
 }
 
 function tokensOf(c) {
