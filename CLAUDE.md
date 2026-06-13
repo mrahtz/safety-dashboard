@@ -18,11 +18,22 @@ rows show on the dashboard. Two tables, one boolean, no staging.
 
 - `web/` — `index.html` (matrix), `sources.html`, `review.html`, `db-state.html`, `common.js`.
   - `review-mobile-test.html` — standalone mobile/iPad layout mockup (not linked
-    from nav; reach by direct URL). Each PDF page image is pinch-zoom/pan via the
-    **panzoom** lib. Learning: pinch-zoom is a *top-level visual-viewport* gesture,
-    so it can't be scoped to one region with CSS or an `<iframe>` (an iframe
-    isolates scroll/pan, not zoom) — it must be intercepted in JS and applied as a
-    transform to the element.
+    from nav; reach by direct URL). The side-by-side card layout (pinch-zoom page
+    image left, scrollable extracted tables right) also ships in `review.html`.
+    Each PDF page image is pinch-zoom/pan via the **panzoom** lib. Learnings:
+    - pinch-zoom is a *top-level visual-viewport* gesture, so it can't be scoped
+      to one region with CSS or an `<iframe>` (an iframe isolates scroll/pan, not
+      zoom) — it must be intercepted in JS and applied as a transform to the element.
+    - **Do NOT put `will-change: transform` on the zoomed `<img>`.** It pins the
+      image to a GPU layer rasterized once at its small on-screen size (~the panel
+      width), so panzoom's `transform: scale()` just stretches that low-res bitmap
+      → **blurry zoom on iPad/WebKit, regardless of source image DPI** (Chromium
+      hides this by re-rasterizing; WebKit does not). Without `will-change` the
+      browser re-rasterizes from the full-res source as you zoom. Corollary:
+      raising the page-image render DPI does nothing for zoom sharpness until this
+      is fixed — the extra pixels are discarded before the transform. (We render
+      pages at 300 DPI, see the extract-benchmarks skill; that only pays off once
+      the zoom path actually samples the source.)
 - `supabase/` — Supabase DDL:
   - `metrics.sql` — canonical schema for `sources` + `metrics` tables.
   - `promote.sql` — reviewer UPDATE policy on `metrics`.
@@ -59,6 +70,13 @@ runs a headless browser check. A green Actions run is not proof the site works.
 a standalone page that doesn't touch `common.js` (e.g. `review-mobile-test.html`),
 poll that page's own HTML for a unique marker instead — HTML is uncached
 (`DYNAMIC`), so `curl … | grep <marker>` flips the moment the new build lands.
+
+**Marker must fit on ONE line.** `grep` matches line-by-line, so a marker that
+wraps across a newline in the served HTML never matches — the poll will "time
+out" forever even though the deploy succeeded in ~20s. Pick a short marker you can
+confirm sits on a single line (`grep -c <marker>` on the local file should return
+1), or use `grep -z`. A poll timeout almost always means a bad marker, not a
+failed deploy — check the Actions run / `curl` the page before assuming infra.
 
 ## Deploy facts
 
