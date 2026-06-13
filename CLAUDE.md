@@ -7,8 +7,9 @@ Guidance for an AI assistant (or human) working on safety-dashboard.
 Serves three static dashboards from `web/` backed by Supabase. Benchmark data
 enters via the `extract-benchmarks` skill (human-driven, not automated).
 
-**Data path:** use `/extract-benchmarks` skill with a model/system card URL or
-PDF → extracts every benchmark result → upserts a `sources` row then inserts
+**Data path:** use `/extract-benchmarks` skill with a model/system card **PDF**
+(or a web page printed to PDF first) → extracts every benchmark result, stores
+per-page PNG images in Supabase Storage → upserts a `sources` row then inserts
 `metrics` rows with `accepted = false` → reviewer accepts each table in
 `review.html` (flips `accepted = true` directly on the rows) → trusted rows
 show on the dashboard. Two tables, one boolean, no staging.
@@ -27,11 +28,12 @@ show on the dashboard. Two tables, one boolean, no staging.
 
 Run the `/extract-benchmarks` skill. It will:
 1. Check for `var/supabase.env`; if missing, ask for credentials and write it.
-2. Extract every benchmark number from the source into a normalized CSV.
-3. Verify the CSV in a double-check loop.
-4. Upload to the `metrics` table with `accepted = false`.
+2. Get the source as a PDF (download it, or print a web page to PDF with headless Chromium/Playwright), rasterize every page to a PNG, and read every page image.
+3. Extract every benchmark number from the page images into a normalized CSV.
+4. Verify the CSV in a double-check loop.
+5. Upload: upsert the `sources` row, insert all `metrics` rows (`accepted=false`), upload page PNGs to the `page-images` Storage bucket.
 
-Then sign tables off in `review.html`; trusted rows appear on the dashboard.
+Then sign tables off in `review.html` (which shows each PDF page image beside its extracted tables/figures); trusted rows appear on the dashboard.
 
 ## Frontend changes
 
@@ -77,7 +79,7 @@ runs a headless browser check. A green Actions run is not proof the site works.
 | **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). |
 | **Supabase `anon`** | public read-only key shipped in `web/common.js`. | hardcoded in `web/common.js` (safe to publish). |
 | **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `var/supabase.env`; `web/common.js`. |
-| **Supabase personal token** (`sbp_…`) | Management API only — run DDL/migrations via `curl`. Ad-hoc, generate per-use. | not stored; generate at supabase.com/dashboard/account/tokens. |
+| **Supabase personal token** (`sbp_…`) | Management API only — run DDL/migrations via `curl`. | In the remote Claude Code environment this is available as `SUPABASE_ACCESS_TOKEN` env var. Otherwise generate at supabase.com/dashboard/account/tokens. |
 
 Sharp edges: `sbp_…` tokens don't work as a PostgREST `apikey` (Management API
 only). `service_role`/`sb_secret_…` keys can't run DDL. PostgREST needs the
