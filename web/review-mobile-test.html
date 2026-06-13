@@ -55,7 +55,9 @@ nav a.on { color: #fff; background: #1e3a5f; }
   object-fit: contain;
   display: block;
   transform-origin: 0 0;   /* panzoom's translate math assumes a top-left origin */
-  will-change: transform;
+  /* No will-change: transform — it pins the image to a GPU layer rasterized at its
+     small on-screen size, so zooming just stretches that low-res bitmap (blurry on
+     WebKit). Without it the browser re-rasterizes from the full-res source on zoom. */
   user-select: none;
   -webkit-user-drag: none;
   cursor: grab;

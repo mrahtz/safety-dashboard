@@ -13,8 +13,12 @@
     never the whole document. touch-action:none stops the browser hijacking the pinch. */
  .img-panel{width:48%;flex-shrink:0;border-right:1px solid #d7dee8;overflow:hidden;
    touch-action:none;position:relative;background:#f8fafc}
+ /* No will-change/transform layer promotion: that pins the image to a GPU layer
+    rasterized at its small on-screen size, so panzoom's zoom just stretches that
+    low-res bitmap (blurry on WebKit). Without it the browser re-rasterizes from
+    the full-resolution source as you zoom. */
  .img-panel img{width:100%;height:100%;object-fit:contain;display:block;
-   transform-origin:0 0;will-change:transform;user-select:none;-webkit-user-drag:none;cursor:grab}
+   transform-origin:0 0;user-select:none;-webkit-user-drag:none;cursor:grab}
  .page-badge{position:absolute;top:8px;left:8px;z-index:5;display:inline-block;
    background:rgba(11,19,32,.72);color:#fff;font-size:11px;font-weight:600;
    padding:2px 8px;border-radius:8px;pointer-events:none}
