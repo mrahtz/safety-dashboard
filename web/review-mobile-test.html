@@ -32,41 +32,30 @@ nav a.on { color: #fff; background: #1e3a5f; }
   height: 460px;        /* tall enough to show image + table without cramping */
 }
 
-/* Left: pan/zoom image panel */
+/* Left: natively scrollable image panel */
 .img-panel {
   width: 48%;
   flex-shrink: 0;
   border-right: 1px solid #d7dee8;
-  overflow: hidden;
+  overflow: scroll;
+  -webkit-overflow-scrolling: touch;
   position: relative;
-  cursor: grab;
-  user-select: none;
   background: #f8fafc;
 }
-.img-panel.dragging { cursor: grabbing; }
-.img-viewport { width: 100%; height: 100%; overflow: hidden; position: relative; }
-.img-canvas {
-  position: absolute; top: 0; left: 0;
-  width: 100%;
-  transform-origin: 0 0;
-  will-change: transform;
-}
-.img-canvas img {
-  width: 100%; height: auto;
+.img-panel img {
+  /* wider than the panel so there's room to scroll horizontally */
+  width: 200%;
+  height: auto;
   display: block;
-  pointer-events: none;
 }
 .page-badge {
-  position: absolute; top: 8px; left: 8px; z-index: 5;
+  position: sticky; top: 8px; left: 8px; z-index: 5;
+  display: inline-block;
   background: rgba(11,19,32,.72); color: #fff;
   font-size: 11px; font-weight: 600;
   padding: 2px 8px; border-radius: 8px;
   pointer-events: none;
-}
-.hint-badge {
-  position: absolute; bottom: 8px; left: 0; right: 0; z-index: 5;
-  text-align: center; pointer-events: none;
-  font-size: 10px; color: rgba(11,19,32,.5);
+  margin: 8px;
 }
 
 /* Right: scrollable groups */
@@ -262,22 +251,16 @@ function renderSource(url) {
     section.className = "page-section";
     section.innerHTML = `
       <div class=img-panel>
-        <div class=img-viewport>
-          <div class=img-canvas>
-            ${imgUrl
-              ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}"
-                      onerror="this.closest('.img-canvas').innerHTML='<div style=padding:20px;color:#aaa;font-size:12px>Image unavailable</div>'">`
-              : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
-          </div>
-        </div>
         <div class=page-badge>Page ${pageNum ?? "?"}</div>
-        <div class=hint-badge>pinch · drag · double-tap</div>
+        ${imgUrl
+          ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}"
+                  onerror="this.style.display='none'">`
+          : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
       </div>
       <div class=groups-panel>
         ${pageGroups.map(renderGroup).join("")}
       </div>`;
     el.appendChild(section);
-    attachPanZoom(section.querySelector(".img-panel"));
   }
 }
 
@@ -361,118 +344,6 @@ function decide(btn, accepted) {
     accepted: cells.every(c => c.accepted),
   };
   grp.outerHTML = renderGroup(g);
-}
-
-// ── Pan / zoom ────────────────────────────────────────────────────────────────
-
-function attachPanZoom(panel) {
-  const canvas = panel.querySelector(".img-canvas");
-  let scale = 1, tx = 0, ty = 0;
-  const MIN = 1, MAX = 8;
-
-  function commit() {
-    const vw = panel.clientWidth, vh = panel.clientHeight;
-    const cw = canvas.offsetWidth, ch = canvas.offsetHeight; // natural size at scale=1
-    tx = Math.min(0, Math.max(tx, vw - cw * scale));
-    ty = Math.min(0, Math.max(ty, vh - ch * scale));
-    if (cw * scale <= vw) tx = 0;
-    if (ch * scale <= vh) ty = 0;
-    canvas.style.transform = `scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
-  }
-
-  function zoom(factor, cx, cy) {
-    const ns = Math.min(MAX, Math.max(MIN, scale * factor));
-    if (ns === scale) return;
-    tx = cx - (cx - tx) * (ns / scale);
-    ty = cy - (cy - ty) * (ns / scale);
-    scale = ns;
-    commit();
-  }
-
-  // ── Mouse (desktop testing) ──
-  let dragging = false, drag0;
-  panel.addEventListener("mousedown", e => {
-    if (scale === 1) return;
-    e.preventDefault();
-    dragging = true; panel.classList.add("dragging");
-    drag0 = { x: e.clientX, y: e.clientY, tx, ty };
-  });
-  window.addEventListener("mousemove", e => {
-    if (!dragging) return;
-    tx = drag0.tx + (e.clientX - drag0.x);
-    ty = drag0.ty + (e.clientY - drag0.y);
-    commit();
-  });
-  window.addEventListener("mouseup", () => { dragging = false; panel.classList.remove("dragging"); });
-  panel.addEventListener("wheel", e => {
-    e.preventDefault();
-    const r = panel.getBoundingClientRect();
-    zoom(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - r.left, e.clientY - r.top);
-  }, { passive: false });
-
-  // ── Touch ──
-  let lastTap = 0, wasPinching = false;
-  let t0 = [], pinchBase, panBase;
-
-  panel.addEventListener("touchstart", e => {
-    e.preventDefault();
-    t0 = [...e.touches];
-    if (t0.length === 2) {
-      wasPinching = true;
-      pinchBase = {
-        dist: Math.hypot(t0[1].clientX-t0[0].clientX, t0[1].clientY-t0[0].clientY),
-        scale, tx, ty,
-      };
-      panBase = null;
-    } else if (t0.length === 1) {
-      panBase = { x: t0[0].clientX, y: t0[0].clientY, tx, ty };
-      pinchBase = null;
-    }
-  }, { passive: false });
-
-  panel.addEventListener("touchmove", e => {
-    e.preventDefault();
-    const ts = [...e.touches];
-    if (ts.length === 2 && pinchBase) {
-      const dist = Math.hypot(ts[1].clientX-ts[0].clientX, ts[1].clientY-ts[0].clientY);
-      const ns = Math.min(MAX, Math.max(MIN, pinchBase.scale * dist / pinchBase.dist));
-      const r = panel.getBoundingClientRect();
-      const mx = ((ts[0].clientX+ts[1].clientX)/2) - r.left;
-      const my = ((ts[0].clientY+ts[1].clientY)/2) - r.top;
-      tx = mx - (mx - pinchBase.tx) * (ns / pinchBase.scale);
-      ty = my - (my - pinchBase.ty) * (ns / pinchBase.scale);
-      scale = ns;
-      commit();
-    } else if (ts.length === 1 && panBase && scale > 1) {
-      tx = panBase.tx + (ts[0].clientX - panBase.x);
-      ty = panBase.ty + (ts[0].clientY - panBase.y);
-      commit();
-    }
-  }, { passive: false });
-
-  // Single touchend handler: cleans up pinch/pan state AND handles double-tap.
-  // wasPinching prevents the "last pinch finger lifted" being counted as a tap.
-  panel.addEventListener("touchend", e => {
-    const remaining = e.touches.length;
-    if (remaining < 2) pinchBase = null;
-    if (remaining < 1) panBase = null;
-
-    // Double-tap: only when all fingers are up and no pinch was in progress
-    if (remaining === 0) {
-      const now = Date.now();
-      if (!wasPinching && now - lastTap < 280) {
-        e.preventDefault();
-        if (scale > 1.1) { scale=1; tx=0; ty=0; commit(); }
-        else {
-          const r = panel.getBoundingClientRect();
-          const t = e.changedTouches[0];
-          zoom(3, t.clientX - r.left, t.clientY - r.top);
-        }
-      }
-      lastTap = wasPinching ? 0 : now; // don't let pinch-end seed a tap timestamp
-      wasPinching = false;
-    }
-  });
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
