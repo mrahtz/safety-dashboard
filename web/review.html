@@ -187,9 +187,11 @@ function render() {
     byPage.get(key).push(g);
   }
 
-  // Order the pages: if we know the total, walk 1..N (null page_num groups last);
-  // otherwise just the pages we have. Then keep only pages with extracted content —
-  // blank pages are skipped so the reviewer scrolls through results, not whitespace.
+  // Order the pages: if we know the total, walk every page 1..N (null page_num
+  // groups last) so the reviewer scrolls the whole PDF in order — pages with no
+  // extracted tables/figures still show their page image with an empty results
+  // panel, so nothing is silently hidden. If we don't know the total (legacy
+  // sources), we can only show the pages we can derive from metrics rows.
   let pageNums;
   if (numPages != null) {
     pageNums = Array.from({ length: numPages }, (_, i) => i + 1);
@@ -201,9 +203,8 @@ function render() {
       return a - b;
     });
   }
-  const activePageNums = pageNums.filter(n => byPage.has(n));
 
-  document.getElementById("pages").innerHTML = activePageNums.map(pageNum => {
+  document.getElementById("pages").innerHTML = pageNums.map(pageNum => {
     const imgUrl = pageNum != null && sourceId
       ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${sourceId}/page-${pageNum}.png`
       : null;
@@ -213,7 +214,10 @@ function render() {
           ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}" onerror="this.style.display='none'">`
           : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
       </div>`;
-    const right = `<div class=groups-panel>${(byPage.get(pageNum) || []).map(renderGroup).join("")}</div>`;
+    const pageGroups = byPage.get(pageNum) || [];
+    const right = `<div class=groups-panel>${pageGroups.length
+      ? pageGroups.map(renderGroup).join("")
+      : `<div style="padding:20px;color:#aaa;font-size:12px">No tables or figures on this page</div>`}</div>`;
     return `<div class=page-section>${left}${right}</div>`;
   }).join("");
 
