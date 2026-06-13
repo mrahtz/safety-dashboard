@@ -11,10 +11,15 @@ paper), pull **every** benchmark number out of its **tables** and its
 to Supabase. The output is a CSV with these exact columns:
 
 > **PDF files only.** This skill ingests PDF sources exclusively. Web pages are
-> not supported. If you only have a URL and no PDF, stop and tell the user —
-> do not attempt to print the page to PDF. The review page pairs each PDF page
-> image with the tables/figures extracted from it; every row must have a real
-> `page_num`.
+> not supported — do **not** attempt to print an HTML page to PDF. The review
+> page pairs each PDF page image with the tables/figures extracted from it; every
+> row must have a real `page_num`.
+>
+> **No URL given? Find the source PDF yourself — don't stop and ask.** If the
+> user names a card (e.g. "the Mythos system card") without giving a URL or file,
+> web-search for the official PDF yourself (see §2) and proceed. Only come back to
+> the user if you genuinely can't locate an authoritative PDF, or you've found
+> several plausible candidates and need them to disambiguate which one to ingest.
 
 ```
 model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
@@ -67,12 +72,24 @@ are confident are the real canonical form — never invent canon to make a row
 fit. If you are unsure, leave the row's name as-written and flag it in the
 verify pass instead of polluting the canon files.
 
-## 2. Download the PDF, then rasterize to page images
+## 2. Get the PDF (find the URL yourself if needed), then rasterize to page images
 
-Download the PDF if needed, then rasterize every page to a PNG and read the
-images (graphs only exist as pixels). `pdftoppm` ships with **poppler-utils** —
-if it's missing (e.g. a fresh container), install it first
-(`apt-get install -y poppler-utils`, or `brew install poppler`):
+**If the user didn't hand you a URL or a local file, find the PDF yourself.**
+Web-search for the official source — e.g. `<card name> system card PDF` — and
+prefer the canonical publisher domain (the lab/vendor's own site or CDN) over
+mirrors and re-hosts. Many cards live behind a stable doc page that 307-redirects
+to the real CDN PDF (e.g. `anthropic.com/document/...` →
+`www-cdn.anthropic.com/...pdf`); verify a candidate with
+`curl -sIL <url>` (expect `content-type: application/pdf`) and `pdfinfo` (title +
+page count) before committing to it. Use the **stable doc/landing page** as the
+`origin_url` you upload, not the hashed CDN path, which can rotate between
+revisions. If several distinct PDFs plausibly match (e.g. different page counts /
+revisions), ask the user which to ingest rather than guessing.
+
+Once you have it, rasterize every page to a PNG and read the images (graphs only
+exist as pixels). `pdftoppm` ships with **poppler-utils** — if it's missing (e.g.
+a fresh container), install it first (`apt-get update && apt-get install -y
+poppler-utils`, or `brew install poppler`):
 
 ```bash
 curl -sL <url> -o var/extract/$SLUG/card.pdf
