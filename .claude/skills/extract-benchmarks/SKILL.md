@@ -70,7 +70,9 @@ verify pass instead of polluting the canon files.
 ## 2. Download the PDF, then rasterize to page images
 
 Download the PDF if needed, then rasterize every page to a PNG and read the
-images (graphs only exist as pixels):
+images (graphs only exist as pixels). `pdftoppm` ships with **poppler-utils** —
+if it's missing (e.g. a fresh container), install it first
+(`apt-get install -y poppler-utils`, or `brew install poppler`):
 
 ```bash
 curl -sL <url> -o var/extract/$SLUG/card.pdf
@@ -78,8 +80,12 @@ pdftoppm -png -r 150 var/extract/$SLUG/card.pdf var/extract/$SLUG/page
 # → page-01.png, page-02.png, …
 ```
 
-Read each page image. The filename suffix (zero-padded, e.g. `01`) gives the
-1-based `page_num` for every table/figure on that page.
+Read each page image. The **image file index** is the `page_num` for every
+table/figure on that page: `page-01.png` → `1`, `page-02.png` → `2`. Use this
+file index — **not** the page number printed in the PDF's footer or table of
+contents. Front matter (title page, TOC, roman-numeral pages) shifts the
+printed numbers out of sync with the files, and the review page pairs each
+table/figure with the page image whose file index matches `page_num`.
 
 Read the **whole** source before you decide you're done — tables and graphs are
 often in an appendix.
@@ -96,19 +102,27 @@ benchmark) data point. Column rules:
 | `benchmark` | canonical eval name from `benchmarks.txt` (normalize). |
 | `value` | the number **exactly as printed** (keep the source's precision/sign; e.g. `91.4`, `0.82`, `1247`). Don't round or rescale. |
 | `units` | `%`, `accuracy`, `Elo`, `pass@1`, `s`, … — whatever the source states. Empty if unitless. |
-| `fig_num` | **always set** (tables *and* graphs): the table/figure number the row came from. Use the source's printed number (Table 3 → `3`, Figure 2 → `2`); if the source doesn't number them, count from `1` in reading order — tables and figures each in their own sequence. |
+| `fig_num` | **always set** (tables *and* graphs): the table/figure the row came from, **namespaced by kind** — `tbl-<n>` for a table, `fig-<n>` for a graph. Use the source's printed number (Table 3 → `tbl-3`, Figure 2 → `fig-2`); if the source doesn't number them, count from `1` in reading order, tables and figures each in their own sequence (`tbl-1`, `tbl-2`, …; `fig-1`, `fig-2`, …). This value becomes the row's `section_key`, so it must be unique per source table/figure (see below). |
 | `row_idx` | **tables only**: 0-based row of the cell within its table (so the table can be reconstructed). Empty for graph rows. |
 | `col_idx` | **tables only**: 0-based column of the cell within its table. Empty for graph rows. |
-| `page_num` | **always set**: 1-based page number the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`, etc.). Every row has one — the review page aligns each table/figure to its page image by this value. |
+| `page_num` | **always set**: the 1-based **image file index** the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`) — the file number, *not* the page number printed in the PDF. The review page aligns each table/figure to its page image by this value. |
 
 So **every** row carries a `fig_num` identifying its source table/figure; a
 **table** row additionally sets `row_idx`/`col_idx`, a **graph** row leaves them
-empty. Whether `row_idx`/`col_idx` are populated is what distinguishes a table
-row (`fig_num=1` → Table 1) from a graph row (`fig_num=1` → Figure 1). Count
-tables and figures separately.
+empty. `upload_metrics.py` stores `fig_num` verbatim as the review page's
+`section_key` (the key it groups a table/figure's cells under), and the review
+page tells a table from a graph by whether any cell in the group has a `row_idx`.
+Because of that, **Table 1 and Figure 1 must not both be `1`** — they would merge
+into a single broken group — which is exactly why tables are `tbl-<n>` and graphs
+are `fig-<n>`. Count tables and figures separately.
 
 Extraction rules:
 
+- **Only benchmark/eval results.** Extract numbers that are eval/benchmark
+  results. **Skip** tables that aren't evals: model architecture and parameter
+  counts, checkpoint/context sizes, pricing, dataset/token counts,
+  hyperparameters, etc. (e.g. a "Model parameter counts" table is *not* a
+  benchmark — don't ingest it).
 - **Tables.** Transcribe every numeric cell. Preserve layout via `row_idx`/
   `col_idx` (header row is row 0; the leftmost label column is col 0 — index the
   *value* cells by their true grid position so the table reconstructs).

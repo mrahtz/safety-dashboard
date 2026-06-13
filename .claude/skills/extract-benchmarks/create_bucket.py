@@ -42,10 +42,15 @@ def main() -> None:
         urllib.request.urlopen(req, timeout=30)
         print(f"Bucket '{BUCKET}' created.")
     except urllib.error.HTTPError as e:
-        if e.code == 409:
+        # "Already exists" comes back inconsistently: sometimes HTTP 409, but
+        # Storage also returns HTTP 400 whose JSON body carries statusCode "409"
+        # / error "Duplicate". Treat any of those as success so re-runs are safe.
+        detail = e.read()
+        text = detail.decode("utf-8", "replace")
+        if e.code == 409 or '"Duplicate"' in text or "already exists" in text:
             print(f"Bucket '{BUCKET}' already exists — OK.")
         else:
-            raise RuntimeError(f"POST /storage/v1/bucket -> {e.code}: {e.read()[:200]!r}") from e
+            raise RuntimeError(f"POST /storage/v1/bucket -> {e.code}: {detail[:200]!r}") from e
 
 
 if __name__ == "__main__":
