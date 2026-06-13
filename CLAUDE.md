@@ -41,8 +41,8 @@ Edit `web/` and push to `main`; `pages.yml` redeploys in ~1 min. No pipeline.
 
 **Cache-busting:** `amid.fish` is behind Cloudflare, which caches `*.js` for
 hours. When you change `common.js`, bump the `?v=` token in `index.html`,
-`sources.html`, and `review.html` (use a date like `20260609`, +letter for a
-second change that day). HTML is not cached (`DYNAMIC`).
+`sources.html`, `review.html`, and `db-state.html` (use a date like `20260609`,
++letter for a second change that day). HTML is not cached (`DYNAMIC`).
 
 **Always check the site after any deploy** — run
 `.claude/skills/check-site/await_deploy.sh` which waits for the build and then

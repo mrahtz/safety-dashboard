@@ -30,9 +30,8 @@
          <thead><tr><th>column<th>type<th>notes</tr></thead>
          <tbody>
            <tr><td>id<td>bigint<td>PK, auto
-           <tr><td>kind<td>text<td>'html' or 'pdf'
            <tr><td>origin_url<td>text<td>UNIQUE
-           <tr><td>html<td>text<td>nullable; stored card HTML with &lt;base href&gt;
+           <tr><td>num_pages_total<td>integer<td>total PDF page count
          </tbody>
        </table>
      </div>
@@ -50,7 +49,8 @@
            <tr><td>units<td>text<td>'%', '$', 'Elo', …
            <tr><td>row_idx<td>integer<td>nullable; 0-based row in source table
            <tr><td>col_idx<td>integer<td>nullable; 0-based col in source table
-           <tr><td>section_key<td>text<td>e.g. 'Table 1', 'Figure 2'
+           <tr><td>section_key<td>text<td>fig_num from CSV; groups a table/figure
+           <tr><td>page_num<td>integer<td>1-based PDF page the table/figure is on
            <tr><td>accepted<td>boolean<td>default false; reviewer sign-off flag
          </tbody>
        </table>
@@ -77,13 +77,13 @@
    </div>
  </div>
 </main>
-<script src="common.js?v=20260611b"></script>
+<script src="common.js?v=20260612"></script>
 <script>
 async function load() {
   mountChrome("db-state.html");
 
   const [sources, metrics] = await Promise.all([
-    sbGetAll("sources", "id,kind,origin_url"),
+    sbGetAll("sources", "id,origin_url,num_pages_total"),
     sbGetAll("metrics", "id,source_id,model,benchmark,accepted"),
   ]);
 
@@ -104,13 +104,13 @@ async function load() {
 
   // Sources table
   document.getElementById("src-hdr").textContent = `sources (${sources.length} rows)`;
-  let h = `<table class=st><thead><tr><th>id<th>kind<th>origin_url<th>metrics<th>accepted</tr></thead><tbody>`;
+  let h = `<table class=st><thead><tr><th>id<th>origin_url<th>pages<th>metrics<th>accepted</tr></thead><tbody>`;
   for (const s of sources) {
     const rows = metsBySrc.get(s.id) || [];
     const acc = rows.filter(m => m.accepted).length;
-    h += `<tr><td>${s.id}<td>${esc(s.kind)}`
+    h += `<tr><td>${s.id}`
        + `<td><a href="${esc(s.origin_url)}" target=_blank style="word-break:break-all">${esc(s.origin_url)}</a>`
-       + `<td>${rows.length}<td>${acc}</tr>`;
+       + `<td>${s.num_pages_total ?? '—'}<td>${rows.length}<td>${acc}</tr>`;
   }
   h += "</tbody></table>";
   document.getElementById("tbl-sources").innerHTML = h;
