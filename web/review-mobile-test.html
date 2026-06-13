@@ -32,21 +32,28 @@ nav a.on { color: #fff; background: #1e3a5f; }
   height: 460px;        /* tall enough to show image + table without cramping */
 }
 
-/* Left: natively scrollable image panel */
+/* Left: pinch-zoom + pan image panel. The gesture is handled in JS and applied
+   as a transform to the <img>, so a pinch zooms the page render inside THIS panel
+   only — never the whole document. touch-action:none stops the browser from
+   hijacking the pinch to zoom the page. */
 .img-panel {
   width: 48%;
   flex-shrink: 0;
   border-right: 1px solid #d7dee8;
-  overflow: scroll;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  touch-action: none;
   position: relative;
   background: #f8fafc;
 }
 .img-panel img {
-  /* wider than the panel so there's room to scroll horizontally */
-  width: 200%;
+  width: 100%;            /* fit panel width at scale 1; JS transform zooms/pans from here */
   height: auto;
   display: block;
+  transform-origin: 0 0;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: grab;
 }
 .page-badge {
   position: sticky; top: 8px; left: 8px; z-index: 5;
@@ -129,6 +136,7 @@ button:disabled { opacity: .4; cursor: default; }
 <div id=pages></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
 <script>
 const SUPABASE_URL = "https://rapkltwpfvzleejytgmq.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcGtsdHdwZnZ6bGVlanl0Z21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTY4MjksImV4cCI6MjA5NjI5MjgyOX0.DbXAds_FJmhB5RbhbMUpMjoBe7wZ6H6vOiBJtRs7wfE";
@@ -264,6 +272,19 @@ function renderSource(url) {
       </div>`;
     el.appendChild(section);
   }
+
+  // Pinch-zoom + pan each page image, scoped to its own panel. panzoom does the
+  // gesture handling — pinch on touch, wheel / double-click on desktop — and
+  // applies the transform to just the <img>, so the page document never zooms.
+  el.querySelectorAll(".img-panel img").forEach(img => {
+    if (img.dataset.pz) return;                 // don't double-init on re-render
+    img.dataset.pz = "1";
+    panzoom(img, {
+      minZoom: 1, maxZoom: 8,                   // 1 = fit panel width; can't zoom out past it
+      bounds: true, boundsPadding: 0.15,        // keep the page from being dragged fully out
+      smoothScroll: false,
+    });
+  });
 }
 
 function renderGroup(g) {
