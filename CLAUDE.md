@@ -113,8 +113,8 @@ failed deploy — check the Actions run / `curl` the page before assuming infra.
 
 In the remote Claude Code environment, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 and `SUPABASE_ACCESS_TOKEN` are present as env vars, so a fresh container needs no
-`var/supabase.env` written by hand. The `check-site` skill reads `var/supabase.env`
-but falls back to `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` from the environment.
+`var/supabase.env` written by hand. The `check-site` skill reads its Supabase creds
+**only** from `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` in the environment.
 (Note the env var is `SUPABASE_SERVICE_ROLE_KEY`; `var/supabase.env` and the upload
 scripts use the name `SUPABASE_SERVICE_ROLE` — same value, different name.)
 

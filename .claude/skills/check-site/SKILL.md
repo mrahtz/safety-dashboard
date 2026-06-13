@@ -54,8 +54,9 @@ the `?v=` token in all three pages when `common.js` changes (see CLAUDE.md).
 - **Authenticated review layout** — logs into `review.html` via a Supabase Admin
   magic link (no email sent), waits for the two-column page grid to render, and
   checks for "Page unknown", empty group lists, and JS errors. Screenshot saved to
-  `review-authenticated.png`. Requires `var/supabase.env` with `SUPABASE_SERVICE_ROLE`;
-  skipped with a warning if the file is absent.
+  `review-authenticated.png`. Reads the `SUPABASE_URL` and
+  `SUPABASE_SERVICE_ROLE_KEY` env vars (present in the remote Claude Code env);
+  skipped with a warning if they're absent.
 
 ## Interpreting results
 
