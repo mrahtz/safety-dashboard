@@ -47,16 +47,14 @@ nav a.on { color: #fff; background: #1e3a5f; }
 .img-viewport { width: 100%; height: 100%; overflow: hidden; position: relative; }
 .img-canvas {
   position: absolute; top: 0; left: 0;
-  width: 100%; height: 100%;
+  width: 100%;
   transform-origin: 0 0;
   will-change: transform;
 }
 .img-canvas img {
-  width: 100%; height: 100%;
-  object-fit: contain; object-position: top;
+  width: 100%; height: auto;
   display: block;
   pointer-events: none;
-  background: #f8fafc;
 }
 .page-badge {
   position: absolute; top: 8px; left: 8px; z-index: 5;
@@ -374,11 +372,11 @@ function attachPanZoom(panel) {
 
   function commit() {
     const vw = panel.clientWidth, vh = panel.clientHeight;
-    // Clamp so image edge can't go past panel edge when zoomed
-    if (scale > 1) {
-      tx = Math.min(0, Math.max(tx, vw  - vw  * scale));
-      ty = Math.min(0, Math.max(ty, vh  - vh  * scale));
-    } else { tx = 0; ty = 0; }
+    const cw = canvas.offsetWidth, ch = canvas.offsetHeight; // natural size at scale=1
+    tx = Math.min(0, Math.max(tx, vw - cw * scale));
+    ty = Math.min(0, Math.max(ty, vh - ch * scale));
+    if (cw * scale <= vw) tx = 0;
+    if (ch * scale <= vh) ty = 0;
     canvas.style.transform = `scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
   }
 
@@ -413,29 +411,14 @@ function attachPanZoom(panel) {
   }, { passive: false });
 
   // ── Touch ──
-  // Double-tap: zoom in at tap point, or reset if already zoomed
-  let lastTap = 0;
-  panel.addEventListener("touchend", e => {
-    const now = Date.now();
-    if (now - lastTap < 280) {
-      e.preventDefault();
-      if (scale > 1.1) { scale=1; tx=0; ty=0; commit(); }
-      else {
-        const r = panel.getBoundingClientRect();
-        const t = e.changedTouches[0];
-        zoom(3, t.clientX - r.left, t.clientY - r.top);
-      }
-    }
-    lastTap = now;
-  });
-
-  // Pinch-to-zoom + single-finger drag
+  let lastTap = 0, wasPinching = false;
   let t0 = [], pinchBase, panBase;
 
   panel.addEventListener("touchstart", e => {
     e.preventDefault();
     t0 = [...e.touches];
     if (t0.length === 2) {
+      wasPinching = true;
       pinchBase = {
         dist: Math.hypot(t0[1].clientX-t0[0].clientX, t0[1].clientY-t0[0].clientY),
         scale, tx, ty,
@@ -467,10 +450,28 @@ function attachPanZoom(panel) {
     }
   }, { passive: false });
 
+  // Single touchend handler: cleans up pinch/pan state AND handles double-tap.
+  // wasPinching prevents the "last pinch finger lifted" being counted as a tap.
   panel.addEventListener("touchend", e => {
-    t0 = [...e.touches];
-    if (t0.length < 2) pinchBase = null;
-    if (t0.length < 1) panBase = null;
+    const remaining = e.touches.length;
+    if (remaining < 2) pinchBase = null;
+    if (remaining < 1) panBase = null;
+
+    // Double-tap: only when all fingers are up and no pinch was in progress
+    if (remaining === 0) {
+      const now = Date.now();
+      if (!wasPinching && now - lastTap < 280) {
+        e.preventDefault();
+        if (scale > 1.1) { scale=1; tx=0; ty=0; commit(); }
+        else {
+          const r = panel.getBoundingClientRect();
+          const t = e.changedTouches[0];
+          zoom(3, t.clientX - r.left, t.clientY - r.top);
+        }
+      }
+      lastTap = wasPinching ? 0 : now; // don't let pinch-end seed a tap timestamp
+      wasPinching = false;
+    }
   });
 }
 
