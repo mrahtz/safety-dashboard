@@ -16,7 +16,13 @@ rows show on the dashboard. Two tables, one boolean, no staging.
 
 ## Repo map
 
-- `web/` — `index.html` (matrix), `sources.html`, `review.html`, `common.js`.
+- `web/` — `index.html` (matrix), `sources.html`, `review.html`, `db-state.html`, `common.js`.
+  - `review-mobile-test.html` — standalone mobile/iPad layout mockup (not linked
+    from nav; reach by direct URL). Each PDF page image is pinch-zoom/pan via the
+    **panzoom** lib. Learning: pinch-zoom is a *top-level visual-viewport* gesture,
+    so it can't be scoped to one region with CSS or an `<iframe>` (an iframe
+    isolates scroll/pan, not zoom) — it must be intercepted in JS and applied as a
+    transform to the element.
 - `supabase/` — Supabase DDL:
   - `metrics.sql` — canonical schema for `sources` + `metrics` tables.
   - `promote.sql` — reviewer UPDATE policy on `metrics`.
@@ -47,6 +53,12 @@ hours. When you change `common.js`, bump the `?v=` token in `index.html`,
 **Always check the site after any deploy** — run
 `.claude/skills/check-site/await_deploy.sh` which waits for the build and then
 runs a headless browser check. A green Actions run is not proof the site works.
+
+`await_deploy.sh` decides the deploy is "live" by watching `index.html` for the
+`common.js?v=` token, so it only fires for deploys that bump that token. To verify
+a standalone page that doesn't touch `common.js` (e.g. `review-mobile-test.html`),
+poll that page's own HTML for a unique marker instead — HTML is uncached
+(`DYNAMIC`), so `curl … | grep <marker>` flips the moment the new build lands.
 
 ## Deploy facts
 
