@@ -70,10 +70,24 @@ blocks `refs/tags/*` pushes, so it may not be on the remote — publish it with
    page list from `sources.num_pages_total` (walk `1..N`), not just the pages
    that have `metrics` rows. Pages with no extracted content still render their
    page image with an empty results panel, so nothing is silently hidden.
+6. **Sign-off works and persists.** The point of the page is review: the reviewer
+   must be able to accept (and un-accept) each table/figure, and the change must
+   persist to `metrics.accepted` in Supabase — accepted rows then show on the
+   dashboard. The viewing layout exists to serve this action; if accept doesn't
+   stick, the page is broken regardless of how it looks.
+7. **Reviewer-only auth gates the writes.** Accepting requires the Supabase
+   magic-link login (signups disabled; only allowed reviewer emails — see the
+   Auth section). Anonymous visitors can read but must not be able to flip
+   `accepted`; the RLS `metrics_update` policy enforces this.
+8. **The numbers shown beside a page are the ones extracted from that page.**
+   Right-column tables/figures must be grouped by their own `page_num` and lined
+   up next to the matching left-column page image, with pages in `1..N` order —
+   never numbers from page X sitting beside the image of page Y.
 
-When editing `review.html`, re-confirm all five before pushing (the `check-site`
-skill's authenticated review check covers the render + two-column layout; eyeball
-the iPad-mini viewport and pinch-zoom manually).
+When editing `review.html`, re-confirm all of these before pushing (the
+`check-site` skill's authenticated review check covers login + the render +
+two-column layout; eyeball the iPad-mini viewport, pinch-zoom, and an actual
+accept round-trip manually).
 
 ## Adding data
 
