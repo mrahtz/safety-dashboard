@@ -41,6 +41,37 @@ rows show on the dashboard. Two tables, one boolean, no staging.
 - `.claude/skills/extract-benchmarks/` — the ingestion skill (standalone, no pipeline deps).
 - `.claude/skills/check-site/` — headless smoke-check of the live site.
 
+## Review page — hard requirements (do not regress)
+
+`review.html` exists so a reviewer can **check each extracted number against the
+actual PDF page it came from**. These are load-bearing invariants — a green
+deploy that violates any of them is a regression even if nothing errors. A
+known-good snapshot is pinned at the git tag **`review-known-good-2026-06-13`**
+(`git show review-known-good-2026-06-13`); diff against it if a change feels off.
+
+1. **Page and numbers visible at the same time.** The page image and its
+   extracted numbers must be on screen together — no tab-switch, modal, or
+   separate view that shows one without the other. Side-by-side comparison is
+   the whole point.
+2. **Two columns: page left, numbers right.** Left column = the PDF page
+   image(s); right column = the extracted tables/figures for that page. Don't
+   collapse to a single stacked column.
+3. **Works at iPad mini portrait (~768px wide).** The layout is built for a
+   tablet/mobile viewport, not just desktop. Verify at iPad mini size, not only
+   at a wide window — a change that only looks right on desktop is not done.
+4. **Page images are pinch-zoomable.** Each PDF page image is pinch-zoom/pan via
+   **panzoom**, scoped to its own panel. Do **not** add `will-change: transform`
+   to the zoomed `<img>` (blurs zoom on iPad/WebKit — see the `web/` repo-map
+   note above for the full reasoning).
+5. **Every PDF page shows, including pages with no tables/figures.** Drive the
+   page list from `sources.num_pages_total` (walk `1..N`), not just the pages
+   that have `metrics` rows. Pages with no extracted content still render their
+   page image with an empty results panel, so nothing is silently hidden.
+
+When editing `review.html`, re-confirm all five before pushing (the `check-site`
+skill's authenticated review check covers the render + two-column layout; eyeball
+the iPad-mini viewport and pinch-zoom manually).
+
 ## Adding data
 
 Run the `/extract-benchmarks` skill. It will:

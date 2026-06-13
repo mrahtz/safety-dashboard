@@ -23,6 +23,15 @@ in Supabase; every number is tied back to the source card and table it came from
 - **Deploy** — `.github/workflows/pages.yml` publishes `web/` to GitHub Pages on
   every push to `main`.
 
+## Review page requirements
+
+`review.html` lets a reviewer check each extracted number against the actual PDF
+page it came from. It has a set of load-bearing requirements (two-column
+page-left/numbers-right layout, works at iPad mini portrait, pinch-zoomable page
+images, shows every PDF page including ones with no tables) — see **Review page —
+hard requirements** in [`CLAUDE.md`](./CLAUDE.md) before editing it. A known-good
+snapshot is pinned at the git tag `review-known-good-2026-06-13`.
+
 ## More detail
 
 See [`CLAUDE.md`](./CLAUDE.md) for the full working notes: the repo map, the data
