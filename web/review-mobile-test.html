@@ -46,10 +46,15 @@ nav a.on { color: #fff; background: #1e3a5f; }
   background: #f8fafc;
 }
 .img-panel img {
-  width: 100%;            /* fit panel width at scale 1; JS transform zooms/pans from here */
-  height: auto;
+  /* Fill the panel box and let the browser contain-fit the page inside it: the
+     page scales up until it touches the panel's width OR height (whichever binds
+     first), centered, never cropped. That's the scale-1 baseline; panzoom zooms
+     and pans from there, and minZoom:1 means "can't shrink below the fitted page". */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
-  transform-origin: 0 0;
+  transform-origin: 0 0;   /* panzoom's translate math assumes a top-left origin */
   will-change: transform;
   user-select: none;
   -webkit-user-drag: none;
