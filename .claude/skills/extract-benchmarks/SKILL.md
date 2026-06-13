@@ -1,14 +1,20 @@
 ---
 name: extract-benchmarks
-description: Ingest a model/system card or web page and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and upload it to the Supabase `metrics` table (accepted=false, pending reviewer sign-off). Use when the user gives you a card/paper/page (URL, PDF, or local file/image) and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
+description: Ingest a model/system card **PDF** and extract every benchmark result from its tables and number-labeled graphs into a normalized CSV, then verify it and upload it to the Supabase `metrics` table (accepted=false, pending reviewer sign-off). Use when the user gives you a card/paper (a PDF, or a web page you first print to PDF) and wants its eval numbers pulled out, normalized to canonical benchmark/model names, and uploaded. Reads tables and graphs directly (the agent does the reading — no VLM pipeline), normalizes names against benchmarks.txt / models.txt, and runs an extract → double-check loop until clean.
 ---
 
-# Extracting benchmark results from a card or web page
+# Extracting benchmark results from a card PDF
 
-You are the reader. Given one source (a model/system card, a paper, or a web
-page — as a URL or a PDF), pull **every** benchmark number out of its **tables**
-and its **number-labeled graphs**, normalize the names, verify the result, and
-stage it to Supabase. The output is a CSV with these exact columns:
+You are the reader. Given one source **as a PDF** (a model/system card or a
+paper), pull **every** benchmark number out of its **tables** and its
+**number-labeled graphs**, normalize the names, verify the result, and stage it
+to Supabase. The output is a CSV with these exact columns:
+
+> **PDF only.** This skill supports paginated PDF sources exclusively — the
+> review page pairs each PDF page image with the tables/figures extracted from
+> it, so every source must paginate. If the source is a web page, **print it to
+> PDF first** (§2) and treat the PDF as the source. There is no HTML/DOM path
+> and no "page_num empty" case: every row gets a real `page_num`.
 
 ```
 model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
@@ -61,19 +67,34 @@ are confident are the real canonical form — never invent canon to make a row
 fit. If you are unsure, leave the row's name as-written and flag it in the
 verify pass instead of polluting the canon files.
 
-## 2. Get the source in front of you
+## 2. Get the source as a PDF, then rasterize to page images
 
-Whatever the input, turn it into something you can actually read closely:
+The source must be a **PDF** so it paginates. Get one, then rasterize every page
+to a PNG and read the images (graphs only exist as pixels):
 
-- **PDF.** Rasterize the pages to PNGs and read the images (graphs only exist as
-  pixels): `pdftoppm -png -r 150 card.pdf page` → `page-01.png`, … Read each
-  page image. The filename suffix (zero-padded, e.g. `01`) gives the 1-based
-  `page_num` for every table/figure on that page.
-- **Web page (HTML).** The DOM has exact values — prefer them over a screenshot.
-  Fetch the page (WebFetch, or `curl -sL <url> -o page.html`) and read the raw
-  table markup. Also grab a rendered screenshot if the layout/graphs matter.
-  HTML sources do not produce page images; leave `page_num` empty for all rows.
-- **Local file / image.** Read it directly.
+- **Already a PDF (URL or file).** Download if needed:
+  `curl -sL <url> -o var/extract/$SLUG/card.pdf`.
+- **A web page.** Print it to PDF with headless Chromium first, then proceed as a
+  PDF. Use the same Chromium that Playwright ships (see check-site skill for the
+  binary path) or any `chrome`/`chromium`:
+
+  ```bash
+  chromium --headless --no-sandbox --disable-gpu \
+    --print-to-pdf=var/extract/$SLUG/card.pdf "<url>"
+  ```
+
+  If a page lazy-loads content or paginates awkwardly, drive it with Playwright
+  and call `page.pdf(path=..., print_background=True)` after the content settles.
+
+Then rasterize:
+
+```bash
+pdftoppm -png -r 150 var/extract/$SLUG/card.pdf var/extract/$SLUG/page
+# → page-01.png, page-02.png, …
+```
+
+Read each page image. The filename suffix (zero-padded, e.g. `01`) gives the
+1-based `page_num` for every table/figure on that page.
 
 Read the **whole** source before you decide you're done — tables and graphs are
 often in an appendix.
@@ -93,7 +114,7 @@ benchmark) data point. Column rules:
 | `fig_num` | **always set** (tables *and* graphs): the table/figure number the row came from. Use the source's printed number (Table 3 → `3`, Figure 2 → `2`); if the source doesn't number them, count from `1` in reading order — tables and figures each in their own sequence. |
 | `row_idx` | **tables only**: 0-based row of the cell within its table (so the table can be reconstructed). Empty for graph rows. |
 | `col_idx` | **tables only**: 0-based column of the cell within its table. Empty for graph rows. |
-| `page_num` | **PDF sources**: 1-based page number the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`, etc.). Empty for non-PDF sources. |
+| `page_num` | **always set**: 1-based page number the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`, etc.). Every row has one — the review page aligns each table/figure to its page image by this value. |
 
 So **every** row carries a `fig_num` identifying its source table/figure; a
 **table** row additionally sets `row_idx`/`col_idx`, a **graph** row leaves them
@@ -123,7 +144,7 @@ Write the CSV (quote any field containing a comma; standard CSV quoting).
 Do **not** trust the first pass. Loop:
 
 1. **Double-check every number.** Go cell-by-cell / point-by-point back to the
-   source image or DOM and confirm the `value` (and its `units`, `condition`,
+   page image and confirm the `value` (and its `units`, `condition`,
    `fig_num`, `page_num`, and for tables its `row_idx`/`col_idx`) matches. Fix
    any mismatch.
 2. **Double-check every name** (`benchmark` and `model`). For each, confirm:
@@ -159,7 +180,7 @@ SLUG=<slug>          # short identifier, e.g. gemini-2-5-pro
 SOURCE_URL=<url>     # the canonical source URL
 ```
 
-**Count pages (PDF only):**
+**Count pages:**
 ```bash
 NUM_PAGES=$(ls var/extract/$SLUG/page-*.png | wc -l)
 ```
@@ -175,7 +196,7 @@ python3 .claude/skills/extract-benchmarks/upload_metrics.py \
   var/extract/$SLUG/result.csv "$SOURCE_URL" $NUM_PAGES
 ```
 
-**Upload page images** (PDF only; substitute `<N>` with the source_id printed above):
+**Upload page images** (substitute `<N>` with the source_id printed above):
 ```bash
 python3 .claude/skills/extract-benchmarks/upload_pages.py $SLUG <N>
 ```
