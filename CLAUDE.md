@@ -46,8 +46,11 @@ rows show on the dashboard. Two tables, one boolean, no staging.
 `review.html` exists so a reviewer can **check each extracted number against the
 actual PDF page it came from**. These are load-bearing invariants — a green
 deploy that violates any of them is a regression even if nothing errors. A
-known-good snapshot is pinned at the git tag **`review-known-good-2026-06-13`**
-(`git show review-known-good-2026-06-13`); diff against it if a change feels off.
+known-good snapshot is the commit that added this section on `main`
+(2026-06-13), tagged locally as **`review-known-good-2026-06-13`**; diff against
+it if a change feels off. (The tag was created in a web session whose git proxy
+blocks `refs/tags/*` pushes, so it may not be on the remote — publish it with
+`git push origin review-known-good-2026-06-13` from a local clone.)
 
 1. **Page and numbers visible at the same time.** The page image and its
    extracted numbers must be on screen together — no tab-switch, modal, or
