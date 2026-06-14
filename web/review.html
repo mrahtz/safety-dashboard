@@ -260,25 +260,46 @@ function renderGroup(g) {
 }
 
 async function decide(btn, sourceId, sectionKey, accepted) {
-  const { error } = await sb.from("metrics")
+  // Disable + spinner while the write is in flight, so it can't be double-clicked
+  // and the user sees it's working.
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  // Verify the write actually landed. A PostgREST update that matches 0 rows
+  // (e.g. RLS silently blocked it, or no row matched) returns NO error — so we
+  // .select() the affected rows and treat an empty result as failure. Never
+  // report success on a 0-row write (that bug made blocked saves look accepted).
+  const { data, error } = await sb.from("metrics")
     .update({ accepted })
     .eq("source_id", sourceId)
-    .eq("section_key", sectionKey);
-  if (error) { alert("Save failed: " + error.message); return; }
+    .eq("section_key", sectionKey)
+    .select("id");
+  if (error || !data || !data.length) {
+    btn.textContent = "⚠️";
+    alert(error
+      ? "Save failed: " + error.message
+      : "Save didn't take — 0 rows were updated. Are you still signed in as the reviewer?");
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 1200);
+    return;
+  }
+  // Confirmed written: flip local state, show a tick, then re-render the group
+  // card (Accept/Undo + badge update) while keeping the page image's pan/zoom.
+  btn.textContent = "✅";
   for (const c of METRICS) {
     if (c.source_id === sourceId && c.section_key === sectionKey) c.accepted = accepted;
   }
-  // Re-render just this group's card so the page image keeps its pan/zoom state.
-  const url = document.getElementById("src").value;
-  const cells = (BY_SOURCE.get(url) || [])
-    .filter(c => c.source_id === sourceId && c.section_key === sectionKey);
-  const g = {
-    section_key: sectionKey, cells,
-    isTable: cells.some(c => c.row_idx != null),
-    page_num: cells[0]?.page_num ?? null,
-  };
-  btn.closest(".grp").outerHTML = renderGroup(g);
-  updateCount(url);
+  setTimeout(() => {
+    const url = document.getElementById("src").value;
+    const cells = (BY_SOURCE.get(url) || [])
+      .filter(c => c.source_id === sourceId && c.section_key === sectionKey);
+    const g = {
+      section_key: sectionKey, cells,
+      isTable: cells.some(c => c.row_idx != null),
+      page_num: cells[0]?.page_num ?? null,
+    };
+    btn.closest(".grp").outerHTML = renderGroup(g);
+    updateCount(url);
+  }, 600);
 }
 
 function tokensOf(c) {

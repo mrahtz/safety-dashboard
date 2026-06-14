@@ -100,6 +100,17 @@ Run the `/extract-benchmarks` skill. It will:
 
 Then sign tables off in `review.html` (which shows each PDF page image beside its extracted tables/figures); trusted rows appear on the dashboard.
 
+**GOTCHA — never drop-and-reinsert `metrics` rows to correct a source.** The
+reviewer's sign-off lives in `metrics.accepted` on the existing rows. Deleting a
+source's rows and re-inserting from a fixed CSV (or just re-running
+`upload_metrics.py`, which only *inserts*) creates fresh rows with
+`accepted=false` — silently **wiping every accept a reviewer already made**.
+`sources` upserts by `origin_url`, but `metrics` does not. To fix already-uploaded
+values, **`PATCH` the specific cells in place** (match on `source_id` +
+`section_key` [+ `row_idx`/`col_idx`], `value`/`condition`/etc.) via PostgREST so
+`accepted` is preserved. Only delete+reinsert when the section's row structure
+itself changed and you've confirmed with the reviewer that re-review is acceptable.
+
 ## Frontend changes
 
 Edit `web/` and push to `main`; `pages.yml` redeploys in ~1 min. No pipeline.
