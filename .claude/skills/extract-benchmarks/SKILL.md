@@ -225,6 +225,18 @@ python3 .claude/skills/extract-benchmarks/upload_metrics.py \
 python3 .claude/skills/extract-benchmarks/upload_pages.py $SLUG <N>
 ```
 
+**Give the source a display name.** The dashboard/sources/review pages title each
+source card from the `SOURCE_LABELS` map in `web/common.js`, keyed by `origin_url`.
+A URL not in the map falls back to `prettyFromUrl()` (last path segment, dashes →
+spaces), which renders arxiv links as bare numbers (`2506.13585`) and mangles
+casing (`Claude Opus 4 5 System Card`, `gpt 5 system card`). So **add an entry for
+`$SOURCE_URL`** keyed by the exact URL you uploaded. Match the existing style:
+proper model name + lowercase document type — `"GPT-5 system card"`,
+`"Grok 4 model card"`, `"DeepSeek-V3 technical report"` (use the arxiv paper's real
+title to identify the model). Editing `common.js` means bumping the `?v=`
+cache-bust token in `index.html`, `sources.html`, `review.html`, `db-state.html`
+(see CLAUDE.md "Frontend changes").
+
 ## Done
 
 Report: source ingested, # tables and # graphs read, # rows extracted, how many
