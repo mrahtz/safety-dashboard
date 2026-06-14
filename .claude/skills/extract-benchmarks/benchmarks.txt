@@ -103,6 +103,12 @@ OpenAI Disallowed Content
 
 # --- Anthropic-internal coding/agentic evals ---
 Anthropic Agentic Coding Eval
+Anthropic Claude Code Malicious-Overt Refusal Rate
+Anthropic Claude Code Malicious-Covert Refusal Rate
+Anthropic Claude Code Dual-use Success Rate
+Anthropic MCP Prompt Injection Prevention Rate
+Anthropic Computer Use Prompt Injection Prevention Rate
+Anthropic Tool Use Prompt Injection Prevention Rate
 
 # --- Anthropic-internal safety evals (from Mythos Preview system card) ---
 Anthropic Violative Requests Harmlessness
@@ -129,6 +135,14 @@ Anthropic Firefox 147 Partial Exploitation
 Anthropic Shade Coding IPI Attack Success
 Anthropic Shade Computer Use IPI Attack Success
 Anthropic Shade Browser Use IPI Attack Success
+Anthropic Reward Hacking Eval Average
+Anthropic Reward Hacking Coding Classifier Hack Rate
+Anthropic Reward Hacking Coding Hidden Test Hack Rate
+Anthropic Reward Hacking Impossible Tasks Classifier
+Anthropic Reward Hacking Impossible Tasks Anti-hack
+Anthropic Reward Hacking Training Distribution
+Anthropic Harmful Choice Rate
+Anthropic Deceptive Choice Rate
 
 # --- Anthropic-internal AI R&D evals (from Mythos Preview system card) ---
 Anthropic AI R&D Kernel Task
@@ -137,6 +151,7 @@ Anthropic AI R&D LLM Training
 Anthropic AI R&D Quadruped RL
 Anthropic AI R&D Novel Compiler
 Anthropic AI R&D Internal Suite 2
+Anthropic AI R&D Text-based RL
 
 # --- Added from Claude Mythos Preview system card (2026-06) ---
 # Multi-turn appropriate-response-rate categories (Figure 8.1.3.A); child-safety
@@ -154,6 +169,11 @@ Anthropic False Premises Honesty Rate
 # CBRN automated CB-1 evaluations (Figure 2.2.5.4.A)
 Anthropic Long-form Virology Task 1
 Anthropic Long-form Virology Task 2
+Anthropic Creative Biology
+LAB-Bench ProtocolQA
+LAB-Bench SeqQA
+LAB-Bench Cloning Scenarios
+SWE-bench Verified Hard
 
 # --- Added from gpt-oss system card (2026-06) ---
 HealthBench
