@@ -23,6 +23,17 @@ const SOURCE_LABELS = {
   "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Pro-Model-Card.pdf": "Gemini 2.5 Pro model card",
   "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-5-Flash-Model-Card.pdf": "Gemini 2.5 Flash model card",
   "https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-2-0-Flash-Model-Card.pdf": "Gemini 2.0 Flash model card",
+  "https://cdn.openai.com/gpt-5-system-card.pdf": "GPT-5 system card",
+  "https://www.anthropic.com/document/claude-mythos-preview-system-card": "Claude Mythos Preview system card",
+  "https://assets.anthropic.com/m/64823ba7485345a7/Claude-Opus-4-5-System-Card.pdf": "Claude Opus 4.5 system card",
+  "https://data.x.ai/2025-08-20-grok-4-model-card.pdf": "Grok 4 model card",
+  "https://arxiv.org/abs/2506.13585": "MiniMax-M1 technical report",
+  "https://arxiv.org/abs/2507.20534": "Kimi K2 technical report",
+  "https://arxiv.org/abs/2506.10910": "Magistral technical report",
+  "https://arxiv.org/abs/2507.06261": "Gemini 2.5 technical report",
+  "https://arxiv.org/abs/2412.19437": "DeepSeek-V3 technical report",
+  "https://arxiv.org/abs/2508.06471": "GLM-4.5 technical report",
+  "https://arxiv.org/abs/2505.09388": "Qwen3 technical report",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");
