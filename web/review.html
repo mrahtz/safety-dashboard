@@ -3,70 +3,102 @@
 <title>LLM safety-metrics — review</title>
 <style>
  main{max-width:none}
- .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
- .left{position:sticky;top:14px;height:calc(100vh - 96px)}
- .left .frame-wrap{width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;border:1px solid #c9d2df;border-radius:10px;background:#fff}
- .left iframe{width:100%;height:100%;border:none}
- .left .framenote{font-size:12px;color:#566;margin:6px 2px}
- .right{min-width:0}
- .grp{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:12px 14px;margin:0 0 14px}
- .ghead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
- .grp h3{margin:0 0 2px;font-size:15px;display:inline}
- .grp .sub{color:#566;font-size:12px;margin:2px 0 8px}
- .grp .kind{font-size:11px;padding:1px 7px;border-radius:10px;background:#eef1f5;color:#445;margin-left:6px;vertical-align:middle}
+
+ /* Page section: fixed-height card — pinch-zoom image left, scrollable groups right. */
+ .page-section{display:flex;background:#fff;border:1px solid #d7dee8;border-radius:10px;
+   overflow:hidden;height:460px;margin-bottom:16px}
+
+ /* Left: pinch-zoom + pan image panel. panzoom handles the gesture and applies it as a
+    transform to the <img>, so a pinch zooms the page render inside THIS panel only —
+    never the whole document. touch-action:none stops the browser hijacking the pinch. */
+ .img-panel{width:48%;flex-shrink:0;border-right:1px solid #d7dee8;overflow:hidden;
+   touch-action:none;position:relative;background:#f8fafc}
+ /* No will-change/transform layer promotion: that pins the image to a GPU layer
+    rasterized at its small on-screen size, so panzoom's zoom just stretches that
+    low-res bitmap (blurry on WebKit). Without it the browser re-rasterizes from
+    the full-resolution source as you zoom. */
+ .img-panel img{width:100%;height:100%;object-fit:contain;display:block;
+   transform-origin:0 0;user-select:none;-webkit-user-drag:none;cursor:grab}
+ .page-badge{position:absolute;top:8px;left:8px;z-index:5;display:inline-block;
+   background:rgba(11,19,32,.72);color:#fff;font-size:11px;font-weight:600;
+   padding:2px 8px;border-radius:8px;pointer-events:none}
+
+ /* Right: independently scrollable column of groups. */
+ .groups-panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;min-width:0}
+
+ .grp{border:1px solid #d7dee8;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+ .grp:last-child{margin-bottom:0}
+ .grp-head{margin-bottom:6px}
+ .grp-head h3{margin:0;font-size:13px;display:inline}
+ .grp .kind{font-size:10px;padding:1px 5px;border-radius:8px;background:#eef1f5;color:#445;
+   margin-left:4px;vertical-align:middle}
  .kind.g{background:#fff3da;color:#8a5a00}
- table.recon,table.schema{border-collapse:collapse;font-size:12px;width:100%}
- table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;padding:4px 7px;text-align:left;vertical-align:top}
+ .grp .sub{color:#566;font-size:10px;margin:3px 0 6px;line-height:1.4}
+ .wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ table.recon,table.schema{border-collapse:collapse;font-size:11px;width:100%}
+ table.recon td,table.recon th,table.schema td,table.schema th{border:1px solid #e6eaf1;
+   padding:4px 6px;text-align:left;vertical-align:top}
  table.recon th,table.schema th{background:#f3f6fb;font-weight:600}
  table.recon td.v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
  table.recon th.rh{background:#f8fafc;font-weight:600;white-space:nowrap}
- .wrap{overflow-x:auto}
+ .action-bar{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
+ button.acc{background:#0a7d28;border:none;color:#fff;padding:7px 18px;border-radius:6px}
+ button.rej{background:#8a5a00;border:none;color:#fff;padding:7px 18px;border-radius:6px}
+ button.dec:disabled{opacity:.4;cursor:default}
  .picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
  .login{max-width:420px}
  .note{min-width:240px}
  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
- button.acc{background:#0a7d28;border-color:#0a7d28;color:#fff;white-space:nowrap}
- button.rej{background:#8a5a00;border-color:#8a5a00;color:#fff;white-space:nowrap}
- button.dec:disabled{opacity:.4;cursor:default}
+ button.tog{font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid #c0cad8;
+   background:#f3f6fb;color:#334;cursor:pointer}
+ button.tog.active{background:#0a4fa8;color:#fff;border-color:#0a4fa8}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Review — table-level sign-off</div>
-   <div class=muted>Sign in to review. The original source shows on the left; every table and graph the
-     extractor pulled from it stacks on the right. <b>Accept</b> a table to mark all its numbers as
-     trusted — they'll show on the dashboard. <b>Undo</b> to revert. Accepted numbers show in blue on
-     the main dashboard; unaccepted show in yellow.</div>
+   <div class=muted>Sign in to review. Each PDF page is shown on the left (pinch or
+     scroll-wheel to zoom, drag to pan); the tables and graphs extracted from that page
+     scroll alongside it on the right. <b>Accept</b> a table to mark all its numbers as
+     trusted — they'll show on the dashboard. <b>Undo</b> to revert. Accepted numbers
+     show in blue on the main dashboard; unaccepted show in yellow.</div>
  </div>
  <div id=picker class="card picker" style=display:none>
    <label>Source <select id=src onchange=render()></select></label>
    <a id=openlink class=muted href=# target=_blank rel=noopener>open original ↗</a>
    <span id=count class=muted></span>
    <span style="margin-left:auto" class=muted><span id=who></span> · <a href=# onclick="signOut();return false">sign out</a></span>
+   <div style="width:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:8px;border-top:1px solid #e6eaf1">
+     <span style="font-size:12px;color:#778">Hide:</span>
+     <button id=btn-empty class=tog onclick="toggleFilter('empty')">Empty pages</button>
+     <button id=btn-accepted class=tog onclick="toggleFilter('accepted')">Fully accepted pages</button>
+   </div>
  </div>
  <div id=gate class=card>Loading…</div>
- <div id=app class=split style=display:none>
-   <div class=left>
-     <div class=frame-wrap>
-       <iframe id=frame sandbox="allow-same-origin" referrerpolicy=no-referrer></iframe>
-     </div>
-     <div class=framenote></div>
-   </div>
-   <div class=right id=groups></div>
+ <div id=app style=display:none>
+   <div id=pages></div>
  </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="common.js?v=20260611b"></script>
+<script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
+<script src="common.js?v=20260614g"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
-const SRC = new Map();   // origin_url -> {kind, html} stored-source preview (or null)
+let HIDE_EMPTY = false, HIDE_ACCEPTED = false;
+
+function toggleFilter(type) {
+  if (type === "empty") HIDE_EMPTY = !HIDE_EMPTY;
+  else HIDE_ACCEPTED = !HIDE_ACCEPTED;
+  document.getElementById("btn-empty").classList.toggle("active", HIDE_EMPTY);
+  document.getElementById("btn-accepted").classList.toggle("active", HIDE_ACCEPTED);
+  render();
+}
 
 async function boot() {
   mountChrome("review.html");
-  // Delegated handler for the Accept/Undo buttons (rebuilt on every render).
-  document.getElementById("groups").addEventListener("click", e => {
+  document.getElementById("pages").addEventListener("click", e => {
     const btn = e.target.closest("button.dec");
     if (!btn || btn.disabled) return;
-    decide(Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
+    decide(btn, Number(btn.dataset.source), btn.dataset.section, btn.dataset.accept === "1");
   });
   sb = supabase.createClient(SUPABASE_URL, ANON);
   const { data: { session } } = await sb.auth.getSession();
@@ -88,7 +120,7 @@ function showLogin(msg) {
   g.style.display = "";
   g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
     <p class=muted>Saving decisions is reviewer-only. Enter your email for a magic link.</p>
-    <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
+    <div class=bar><input id=email type=email autocomplete=email placeholder="you@example.com" class=note>
       <button class=on onclick=sendLink()>Send magic link</button></div>
     <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
 }
@@ -112,7 +144,6 @@ async function loadData() {
   regroup();
 }
 
-// Group every metric by its source URL, then (re)build the dropdown + render.
 function regroup() {
   const prev = document.getElementById("src").value;
   BY_SOURCE = groupBySource(METRICS);
@@ -134,104 +165,178 @@ function regroup() {
   render();
 }
 
-// Section groups for a source, ordered by section_key. A group is a "table" if any
-// of its rows has a row_idx (graphs leave row_idx/col_idx null).
+// Section groups for a source, ordered by section_key. Returns array of group
+// objects, each carrying page_num so render() can group them by page.
 function groupsFor(url) {
   return [...groupBySection(BY_SOURCE.get(url) || []).entries()]
-    .map(([section_key, cells]) => ({ section_key, cells, isTable: cells.some(c => c.row_idx != null) }))
+    .map(([section_key, cells]) => ({
+      section_key, cells,
+      isTable: cells.some(c => c.row_idx != null),
+      page_num: cells[0]?.page_num ?? null,
+    }))
     .sort((a, b) => String(a.section_key).localeCompare(String(b.section_key), undefined, { numeric: true }));
+}
+
+// Refresh the picker's "N tables · N graphs · X/Y accepted" tally for a source.
+function updateCount(url) {
+  const groups = groupsFor(url);
+  const nT = groups.filter(g => g.isTable).length;
+  const nF = groups.filter(g => !g.isTable).length;
+  const nA = groups.filter(g => g.cells.every(c => c.accepted)).length;
+  document.getElementById("count").textContent =
+    `${nT} tables · ${nF} graphs · ${nA}/${nT + nF} accepted`;
 }
 
 function render() {
   const url = document.getElementById("src").value;
   document.getElementById("openlink").href = url;
-  updateFrame(url);
+  const allCells = BY_SOURCE.get(url) || [];
+  const sourceId = allCells[0]?.source_id;
+  const numPages = allCells[0]?.sources?.num_pages_total ?? null;
   const groups = groupsFor(url);
-  const nNums = (BY_SOURCE.get(url) || []).length;
-  document.getElementById("count").textContent =
-    `${groups.filter(g => g.isTable).length} tables · ${groups.filter(g => !g.isTable).length} graphs · ${nNums} numbers`;
-  document.getElementById("groups").innerHTML = groups.map((g, i) => renderGroup(url, g, i)).join("");
-}
+  updateCount(url);
 
-// The original card, served from our own `cards` table so an HTML source always
-// embeds (no X-Frame-Options): the skill stores the page HTML (with a <base href>
-// injected) when it ingests. Falls back to embedding the live URL if we have no
-// stored copy (e.g. a PDF source, which frames fine on its own).
-async function sourceDoc(url) {
-  if (SRC.has(url)) return SRC.get(url);
-  let rec = null;
-  try {
-    const { data } = await sb.from("sources").select("kind,html").eq("origin_url", url).maybeSingle();
-    if (data?.html) rec = { kind: "html", html: data.html };
-  } catch (e) { console.warn("source unavailable:", e.message); }
-  SRC.set(url, rec);
-  return rec;
-}
-
-async function updateFrame(url) {
-  const frame = document.getElementById("frame"), note = document.querySelector(".left .framenote");
-  const rec = await sourceDoc(url);
-  if (document.getElementById("src").value !== url) return;   // selection changed while fetching
-  if (rec?.kind === "html") {
-    frame.removeAttribute("src");
-    frame.srcdoc = rec.html;
-    note.textContent = "Stored copy of the original (HTML), served from Supabase, so it always embeds.";
-  } else {
-    frame.removeAttribute("srcdoc");
-    frame.src = url;
-    note.textContent = "No stored copy — embedding the live source, which may refuse to load. Use “open original ↗”.";
+  // Map page_num → [groups] for that page.
+  const byPage = new Map();
+  for (const g of groups) {
+    const key = g.page_num;
+    if (!byPage.has(key)) byPage.set(key, []);
+    byPage.get(key).push(g);
   }
+
+  // Order the pages: if we know the total, walk every page 1..N (null page_num
+  // groups last) so the reviewer scrolls the whole PDF in order — pages with no
+  // extracted tables/figures still show their page image with an empty results
+  // panel, so nothing is silently hidden. If we don't know the total (legacy
+  // sources), we can only show the pages we can derive from metrics rows.
+  let pageNums;
+  if (numPages != null) {
+    pageNums = Array.from({ length: numPages }, (_, i) => i + 1);
+    if (byPage.has(null)) pageNums.push(null);
+  } else {
+    pageNums = [...byPage.keys()].sort((a, b) => {
+      if (a === null) return 1;
+      if (b === null) return -1;
+      return a - b;
+    });
+  }
+
+  if (HIDE_EMPTY || HIDE_ACCEPTED) {
+    pageNums = pageNums.filter(pageNum => {
+      const pageGroups = byPage.get(pageNum) || [];
+      if (HIDE_EMPTY && pageGroups.length === 0) return false;
+      if (HIDE_ACCEPTED && pageGroups.length > 0 && pageGroups.every(g => g.cells.every(c => c.accepted))) return false;
+      return true;
+    });
+  }
+
+  document.getElementById("pages").innerHTML = pageNums.map(pageNum => {
+    const imgUrl = pageNum != null && sourceId
+      ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${sourceId}/page-${pageNum}.png`
+      : null;
+    const left = `<div class=img-panel>
+        <div class=page-badge>Page ${pageNum ?? "?"}</div>
+        ${imgUrl
+          ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}" onerror="this.style.display='none'">`
+          : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
+      </div>`;
+    const pageGroups = byPage.get(pageNum) || [];
+    const right = `<div class=groups-panel>${pageGroups.length
+      ? pageGroups.map(renderGroup).join("")
+      : `<div style="padding:20px;color:#aaa;font-size:12px">No tables or figures on this page</div>`}</div>`;
+    return `<div class=page-section>${left}${right}</div>`;
+  }).join("");
+
+  // Pinch-zoom + pan each page image, scoped to its own panel: panzoom does the
+  // gesture handling (pinch on touch, wheel / double-click on desktop) and applies
+  // the transform to just the <img>, so the page document itself never zooms.
+  document.querySelectorAll("#pages .img-panel img").forEach(img => {
+    if (img.dataset.pz) return;                // don't double-init on re-render
+    img.dataset.pz = "1";
+    panzoom(img, {
+      minZoom: 1, maxZoom: 8,                  // 1 = page fitted to panel; can't zoom out past it
+      bounds: true, boundsPadding: 0.15,       // keep the page from being dragged fully out
+      smoothScroll: false,
+    });
+  });
 }
 
-function renderGroup(url, g, i) {
+function renderGroup(g) {
   const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
   const kind = g.isTable
     ? `<span class=kind>Table</span>`
     : `<span class="kind g">Figure</span>`;
   const allAccepted = g.cells.every(c => c.accepted);
   const status = allAccepted ? "accepted" : "needs_review";
-  const badge = `<span class="flag s-${status}">${status}</span>`;
-  const head = `<div class=ghead>
-      <div><h3>${esc(String(g.section_key))}</h3> ${kind}
-        <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${badge}</div></div>
-    </div>`;
-  const grid = `<div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>`;
+  const badge = `<span class="flag s-${status}">${allAccepted ? "accepted" : "needs review"}</span>`;
   const sourceId = g.cells[0]?.source_id;
-  // section_key carries via a data-* attribute (HTML-escaped) rather than being
-  // interpolated into a JS-string onclick, so odd characters can't break out.
+  // section_key carried via data-* (HTML-escaped) so odd characters can't break out.
   const data = `data-source="${sourceId}" data-section="${esc(String(g.section_key))}"`;
-  const bar = `<div class=bar>
+  return `<div class=grp>
+    <div class=grp-head>
+      <h3>${esc(String(g.section_key))}</h3>${kind}
+      <div class=sub>${esc(benches.join(" · ").slice(0, 160))} · ${g.cells.length} numbers · ${badge}</div>
+    </div>
+    <div class=wrap>${g.isTable ? reconTable(g.cells) : schemaTable(g.cells)}</div>
+    <div class=action-bar>
       <button class="dec acc" ${data} data-accept="1"${allAccepted ? " disabled" : ""}>Accept</button>
       <button class="dec rej" ${data} data-accept="0"${!allAccepted ? " disabled" : ""}>Undo</button>
-    </div>`;
-  return `<div class=grp>${head}${grid}${bar}</div>`;
+    </div>
+  </div>`;
 }
 
-// Flip accepted on all rows in a section, then re-render.
-async function decide(sourceId, sectionKey, accepted) {
-  const { error } = await sb.from("metrics")
+async function decide(btn, sourceId, sectionKey, accepted) {
+  // Disable + spinner while the write is in flight, so it can't be double-clicked
+  // and the user sees it's working.
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  // Verify the write actually landed. A PostgREST update that matches 0 rows
+  // (e.g. RLS silently blocked it, or no row matched) returns NO error — so we
+  // .select() the affected rows and treat an empty result as failure. Never
+  // report success on a 0-row write (that bug made blocked saves look accepted).
+  const { data, error } = await sb.from("metrics")
     .update({ accepted })
     .eq("source_id", sourceId)
-    .eq("section_key", sectionKey);
-  if (error) { alert("Save failed: " + error.message); return; }
+    .eq("section_key", sectionKey)
+    .select("id");
+  if (error || !data || !data.length) {
+    btn.textContent = "⚠️";
+    alert(error
+      ? "Save failed: " + error.message
+      : "Save didn't take — 0 rows were updated. Are you still signed in as the reviewer?");
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 1200);
+    return;
+  }
+  // Confirmed written: flip local state, show a tick, then re-render the group
+  // card (Accept/Undo + badge update) while keeping the page image's pan/zoom.
+  btn.textContent = "✅";
   for (const c of METRICS) {
     if (c.source_id === sourceId && c.section_key === sectionKey) c.accepted = accepted;
   }
-  render();
+  setTimeout(() => {
+    const url = document.getElementById("src").value;
+    const cells = (BY_SOURCE.get(url) || [])
+      .filter(c => c.source_id === sourceId && c.section_key === sectionKey);
+    const g = {
+      section_key: sectionKey, cells,
+      isTable: cells.some(c => c.row_idx != null),
+      page_num: cells[0]?.page_num ?? null,
+    };
+    btn.closest(".grp").outerHTML = renderGroup(g);
+    updateCount(url);
+  }, 600);
 }
 
-// Descriptive tokens of a cell, used to derive row/column headers.
 function tokensOf(c) {
   return [c.model && "m:" + c.model, c.benchmark && "b:" + c.benchmark,
-    ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s)]
+    ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s),
+    ...(c.subset || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "s:" + s)]
     .filter(Boolean);
 }
 const intersect = sets => sets.length ? sets.reduce((a, b) => a.filter(x => b.includes(x))) : [];
 const stripPfx = arr => arr.map(t => t.slice(2)).join(" · ");
 
-// Redraw a table in its original layout: each value sits at (row_idx,col_idx).
-// Row/column headers are derived from the metadata that is constant down a column
-// (model, reasoning effort…) or across a row (benchmark, language, metric…).
 function reconTable(cells) {
   const rows = [...new Set(cells.map(c => c.row_idx))].sort((a, b) => a - b);
   const cols = [...new Set(cells.map(c => c.col_idx))].sort((a, b) => a - b);
@@ -243,8 +348,6 @@ function reconTable(cells) {
     .filter(t => !tableWide.includes(t)));
   rows.forEach(r => rowHdr[r] = intersect(cells.filter(x => x.row_idx === r).map(tokensOf))
     .filter(t => !tableWide.includes(t)));
-  // tableWide tokens (e.g. the single benchmark) are already shown in the group
-  // subtitle, so the grid itself starts straight at the header row.
   let html = "<table class=recon><tr><th></th>" +
     cols.map(c => `<th>${esc(stripPfx(colHdr[c])) || ("col " + c)}</th>`).join("") + "</tr>";
   for (const r of rows) {
@@ -252,18 +355,17 @@ function reconTable(cells) {
       cols.map(c => {
         const cell = grid.get(r + "," + c);
         return cell
-          ? `<td class=v title="${esc(cell.model + " · " + cell.benchmark + " · " + (cell.condition || ""))}">${esc(fmtVal(cell.value, cell.units))}</td>`
+          ? `<td class=v title="${esc([cell.model, cell.benchmark, cell.condition, cell.subset].filter(Boolean).join(" · "))}">${esc(fmtVal(cell.value, cell.units))}</td>`
           : "<td></td>";
       }).join("") + "</tr>";
   }
   return html + "</table>";
 }
 
-// Graphs: one row per data point, in the long-format schema.
 function schemaTable(cells) {
-  let html = "<table class=schema><tr><th>model<th>condition<th>benchmark<th>value<th>units</tr>";
+  let html = "<table class=schema><tr><th>model<th>condition<th>subset<th>benchmark<th>value<th>units</tr>";
   for (const c of cells) {
-    html += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td>` +
+    html += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td><td>${esc(c.subset || "—")}</td>` +
       `<td>${esc(c.benchmark)}</td><td>${esc(c.value)}</td><td>${esc(c.units || "")}</td></tr>`;
   }
   return html + "</table>";

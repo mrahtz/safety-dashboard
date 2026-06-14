@@ -1,0 +1,392 @@
+<!doctype html><html lang=en><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Review — mobile layout test</title>
+<style>
+* { box-sizing: border-box; }
+body { font: 14px/1.4 system-ui,sans-serif; margin: 0; background: #eef1f5; color: #111; }
+
+header { background: #0b1320; color: #fff; padding: 10px 14px;
+         display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+header b { font-size: 16px; }
+nav { display: flex; gap: 4px; flex-wrap: wrap; }
+nav a { color: #9fb3c8; text-decoration: none; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+nav a.on { color: #fff; background: #1e3a5f; }
+
+.picker { background: #fff; border-bottom: 1px solid #d7dee8; padding: 8px 14px;
+          display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.picker select { font: 13px system-ui,sans-serif; padding: 4px 8px;
+                 border: 1px solid #b9c2d0; border-radius: 6px; flex: 1; min-width: 160px; }
+.picker .info { color: #566; font-size: 12px; }
+
+#pages { padding: 12px; }
+#status { padding: 20px; color: #566; font-size: 13px; }
+
+/* ── Page section: fixed-height card with image left + scrollable groups right ── */
+.page-section {
+  margin-bottom: 16px;
+  display: flex;
+  background: #fff;
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 460px;        /* tall enough to show image + table without cramping */
+}
+
+/* Left: pinch-zoom + pan image panel. The gesture is handled in JS and applied
+   as a transform to the <img>, so a pinch zooms the page render inside THIS panel
+   only — never the whole document. touch-action:none stops the browser from
+   hijacking the pinch to zoom the page. */
+.img-panel {
+  width: 48%;
+  flex-shrink: 0;
+  border-right: 1px solid #d7dee8;
+  overflow: hidden;
+  touch-action: none;
+  position: relative;
+  background: #f8fafc;
+}
+.img-panel img {
+  /* Fill the panel box and let the browser contain-fit the page inside it: the
+     page scales up until it touches the panel's width OR height (whichever binds
+     first), centered, never cropped. That's the scale-1 baseline; panzoom zooms
+     and pans from there, and minZoom:1 means "can't shrink below the fitted page". */
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transform-origin: 0 0;   /* panzoom's translate math assumes a top-left origin */
+  /* No will-change: transform — it pins the image to a GPU layer rasterized at its
+     small on-screen size, so zooming just stretches that low-res bitmap (blurry on
+     WebKit). Without it the browser re-rasterizes from the full-res source on zoom. */
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: grab;
+}
+.page-badge {
+  position: sticky; top: 8px; left: 8px; z-index: 5;
+  display: inline-block;
+  background: rgba(11,19,32,.72); color: #fff;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 8px;
+  pointer-events: none;
+  margin: 8px;
+}
+
+/* Right: scrollable groups */
+.groups-panel {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px;
+  min-width: 0;
+}
+
+/* Groups */
+.grp {
+  border: 1px solid #d7dee8; border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 10px;
+}
+.grp:last-child { margin-bottom: 0; }
+.grp-head { margin-bottom: 6px; }
+.grp-head h3 { margin: 0; font-size: 13px; display: inline; }
+.kind { font-size: 10px; padding: 1px 5px; border-radius: 8px;
+        background: #eef1f5; color: #445; margin-left: 4px; vertical-align: middle; }
+.kind.g { background: #fff3da; color: #8a5a00; }
+.sub { color: #566; font-size: 10px; margin: 3px 0 6px; line-height: 1.4; }
+.wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.recon { border-collapse: collapse; font-size: 11px; width: 100%; }
+table.recon td, table.recon th {
+  border: 1px solid #e6eaf1; padding: 4px 6px;
+  white-space: nowrap;
+}
+table.recon th { background: #f3f6fb; font-weight: 600; }
+table.recon th.rh { background: #f8fafc; }
+table.recon td.v { text-align: right; font-variant-numeric: tabular-nums; }
+table.schema td, table.schema th {
+  border: 1px solid #e6eaf1; padding: 4px 6px; white-space: nowrap;
+}
+table.schema th { background: #f3f6fb; font-weight: 600; }
+table.schema td.v { text-align: right; }
+.action-bar { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+button.acc {
+  background: #0a7d28; border: none; color: #fff;
+  padding: 7px 18px; border-radius: 6px;
+  cursor: pointer; font: 13px system-ui,sans-serif;
+}
+button.rej {
+  background: #8a5a00; border: none; color: #fff;
+  padding: 7px 18px; border-radius: 6px;
+  cursor: pointer; font: 13px system-ui,sans-serif;
+}
+button:disabled { opacity: .4; cursor: default; }
+.flag { font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.s-accepted { background: #dbeafe; color: #1356b3; }
+.s-needs_review { background: #ffe7b3; color: #8a5a00; }
+</style>
+</head><body>
+
+<header>
+  <b>LLM safety-metrics</b>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="sources.html">Sources</a>
+    <a href="#" class=on>Review (mobile test)</a>
+  </nav>
+</header>
+
+<div class=picker>
+  <select id=src onchange=switchSource()><option>Loading…</option></select>
+  <span class=info id=info></span>
+</div>
+
+<div id=status>Loading data from Supabase…</div>
+<div id=pages></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
+<script>
+const SUPABASE_URL = "https://rapkltwpfvzleejytgmq.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhcGtsdHdwZnZ6bGVlanl0Z21xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MTY4MjksImV4cCI6MjA5NjI5MjgyOX0.DbXAds_FJmhB5RbhbMUpMjoBe7wZ6H6vOiBJtRs7wfE";
+
+const esc = s => (s ?? "").toString().replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// ── Data loading ──────────────────────────────────────────────────────────────
+
+let ALL_METRICS = [];
+let BY_SOURCE = new Map();   // origin_url → cells[]
+
+async function sbGetAll(table, select) {
+  const out = []; const step = 1000;
+  for (let from = 0; ; from += step) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${table}?select=${select}&order=id`,
+      { headers: { apikey: ANON, Authorization: "Bearer " + ANON,
+                   Range: `${from}-${from+step-1}` } });
+    if (!res.ok) throw new Error("HTTP " + res.status + ": " + (await res.text()).slice(0,200));
+    const chunk = await res.json();
+    out.push(...chunk);
+    if (chunk.length < step) break;
+  }
+  return out;
+}
+
+async function load() {
+  ALL_METRICS = await sbGetAll("metrics",
+    "id,source_id,model,condition,benchmark,value,units,row_idx,col_idx," +
+    "accepted,section_key,page_num,sources(origin_url,num_pages_total)");
+
+  // Group by source URL
+  for (const c of ALL_METRICS) {
+    const url = c.sources?.origin_url || "?";
+    if (!BY_SOURCE.has(url)) BY_SOURCE.set(url, []);
+    BY_SOURCE.get(url).push(c);
+  }
+
+  const urls = [...BY_SOURCE.keys()].sort();
+  const sel = document.getElementById("src");
+  sel.innerHTML = urls.map(u => `<option value="${esc(u)}">${esc(sourceLabel(u))}</option>`).join("");
+  document.getElementById("status").style.display = "none";
+  renderSource(urls[0]);
+}
+
+function sourceLabel(url) {
+  const labels = {
+    "https://deploymentsafety.openai.com/gpt-oss": "gpt-oss system card",
+  };
+  return labels[url] || url.split("/").pop().replace(/\.pdf$/i,"").replace(/-/g," ") || url;
+}
+
+function switchSource() {
+  renderSource(document.getElementById("src").value);
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+
+function renderSource(url) {
+  const cells = BY_SOURCE.get(url) || [];
+  const sourceId = cells[0]?.source_id;
+  const numPages = cells[0]?.sources?.num_pages_total ?? null;
+
+  // Group cells by section_key
+  const bySect = new Map();
+  for (const c of cells) {
+    const k = c.section_key ?? "?";
+    if (!bySect.has(k)) bySect.set(k, []);
+    bySect.get(k).push(c);
+  }
+
+  // Build group objects with page_num
+  const groups = [...bySect.entries()].map(([sk, cs]) => ({
+    section_key: sk,
+    cells: cs,
+    isTable: cs.some(c => c.row_idx != null),
+    page_num: cs[0]?.page_num ?? null,
+    accepted: cs.every(c => c.accepted),
+  })).sort((a,b) => String(a.section_key).localeCompare(String(b.section_key), undefined, {numeric:true}));
+
+  // Group by page
+  const byPage = new Map();
+  for (const g of groups) {
+    const k = g.page_num;
+    if (!byPage.has(k)) byPage.set(k, []);
+    byPage.get(k).push(g);
+  }
+
+  // Page list
+  let pageNums;
+  if (numPages) {
+    pageNums = Array.from({length: numPages}, (_, i) => i+1);
+    if (byPage.has(null)) pageNums.push(null);
+  } else {
+    pageNums = [...byPage.keys()].sort((a,b) => {
+      if (a===null) return 1; if (b===null) return -1; return a-b;
+    });
+  }
+
+  const nTables = groups.filter(g => g.isTable).length;
+  const nFigs   = groups.filter(g => !g.isTable).length;
+  const nAcc    = groups.filter(g => g.accepted).length;
+  document.getElementById("info").textContent =
+    `${nTables} tables · ${nFigs} graphs · ${nAcc}/${nTables+nFigs} accepted`;
+
+  const el = document.getElementById("pages");
+  el.innerHTML = "";
+
+  // Only render pages that have content (skip blank pages to save scrolling)
+  const activePageNums = pageNums.filter(n => byPage.has(n));
+
+  for (const pageNum of activePageNums) {
+    const pageGroups = byPage.get(pageNum) || [];
+    // Use embedded portrait test images for pages 1-4; fall back to Storage for others
+    const imgUrl = PORTRAIT_TEST_IMGS[pageNum]
+      ?? (pageNum != null && sourceId
+          ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${sourceId}/page-${pageNum}.png`
+          : null);
+
+    const section = document.createElement("div");
+    section.className = "page-section";
+    section.innerHTML = `
+      <div class=img-panel>
+        <div class=page-badge>Page ${pageNum ?? "?"}</div>
+        ${imgUrl
+          ? `<img src="${esc(imgUrl)}" alt="Page ${pageNum}"
+                  onerror="this.style.display='none'">`
+          : `<div style="padding:20px;color:#aaa;font-size:12px">No page image</div>`}
+      </div>
+      <div class=groups-panel>
+        ${pageGroups.map(renderGroup).join("")}
+      </div>`;
+    el.appendChild(section);
+  }
+
+  // Pinch-zoom + pan each page image, scoped to its own panel. panzoom does the
+  // gesture handling — pinch on touch, wheel / double-click on desktop — and
+  // applies the transform to just the <img>, so the page document never zooms.
+  el.querySelectorAll(".img-panel img").forEach(img => {
+    if (img.dataset.pz) return;                 // don't double-init on re-render
+    img.dataset.pz = "1";
+    panzoom(img, {
+      minZoom: 1, maxZoom: 8,                   // 1 = fit panel width; can't zoom out past it
+      bounds: true, boundsPadding: 0.15,        // keep the page from being dragged fully out
+      smoothScroll: false,
+    });
+  });
+}
+
+function renderGroup(g) {
+  const kind = g.isTable
+    ? `<span class=kind>Table</span>`
+    : `<span class="kind g">Figure</span>`;
+  const status = g.accepted ? "accepted" : "needs_review";
+  const badge = `<span class="flag s-${status}">${g.accepted ? "accepted" : "needs review"}</span>`;
+  const benches = [...new Set(g.cells.map(c => c.benchmark).filter(Boolean))];
+
+  let tableHtml;
+  if (g.isTable) {
+    const rows = [...new Set(g.cells.map(c => c.row_idx))].sort((a,b)=>a-b);
+    const cols = [...new Set(g.cells.map(c => c.col_idx))].sort((a,b)=>a-b);
+    const grid = new Map(g.cells.map(c => [c.row_idx+","+c.col_idx, c]));
+    // Derive compact header labels from shared tokens
+    const colTokens = cols.map(ci => {
+      const cs = g.cells.filter(c => c.col_idx===ci);
+      const models = [...new Set(cs.map(c=>c.model))];
+      const conds  = [...new Set(cs.map(c=>c.condition).filter(Boolean))];
+      return models.length===1 ? models[0].replace(/^gpt-oss-/,"") : (conds[0]||"col "+ci);
+    });
+    const rowTokens = rows.map(ri => {
+      const cs = g.cells.filter(c => c.row_idx===ri);
+      const conds  = [...new Set(cs.map(c=>c.condition).filter(Boolean))];
+      const models = [...new Set(cs.map(c=>c.model))];
+      return conds.length===1 ? conds[0] : (models.length===1 ? models[0].replace(/^gpt-oss-/,"") : "row "+ri);
+    });
+    let html = `<table class=recon><tr><th></th>${colTokens.map(h=>`<th>${esc(h)}</th>`).join("")}</tr>`;
+    for (let ri=0; ri<rows.length; ri++) {
+      html += `<tr><th class=rh>${esc(rowTokens[ri])}</th>`;
+      for (const ci of cols) {
+        const cell = grid.get(rows[ri]+","+ci);
+        html += cell
+          ? `<td class=v>${esc(cell.value)}${esc(cell.units==="%" ? "%" : cell.units ? " "+cell.units : "")}</td>`
+          : `<td>—</td>`;
+      }
+      html += "</tr>";
+    }
+    tableHtml = `<div class=wrap>${html}</table></div>`;
+  } else {
+    let html = `<table class=schema><tr><th>model</th><th>cond</th><th>value</th></tr>`;
+    for (const c of g.cells) {
+      html += `<tr><td>${esc(c.model||"")}</td><td>${esc(c.condition||"—")}</td>
+               <td class=v>${esc(c.value)}${esc(c.units==="%" ? "%" : c.units ? " "+c.units : "")}</td></tr>`;
+    }
+    tableHtml = `<div class=wrap>${html}</table></div>`;
+  }
+
+  return `<div class=grp data-source="${g.cells[0]?.source_id}" data-section="${esc(String(g.section_key))}">
+    <div class=grp-head>
+      <h3>${esc(String(g.section_key))}</h3>${kind}
+      <div class=sub>${esc(benches.join(" · ").slice(0,120))} · ${g.cells.length} numbers · ${badge}</div>
+    </div>
+    ${tableHtml}
+    <div class=action-bar>
+      <button class=acc${g.accepted?" disabled":""} onclick=decide(this,true)>Accept</button>
+      <button class=rej${!g.accepted?" disabled":""} onclick=decide(this,false)>Undo</button>
+    </div>
+  </div>`;
+}
+
+// ── Accept / Undo (read-only demo — no auth, just updates local state) ────────
+
+function decide(btn, accepted) {
+  const grp = btn.closest(".grp");
+  const sectionKey = grp.dataset.section;
+  const sourceId   = Number(grp.dataset.source);
+  // Update local ALL_METRICS
+  for (const c of ALL_METRICS) {
+    if (c.source_id === sourceId && c.section_key === sectionKey) c.accepted = accepted;
+  }
+  // Re-render just this group card
+  const url = document.getElementById("src").value;
+  const cells = (BY_SOURCE.get(url)||[]).filter(c => c.source_id===sourceId && c.section_key===sectionKey);
+  const g = {
+    section_key: sectionKey, cells,
+    isTable: cells.some(c => c.row_idx != null),
+    page_num: cells[0]?.page_num ?? null,
+    accepted: cells.every(c => c.accepted),
+  };
+  grp.outerHTML = renderGroup(g);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+const PORTRAIT_TEST_IMGS = {
+  1: "review-test-images/page-1.png",
+  2: "review-test-images/page-2.png",
+  3: "review-test-images/page-3.png",
+  4: "review-test-images/page-4.png",
+};
+
+load().catch(err => {
+  document.getElementById("status").textContent = "Load failed: " + (err.message || err);
+});
+</script>
+</body></html>

@@ -7,44 +7,67 @@
  .mwrap{overflow:auto;max-height:78vh;border:1px solid #d7dee8;border-radius:10px;background:#fff}
  table.mx{border-collapse:separate;border-spacing:0;font-size:13px}
  table.mx th,table.mx td{border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;padding:6px 8px;text-align:center;white-space:nowrap}
+ td.cell{white-space:normal}
+ table.sub{border-collapse:collapse;width:100%}
+ table.sub td{padding:0 4px;font-size:11px;border:none;white-space:nowrap}
+ table.sub tr.s-accepted{background:#e8f0ff}
+ table.sub tr.s-needs_review{background:#fff3d6}
+ table.sub td.sub-cond{font-size:9px;color:#7a4;text-transform:uppercase;letter-spacing:.03em}
+ table.sub td.sub-subset{font-size:9px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
+ table.sub td.sub-val{font-weight:700;text-align:right;min-width:40px}
  table.mx thead th{position:sticky;top:0;z-index:3;background:#f1f4f9;vertical-align:bottom}
  table.mx thead th.grp{z-index:4;background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em}
  table.mx th.bench{font-weight:600;color:#1b2b44}
- table.mx th.bench>div.nm{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+ table.mx th.bench>div.nm{max-width:150px;white-space:normal}
  table.mx th.bench>div.cond{font-weight:600;font-size:10px;color:#7a4; text-transform:uppercase;letter-spacing:.03em}
- table.mx td.model,table.mx th.model{position:sticky;left:0;z-index:2;background:#fff;text-align:left;font-weight:700;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+ table.mx td.model,table.mx th.model{position:sticky;left:0;z-index:2;background:#fff;text-align:left;font-weight:700;max-width:210px;white-space:normal}
  table.mx thead th.model{z-index:5;background:#f1f4f9}
  td.cell{cursor:pointer} td.cell.v-accepted{background:#eef5ff}
  td.cell.v-needs_review{background:#fff6e3}
  td.cell .multi{color:#b07;font-size:10px;vertical-align:super}
  td.empty{color:#cfd6e0}
+ table.mx td.grp{background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+ table.mx td.model>div.nm{max-width:150px;white-space:normal}
+ table.mx td.model>div.cond{font-weight:600;font-size:10px;color:#7a4;text-transform:uppercase;letter-spacing:.03em}
+ table.mx th.bench>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
+ table.mx td.model>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
+ table.mx th.clk,table.mx td.clk{cursor:pointer}
+ table.mx th.clk:hover .nm,table.mx td.clk:hover .nm{text-decoration:underline}
+ table.mx .cnt{font-weight:500;font-size:9px;color:#8593a5;text-transform:none;letter-spacing:0;margin-top:1px}
+ table.mx .pinned{outline:2px solid #1565d8;outline-offset:-2px}
+ #shown a{color:#1565d8;cursor:pointer;text-decoration:underline}
+ .modal a{color:#1565d8}
+ .modal a.pglink{margin-left:6px;font-size:11px;white-space:nowrap}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Model × benchmark dashboard</div>
-   <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>, split by
-     <b>condition</b> (low/medium/high, with/without tools, …). Each cell is the reported
-     value with its units — click it to see every source value with its provenance crop.
-     A blue outline marks a table whose numbers a reviewer has signed off.</div>
+   <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>. When a model
+     was measured under multiple conditions (reasoning effort, tools, …) or benchmark
+     subsets (language, difficulty, category, …), the cell expands to a mini-table showing
+     each combination. Click any cell to see each source value with its provenance crop.</div>
  </div>
  <div class="card kpi" id=kpi><div><b id=k-n>…</b><div>numbers</div></div>
    <div><b id=k-m>…</b><div>models</div></div><div><b id=k-b>…</b><div>benchmarks</div></div>
    <div><b id=k-v>…</b><div>trusted (accepted)</div></div></div>
  <div class="card controls">
-   <label>benchmark group <select id=grp onchange=render()></select></label>
    <input id=mq placeholder="filter models…" oninput=render() size=16>
    <input id=bq placeholder="filter benchmarks…" oninput=render() size=18>
    <button id=trust class=on onclick="toggleTrust(this)">trusted only</button>
+   <button id=tpose onclick="toggleTranspose(this)">transpose</button>
    <span id=shown class=muted></span>
  </div>
  <div class=mwrap><table class=mx id=t><tbody><tr><td style=padding:20px>Loading from Supabase…</td></tr></tbody></table></div>
 </main>
 <div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
   <div class=modal id=modalBody></div></div>
-<script src="common.js?v=20260611b"></script>
+<script src="common.js?v=20260614g"></script>
 <script>
-let DATA = [], MODELS = [], BENCHES = [], GROUPS = [], CELL = new Map(), trustOnly = true;
+let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)
+let MREG = [], BREG = [];                   // per-render: index -> model/bench id, for header onclick
+let MBCOUNT = new Map(), BMCOUNT = new Map();  // per-render: #benchmarks per model, #models per benchmark
+let pinModel = null, pinBench = null;       // click-to-filter: pin a single model row / benchmark column
 const SEP = "\u001f";
 const ck = (m, b) => m + SEP + b;
 const rank = c => STATUS_ORDER[effectiveStatus(c)] ?? 9;
@@ -67,11 +90,11 @@ const isJunkAxis = raw => {
 async function load() {
   mountChrome("index.html");
   DATA = await loadMetrics();
-  // A benchmark COLUMN is qualified by source + table (section) + benchmark +
-  // condition, so e.g. AIME·low / AIME·medium / AIME·high become distinct
-  // columns instead of colliding. Group = "card · table".
-  const benchMeta = new Map();              // benchId -> {id, name, cond, group, col}
-  const modelSet = new Set(), groupSet = new Set();
+  // One row per model name; one column per benchmark. Multiple condition/subset
+  // combos for the same model × benchmark land in the same CELL entry and are
+  // shown as an inline sub-table at render time.
+  const benchMeta = new Map();              // benchName -> {id, name}
+  const rowMeta = new Map();                // rowId (= model name) -> {id, name}
   const KEPT = [];
   for (const c of DATA) {
     if (isJunkAxis(c.model) || isJunkAxis(c.benchmark)) continue;
@@ -79,76 +102,134 @@ async function load() {
     const model = cleanLabel(c.model);
     const bench = cleanLabel(c.benchmark);
     const cond = (c.condition || "").trim();
-    const url = c.sources?.origin_url || "";
-    const group = sourceLabel(url);
-    const benchId = [url, c.section_key || "", bench, cond].join("::");
-    modelSet.add(model); groupSet.add(group);
-    if (!benchMeta.has(benchId))
-      benchMeta.set(benchId, { id: benchId, name: bench, cond, group, col: c.col_idx ?? 99 });
-    const k = ck(model, benchId);
+    const subset = (c.subset || "").trim();
+    const rowId = model;
+    if (!rowMeta.has(rowId)) rowMeta.set(rowId, { id: rowId, name: model });
+    if (!benchMeta.has(bench)) benchMeta.set(bench, { id: bench, name: bench });
+    const k = ck(rowId, bench);
     if (!CELL.has(k)) CELL.set(k, []);
     CELL.get(k).push(c);
     KEPT.push(c);
   }
-  MODELS = [...modelSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  MODELS = [...rowMeta.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true }));
   BENCHES = [...benchMeta.values()].sort((a, b) =>
-    a.group.localeCompare(b.group) || a.name.localeCompare(b.name) ||
-    condRank(a.cond) - condRank(b.cond) || a.col - b.col);
-  GROUPS = [...groupSet].sort();
+    a.name.localeCompare(b.name, undefined, { numeric: true }));
   document.getElementById("k-n").textContent = KEPT.length;
   document.getElementById("k-m").textContent = MODELS.length;
-  document.getElementById("k-b").textContent = new Set(BENCHES.map(b => b.name)).size;
+  document.getElementById("k-b").textContent = BENCHES.length;
   document.getElementById("k-v").textContent = KEPT.filter(c => TRUST.includes(effectiveStatus(c))).length;
-  const sel = document.getElementById("grp");
-  sel.innerHTML = `<option value="">All groups (${GROUPS.length})</option>` +
-    GROUPS.map(g => `<option>${esc(g)}</option>`).join("");
   render();
 }
 
 function toggleTrust(btn) { trustOnly = !trustOnly; btn.classList.toggle("on", trustOnly); render(); }
+function toggleTranspose(btn) { transposed = !transposed; btn.classList.toggle("on", transposed); render(); }
 function visibleEntries(list) {
   return trustOnly ? list.filter(c => TRUST.includes(effectiveStatus(c))) : list;
 }
 
+// Header cells for a model row/column. They carry the model name plus a small
+// "N benchmarks" count label, and clicking them pins that model (see pinModelBy).
+// `cls` lets the same model render as a row header (model) or, when transposed,
+// a column header (bench). Bench headers work the same way via benchHeaderHTML.
+const modelCellHTML = (tag, m, cls = "model") => {
+  const i = MREG.push(m.id) - 1;
+  return `<${tag} class="${cls} clk${pinModel === m.id ? " pinned" : ""}" title="${esc(m.name)}" onclick="pinModelBy(${i})">` +
+    `<div class=nm>${esc(m.name)}</div><div class=cnt>${MBCOUNT.get(m.id) || 0} benchmarks</div></${tag}>`;
+};
+const benchHeaderHTML = (tag, b, cls = "bench") => {
+  const i = BREG.push(b.id) - 1;
+  return `<${tag} class="${cls} clk${pinBench === b.id ? " pinned" : ""}" title="${esc(b.name)}" onclick="pinBenchBy(${i})">` +
+    `<div class=nm>${esc(b.name)}</div><div class=cnt>${BMCOUNT.get(b.id) || 0} models</div></${tag}>`;
+};
+
+function pinModelBy(i) { const id = MREG[i]; pinModel = pinModel === id ? null : id; render(); }
+function pinBenchBy(i) { const id = BREG[i]; pinBench = pinBench === id ? null : id; render(); }
+function clearPins() { pinModel = pinBench = null; render(); }
+
 function render() {
-  const g = document.getElementById("grp").value;
   const mq = document.getElementById("mq").value.toLowerCase();
   const bq = document.getElementById("bq").value.toLowerCase();
-  const benches = BENCHES.filter(b => (!g || b.group === g) && (!bq || b.name.toLowerCase().includes(bq)));
-  const models = MODELS.filter(m => !mq || m.toLowerCase().includes(mq));
-  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
-  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
-  document.getElementById("shown").textContent = `${liveM.length} models × ${liveB.length} columns`;
+  MREG = []; BREG = [];
+  // Count labels: how many models have each benchmark, and how many benchmarks
+  // each model has. Computed over the full matrix under the current trust filter
+  // (independent of text/pin filters) so a label is a stable property of the axis.
+  MBCOUNT = new Map(); BMCOUNT = new Map();
+  for (const m of MODELS) for (const b of BENCHES) {
+    if (!visibleEntries(CELL.get(ck(m.id, b.id)) || []).length) continue;
+    MBCOUNT.set(m.id, (MBCOUNT.get(m.id) || 0) + 1);
+    BMCOUNT.set(b.id, (BMCOUNT.get(b.id) || 0) + 1);
+  }
+  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench));
+  const models = MODELS.filter(m => (!mq || m.name.toLowerCase().includes(mq)) && (!pinModel || m.id === pinModel));
+  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
+  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
+  document.getElementById("shown").innerHTML = `${liveM.length} models × ${liveB.length} columns` +
+    (pinModel || pinBench ? ` · <a onclick="clearPins()">clear selection</a>` : "");
   if (!liveM.length || !liveB.length) {
     document.getElementById("t").innerHTML = "<tbody><tr><td style=padding:20px>No cells for this filter.</td></tr></tbody>";
     return;
   }
   CELLKEYS = [];
-  let groupRow = "<th class='model grp'></th>", nameRow = `<th class=model>model \\ benchmark</th>`;
-  let prev = null, span = 0, spans = [];
-  liveB.forEach(b => { if (b.group === prev) span++; else { if (prev !== null) spans.push([prev, span]); prev = b.group; span = 1; } });
-  if (prev !== null) spans.push([prev, span]);
-  for (const [gl, n] of spans) groupRow += `<th class=grp colspan=${n} title="${esc(gl)}">${esc(gl)}</th>`;
-  for (const b of liveB)
-    nameRow += `<th class=bench title="${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""}">` +
-      `<div class=nm>${esc(b.name)}</div>${b.cond ? `<div class=cond>${esc(b.cond)}</div>` : ""}</th>`;
-  let html = `<thead><tr>${groupRow}</tr><tr>${nameRow}</tr></thead><tbody>`;
-  for (const m of liveM) {
-    html += `<tr><td class=model title="${esc(m)}">${esc(m)}</td>`;
-    for (const b of liveB) {
-      const all = CELL.get(ck(m, b.id)) || [];
-      const vis = visibleEntries(all);
-      if (!vis.length) { html += `<td class=empty>·</td>`; continue; }
-      const best = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
-      const st = effectiveStatus(best);
+  // Render one body cell for row m × column b (both refer to the same CELL key
+  // regardless of orientation); pushes onto CELLKEYS for the click handler.
+  const bodyCell = (m, b) => {
+    const vis = visibleEntries(CELL.get(ck(m.id, b.id)) || []);
+    if (!vis.length) return `<td class=empty>·</td>`;
+    const idx = CELLKEYS.push(ck(m.id, b.id)) - 1;
+    // Group by (condition, subset) combo to decide single-value vs sub-table.
+    const combos = new Map();
+    for (const c of vis) {
+      const key = (c.condition || "") + "\x1f" + (c.subset || "");
+      if (!combos.has(key)) combos.set(key, { cond: c.condition || "", subset: c.subset || "", entries: [] });
+      combos.get(key).entries.push(c);
+    }
+    const overallBest = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
+    const overallSt = effectiveStatus(overallBest);
+    const title = `${esc(m.name)} · ${esc(b.name)} — ${esc(overallSt)}`;
+    if (combos.size === 1) {
       const distinct = new Set(vis.map(c => fmtVal(c.value, c.units))).size;
       const mark = vis.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${vis.length}</span>` : "";
-      const idx = CELLKEYS.push(ck(m, b.id)) - 1;
-      html += `<td class="cell v-${st}" onclick="openCell(${idx})" `
-        + `title="${esc(m)} · ${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""} — ${esc(st)}">`
-        + `${esc(fmtVal(best.value, best.units))}${mark}</td>`;
+      return `<td class="cell v-${overallSt}" onclick="openCell(${idx})" title="${title}">${esc(fmtVal(overallBest.value, overallBest.units))}${mark}</td>`;
     }
-    html += "</tr>";
+    const sorted = [...combos.values()].sort((a, b) =>
+      condRank(a.cond) - condRank(b.cond) ||
+      a.subset.localeCompare(b.subset, undefined, { numeric: true }));
+    const hasCond = sorted.some(c => c.cond);
+    const hasSubset = sorted.some(c => c.subset);
+    const subRows = sorted.map(({ cond, subset, entries }) => {
+      const best = entries.slice().sort((a, c) => rank(a) - rank(c))[0];
+      const st = effectiveStatus(best);
+      const distinct = new Set(entries.map(c => fmtVal(c.value, c.units))).size;
+      const mark = entries.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${entries.length}</span>` : "";
+      return `<tr class="sub-row s-${st}">` +
+        (hasCond   ? `<td class=sub-cond>${esc(cond || "—")}</td>` : "") +
+        (hasSubset ? `<td class=sub-subset>${esc(subset || "—")}</td>` : "") +
+        `<td class=sub-val>${esc(fmtVal(best.value, best.units))}${mark}</td></tr>`;
+    }).join("");
+    return `<td class="cell v-${overallSt}" onclick="openCell(${idx})" title="${title}"><table class=sub>${subRows}</table></td>`;
+  };
+  let html;
+  if (transposed) {
+    // Rows = benchmarks, columns = models (with condition sub-labels).
+    html = `<thead><tr><th class=model>benchmark \\ model</th>`;
+    for (const m of liveM) html += modelCellHTML("th", m, "bench");
+    html += `</tr></thead><tbody>`;
+    for (const b of liveB) {
+      html += `<tr>${benchHeaderHTML("th", b, "model")}`;
+      for (const m of liveM) html += bodyCell(m, b);
+      html += `</tr>`;
+    }
+  } else {
+    // Rows = models (with condition sub-labels), columns = benchmarks.
+    let nameRow = `<th class=model>model \\ benchmark</th>`;
+    for (const b of liveB) nameRow += benchHeaderHTML("th", b, "bench");
+    html = `<thead><tr>${nameRow}</tr></thead><tbody>`;
+    for (const m of liveM) {
+      html += `<tr>${modelCellHTML("td", m, "model")}`;
+      for (const b of liveB) html += bodyCell(m, b);
+      html += "</tr>";
+    }
   }
   document.getElementById("t").innerHTML = html + "</tbody>";
 }
@@ -157,19 +238,35 @@ function openCell(idx) {
   const key = CELLKEYS[idx];
   const list = (CELL.get(key) || []).slice().sort((a, c) => rank(a) - rank(c));
   if (!list.length) return;
-  const m = list[0].model || "", b = list[0].benchmark || "", cond = list[0].condition || "";
+  const m = list[0].model || "", b = list[0].benchmark || "";
   const rows = list.map(c => {
     const st = effectiveStatus(c);
+    const url = c.sources?.origin_url || "";
+    // Two links: the source label opens the whole card/source; "p.N" opens the
+    // stored screenshot of the exact page the number came from. We link the page
+    // image (always present in Storage) rather than origin_url#page=N, because
+    // many sources are web pages, not PDFs, so #page is silently ignored.
+    const label = esc(sourceLabel(url));
+    const pageImg = (c.source_id != null && c.page_num != null)
+      ? `${SUPABASE_URL}/storage/v1/object/public/page-images/${c.source_id}/page-${c.page_num}.png`
+      : null;
+    const source = (url
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener">${label}</a>`
+      : label) +
+      (pageImg
+        ? ` <a class=pglink href="${esc(pageImg)}" target="_blank" rel="noopener" title="View the source page ${c.page_num} screenshot">p.${c.page_num}</a>`
+        : "");
     return `<tr><td style="font-weight:700">${esc(fmtVal(c.value, c.units))}</td>
       <td>${esc(c.condition || "—")}</td>
-      <td>${esc(sourceLabel(c.sources?.origin_url))}</td>
+      <td>${esc(c.subset || "—")}</td>
+      <td>${source}</td>
       <td><span class="flag s-${st}">${st}</span></td></tr>`;
   }).join("");
   document.getElementById("modalBody").innerHTML =
-    `<div style="font-size:16px;font-weight:700">${esc(m)} <span class=muted>×</span> ${esc(b)}${cond ? ` <span class=muted>·</span> ${esc(cond)}` : ""}</div>
+    `<div style="font-size:16px;font-weight:700">${esc(m)} <span class=muted>×</span> ${esc(b)}</div>
      <div class=muted style="margin:4px 0 10px">${list.length} value(s) for this model × benchmark.</div>
      <table style="border-collapse:collapse;width:100%"><tr style="text-align:left;color:#566;font-size:12px">
-       <th>value<th>condition<th>source<th>status</tr>${rows}</table>
+       <th>value<th>condition<th>subset<th>source<th>status</tr>${rows}</table>
      <div style="text-align:right;margin-top:12px"><button onclick="document.getElementById('modal').classList.remove('show')">close</button></div>`;
   document.getElementById("modal").classList.add("show");
 }

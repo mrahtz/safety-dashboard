@@ -51,6 +51,12 @@ the `?v=` token in all three pages when `common.js` changes (see CLAUDE.md).
 - **Failed requests** — any 4xx/5xx (favicon ignored). The usual smoking gun is a
   Supabase REST 404 like `…/rest/v1/<table>?…` → the frontend and DB schema disagree.
 - **Console errors** and **uncaught exceptions** — JS blew up.
+- **Authenticated review layout** — logs into `review.html` via a Supabase Admin
+  magic link (no email sent), waits for the two-column page grid to render, and
+  checks for "Page unknown", empty group lists, and JS errors. Screenshot saved to
+  `review-authenticated.png`. Reads the `SUPABASE_URL` and
+  `SUPABASE_SERVICE_ROLE_KEY` env vars (present in the remote Claude Code env);
+  skipped with a warning if they're absent.
 
 ## Interpreting results
 

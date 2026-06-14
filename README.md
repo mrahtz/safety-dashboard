@@ -17,10 +17,21 @@ in Supabase; every number is tied back to the source card and table it came from
   reviewer flips it to `true` in `review.html` and the row then shows on the
   dashboard. No staging or pipeline.
 - **Ingestion** — human-driven via the `extract-benchmarks` skill
-  (`.claude/skills/extract-benchmarks/`): point it at a card URL/PDF, it extracts
-  every benchmark result, normalizes names, and uploads to `metrics`.
+  (`.claude/skills/extract-benchmarks/`): point it at a card **PDF**, it extracts
+  every benchmark result, normalizes names, uploads per-page images to Supabase
+  Storage, and inserts rows to `metrics`. Web pages are not supported.
 - **Deploy** — `.github/workflows/pages.yml` publishes `web/` to GitHub Pages on
   every push to `main`.
+
+## Review page requirements
+
+`review.html` lets a reviewer check each extracted number against the actual PDF
+page it came from. It has a set of load-bearing requirements (two-column
+page-left/numbers-right layout, works at iPad mini portrait, pinch-zoomable page
+images, shows every PDF page including ones with no tables) — see **Review page —
+hard requirements** in [`CLAUDE.md`](./CLAUDE.md) before editing it. A known-good
+snapshot is the commit that added that section (tagged
+`review-known-good-2026-06-13`).
 
 ## More detail
 

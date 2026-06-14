@@ -21,14 +21,14 @@
  <div class=card>
    <div style="font-size:18px;font-weight:700">Numbers by source</div>
    <div class=muted>Pick a card on the left to see every number extracted from it, grouped by
-     table/figure (model · condition · benchmark · value).</div>
+     table/figure (model · condition · subset · benchmark · value).</div>
  </div>
  <div class=layout>
    <div class=side id=side></div>
    <div id=content class=card>Loading from Supabase…</div>
  </div>
 </main>
-<script src="common.js?v=20260611b"></script>
+<script src="common.js?v=20260614g"></script>
 <script>
 let SRC = [], current = null;
 
@@ -48,9 +48,9 @@ async function load() {
 function numsTable(items) {
   const sorted = items.slice().sort((a, b) =>
     (a.row_idx ?? 1e9) - (b.row_idx ?? 1e9) || (a.col_idx ?? 1e9) - (b.col_idx ?? 1e9));
-  let h = "<table class=nums><thead><tr><th>model<th>condition<th>benchmark<th>value</tr></thead><tbody>";
+  let h = "<table class=nums><thead><tr><th>model<th>condition<th>subset<th>benchmark<th>value</tr></thead><tbody>";
   for (const c of sorted)
-    h += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td>`
+    h += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td><td>${esc(c.subset || "—")}</td>`
        + `<td>${esc(c.benchmark)}</td><td class=raw>${esc(fmtVal(c.value, c.units))}</td></tr>`;
   return h + "</tbody></table>";
 }

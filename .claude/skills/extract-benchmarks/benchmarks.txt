@@ -69,6 +69,20 @@ MMLU (multilingual)
 # --- Cyber (public) ---
 Cybench | CyberBench
 CyberGym
+SecEval
+CTI-MCQ | CTBench MCQ
+CTI-RCM | CTBench RCM
+CyberMetric | CyberMetric-4500
+CyberPII-Bench
+
+# --- CAIBench-internal evals (Alias Robotics, 2025) ---
+CAIBench Base
+CAIBench Cybench
+CAIBench RCTF2
+CAIBench CyberRanges
+CAIBench A&D
+CTFExplorer
+AutoPentest Benchmark
 
 # --- Safety / refusal (public, shared evals) ---
 WMDP
@@ -77,6 +91,7 @@ HarmBench
 XSTest
 AdvBench
 BBQ | Bias Benchmark for Question Answering
+MASK
 
 # --- Company-internal safety evals (namespaced; add the owner) ---
 # Examples — extend as cards introduce them:
@@ -120,11 +135,30 @@ Anthropic AI R&D Quadruped RL
 Anthropic AI R&D Novel Compiler
 Anthropic AI R&D Internal Suite 2
 
+# --- Added from Claude Mythos Preview system card (2026-06) ---
+# Multi-turn appropriate-response-rate categories (Figure 8.1.3.A); child-safety
+# and suicide/self-harm multi-turn already canon above.
+Anthropic Multi-turn Biological Weapons
+Anthropic Multi-turn Cyber Harm
+Anthropic Multi-turn Deadly Weapons
+Anthropic Multi-turn Hate and Discrimination
+Anthropic Multi-turn Influence Operations
+Anthropic Multi-turn Romance Scams
+Anthropic Multi-turn Tracking and Surveillance
+Anthropic Multi-turn Violent Extremism
+# Honesty / hallucination evals
+Anthropic False Premises Honesty Rate
+# CBRN automated CB-1 evaluations (Figure 2.2.5.4.A)
+Anthropic Long-form Virology Task 1
+Anthropic Long-form Virology Task 2
+
 # --- Added from gpt-oss system card (2026-06) ---
 HealthBench
 HealthBench Hard
 HealthBench Consensus
 PaperBench
+Tau-bench Retail | Tau-Bench Retail
+Tau-bench Airline | Tau-Bench Airline
 Multimodal Troubleshooting Virology | VCT
 ProtocolQA Open-Ended | ProtocolQA
 Biorisk Tacit Knowledge and Troubleshooting
@@ -136,3 +170,33 @@ OpenAI Capture the Flag (Professional) | Capture the Flag (CTF) Professional
 OpenAI Cyber Range | Cyber Range
 OpenAI PRs
 OpenAI PersonQA | PersonQA
+# OpenAI-internal safety/refusal evals from the gpt-oss card (Tables 4-10):
+OpenAI Standard Disallowed: hate
+OpenAI Standard Disallowed: self-harm
+OpenAI Standard Disallowed: personal-data/semi
+OpenAI Standard Disallowed: sexual/exploitative
+OpenAI Standard Disallowed: sexual/minors
+OpenAI Standard Disallowed: illicit/non-violent
+OpenAI Standard Disallowed: illicit/violent
+OpenAI Standard Disallowed: personal-data/restricted
+OpenAI Production: non-violent hate
+OpenAI Production: personal-data
+OpenAI Production: harassment/threatening
+OpenAI Production: sexual/exploitative
+OpenAI Production: sexual/minors
+OpenAI Production: extremism
+OpenAI Production: hate/threatening
+OpenAI Production: illicit/nonviolent
+OpenAI Production: illicit/violent
+OpenAI Production: self-harm/intent
+OpenAI Production: self-harm/instructions
+OpenAI Jailbreak: illicit/non-violent-crime
+OpenAI Jailbreak: violence
+OpenAI Jailbreak: abuse/disinformation/hate
+OpenAI Jailbreak: sexual-content
+OpenAI IH: system prompt extraction
+OpenAI IH: prompt injection hijacking
+OpenAI IH: phrase protection (system/user)
+OpenAI IH: password protection (system/user)
+OpenAI IH: phrase protection (dev/user)
+OpenAI IH: password protection (dev/user)
