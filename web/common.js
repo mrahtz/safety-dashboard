@@ -35,6 +35,9 @@ const SOURCE_LABELS = {
   "https://arxiv.org/abs/2508.06471": "GLM-4.5 technical report",
   "https://arxiv.org/abs/2505.09388": "Qwen3 technical report",
   "https://arxiv.org/abs/2408.08926": "Cybench: cybersecurity LLM benchmark paper",
+  "https://arxiv.org/abs/2510.24317": "CAIBench: cybersecurity AI benchmark paper",
+  "https://arxiv.org/abs/2602.08023": "CTFExplorer: multi-target web CTF benchmark paper",
+  "https://arxiv.org/abs/2410.17141": "AutoPentest: LLM penetration testing benchmark paper",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");

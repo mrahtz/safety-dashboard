@@ -69,6 +69,20 @@ MMLU (multilingual)
 # --- Cyber (public) ---
 Cybench | CyberBench
 CyberGym
+SecEval
+CTI-MCQ | CTBench MCQ
+CTI-RCM | CTBench RCM
+CyberMetric | CyberMetric-4500
+CyberPII-Bench
+
+# --- CAIBench-internal evals (Alias Robotics, 2025) ---
+CAIBench Base
+CAIBench Cybench
+CAIBench RCTF2
+CAIBench CyberRanges
+CAIBench A&D
+CTFExplorer
+AutoPentest Benchmark
 
 # --- Safety / refusal (public, shared evals) ---
 WMDP
