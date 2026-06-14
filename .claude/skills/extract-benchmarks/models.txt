@@ -15,7 +15,14 @@ GPT-5 mini | GPT-5-mini
 GPT-5 nano | GPT-5-nano
 GPT-4.1
 GPT-4.1 mini | GPT-4.1-mini
+GPT-4.5
 GPT-4o | GPT-4o (2024)
+GPT-4T | GPT-4 Turbo | GPT-4-Turbo
+gpt-5-thinking
+gpt-5-thinking-mini | gpt-5-thinking mini
+gpt-5-thinking-nano | gpt-5-thinking nano
+gpt-5-thinking helpful-only
+gpt-5-main-mini
 o1
 o3
 o3-mini
@@ -35,23 +42,41 @@ Claude Opus 4
 Claude Sonnet 4.5 | Claude Sonnet 4.5 (new)
 Claude Sonnet 4
 Claude Haiku 4.5
+Claude 3.7 Sonnet
 Claude 3.5 Sonnet
+Claude 3.5 Haiku
+Claude 3 Opus
+Claude 3 Sonnet
+Claude 3 Haiku
+Claude 2.1
 
 # --- Google DeepMind ---
 Gemini 3.1 Pro
 Gemini 2.5 Pro
 Gemini 2.5 Flash
 Gemini 2.0 Flash
+Gemini 2.0 Flash-Lite | Gemini 2.0 Flash Lite
 Gemini 1.5 Pro
+Gemini 1.5 Flash
 
 # --- Meta ---
 Llama 4 Maverick
 Llama 4 Scout
+Llama 3.3 70B | Llama 3.3 70B Instruct
 Llama 3.1 405B | Llama 3.1 405B Instruct
+Llama 3.1 70B | Llama 3.1 70B Instruct
 
 # --- DeepSeek ---
 DeepSeek-V3 | DeepSeek V3
 DeepSeek-R1 | DeepSeek R1
+
+# --- xAI ---
+Grok 4 | Grok 4 API | Grok 4 Web
+Grok 3
+Grok 2
+
+# --- Cohere ---
+Command-R
 
 # --- Qwen / others ---
 Qwen2.5-72B | Qwen2.5 72B

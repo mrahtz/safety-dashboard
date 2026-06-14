@@ -34,6 +34,8 @@ const SOURCE_LABELS = {
   "https://arxiv.org/abs/2412.19437": "DeepSeek-V3 technical report",
   "https://arxiv.org/abs/2508.06471": "GLM-4.5 technical report",
   "https://arxiv.org/abs/2505.09388": "Qwen3 technical report",
+  "https://www-cdn.anthropic.com/fed9cc193a14b84131812372d8d5857f8f304c52/Model_Card_Claude_3_Addendum.pdf": "Claude 3.5 Sonnet model card addendum",
+  "https://github.com/meta-llama/llama-models/blob/main/models/llama4/MODEL_CARD.md": "Llama 4 model card",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");

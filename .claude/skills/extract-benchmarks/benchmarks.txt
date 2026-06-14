@@ -36,7 +36,9 @@ MGSM
 
 # --- Code / agentic ---
 HumanEval
+HumanEval+ | HumanEval Plus
 MBPP
+MBPP+ | MBPP Plus
 SWE-bench Verified | SWE-bench-Verified
 SWE-bench
 SWE-bench Pro
@@ -57,18 +59,28 @@ MathVista
 DocVQA
 ChartQA
 VQAv2
+AI2D | AI2D (test)
 ScreenSpot-Pro
 LAB-Bench FigQA | FigQA
 CharXiv Reasoning
 
 # --- Instruction following / multilingual ---
 IFEval
+MT Bench | MT-Bench
+WildBench | Wild Bench
+Arena Hard
 Multilingual MMLU | MMMLU
 MMLU (multilingual)
+TydiQA | TyDiQA
+MTOB | Machine Translation of Books
+MMMU Pro | MMMU-Pro
 
 # --- Cyber (public) ---
 Cybench | CyberBench
 CyberGym
+
+# --- Long-context / retrieval ---
+Needle In A Haystack | NIAH
 
 # --- Safety / refusal (public, shared evals) ---
 WMDP
@@ -78,6 +90,8 @@ XSTest
 AdvBench
 BBQ | Bias Benchmark for Question Answering
 MASK
+Wildcat Toxic
+Wildcat Non-toxic
 
 # --- Company-internal safety evals (namespaced; add the owner) ---
 # Examples — extend as cards introduce them:
@@ -86,6 +100,9 @@ OpenAI Hate
 OpenAI Harassment
 OpenAI Self-harm
 OpenAI Disallowed Content
+
+# --- Anthropic-internal coding/agentic evals ---
+Anthropic Agentic Coding Eval
 
 # --- Anthropic-internal safety evals (from Mythos Preview system card) ---
 Anthropic Violative Requests Harmlessness
@@ -186,3 +203,18 @@ OpenAI IH: phrase protection (system/user)
 OpenAI IH: password protection (system/user)
 OpenAI IH: phrase protection (dev/user)
 OpenAI IH: password protection (dev/user)
+
+# --- Added from Gemini 2.0 Flash model card (2026-06) ---
+Bird-SQL | BIRD-SQL | Bird SQL
+FACTS Grounding | FACTS-Grounding
+Global MMLU | Global MMLU (Lite) | MMMLU Global
+HiddenMath | Hidden Math
+MRCR | MRCR (1M)
+CoVoST2 | CoVoST 2
+EgoSchema
+# Google-internal safety evals from Gemini 2.0 Flash model card:
+Google Text to Text Safety
+Google Multilingual Safety
+Google Tone
+Google Instruction Following
+Google Image to Text Safety
