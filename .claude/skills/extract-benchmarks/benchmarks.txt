@@ -168,3 +168,104 @@ OpenAI IH: phrase protection (system/user)
 OpenAI IH: password protection (system/user)
 OpenAI IH: phrase protection (dev/user)
 OpenAI IH: password protection (dev/user)
+
+# === Added from 10-card parallel ingest (2026-06-14) ===
+# Knowledge / reasoning
+ARC-Challenge | ARC-C | ARC Challenge
+ARC-Easy | ARC-E | ARC Easy
+PIQA
+WinoGrande
+TriviaQA
+NaturalQuestions | NQ
+AGIEval
+RACE-Middle
+RACE-High
+SuperGPQA
+ZebraLogic
+AutoLogi
+INCLUDE
+Belebele
+SysBench
+FRAMES
+LongBench v2 | LongBench-v2 | LongBench v2 (Acc.)
+RULER
+SimpleQA (Chinese) | C-SimpleQA | Chinese-SimpleQA | CSimpleQA
+C-Eval | CEval
+CMMLU
+C3
+CLUEWSC
+CMath | CMATH
+CMRC
+CCPM
+Pile-test
+# Math
+HMMT 2025
+CNMO 2024
+PolyMath | PolyMath-en
+MT-AIME 2024 | MT-AIME24 | MT-AIME2024
+# Code / agentic
+EvalPlus
+MultiPL-E
+CRUXEval-I | CRUX-I | CRUXEval-I-cot
+CRUXEval-O | CRUX-O | CRUXEval-O-cot
+HumanEval-Mul
+Aider Edit | Aider-Edit
+BFCL | BFCL v3 | BFCL v2 | Berkeley Function Calling Leaderboard
+OJBench
+Multi-SWE-bench
+SWE-Lancer
+LiveBench | Livebench
+FullStackBench
+SciCode
+BrowseComp
+ToolBench | Toolbench
+MultiChallenge | Multi-Challenge
+Arena-Hard | Arena Hard | Arena-Hard v2.0 | Arena Hard v2.0
+AceBench | AceBench (en)
+Tau2-bench | τ²-bench | Tau2
+Tau2-bench Retail | Tau2 retail | TAU-Retail
+Tau2-bench Airline | Tau2 airline | TAU-Airline
+Tau2-bench Telecom | Tau2 telecom
+# Multimodal
+MMMU-Pro | MMMU-Pro (Standard)
+MMMU-Pro (Vision)
+# Instruction following / writing / multilingual
+WritingBench
+Creative Writing v3 | Creative Writing
+AlignBench v1.1 | AlignBench
+AlignBench v3
+Multi-IF
+MLogiQA
+FACTS Grounding
+HHEM v2.1 | HHEM
+FaithJudge
+# Long context
+OpenAI-MRCR | MRCR
+# Safety / dual-use (public, shared)
+AgentHarm
+AgentDojo
+MASK
+BioLP-Bench
+SafetyBench
+WMDP Bio
+WMDP Chem
+WMDP Cyber
+# Company-internal / proprietary (namespaced by owner)
+OpenAI MakeMeSay | MakeMeSay
+xAI Refusals
+xAI SoB Bias | SoB Bias
+xAI Sycophancy
+Zhipu CC-Bench | CC-Bench
+Zhipu Human Eval English
+Zhipu Human Eval Chinese
+Zhipu Human Eval Other-Language
+Zhipu Novel Logical Reasoning
+Zhipu Translation Eval
+Moonshot Safety Evaluation
+Moonshot Chinese In-house Eval
+Moonshot Terminal Bench In-House | Terminal Bench In-House
+Mistral Internal Function Calling | Mistral Internal bench
+Qwen CounterFactQA | CounterFactQA
+Qwen LengthCtrl | LengthCtrl
+Qwen ThinkFollow | ThinkFollow
+Qwen ToolUse | ToolUse
