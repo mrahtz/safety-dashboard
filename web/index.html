@@ -45,7 +45,7 @@
    <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>. When a model
      was measured under multiple conditions (reasoning effort, tools, …) or benchmark
      subsets (language, difficulty, category, …), the cell expands to a mini-table showing
-     each combination. Click any cell to see each source value with its provenance crop.</div>
+     each combination. Click any cell to see each source value with a link to the source page it came from.</div>
  </div>
  <div class="card kpi" id=kpi><div><b id=k-n>…</b><div>numbers</div></div>
    <div><b id=k-m>…</b><div>models</div></div><div><b id=k-b>…</b><div>benchmarks</div></div>
@@ -61,7 +61,7 @@
 </main>
 <div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
   <div class=modal id=modalBody></div></div>
-<script src="common.js?v=20260614c"></script>
+<script src="common.js?v=20260614d"></script>
 <script>
 let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)

@@ -101,7 +101,7 @@ accept round-trip manually).
 ## Adding data
 
 Run the `/extract-benchmarks` skill. It will:
-1. Check for `var/supabase.env`; if missing, ask for credentials and write it.
+1. Check that `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set in the environment; if missing, ask for credentials and export them.
 2. Download the PDF, rasterize every page to a PNG with `pdftoppm`, and read every page image.
 3. Extract every benchmark number from the page images into a normalized CSV.
 4. Verify the CSV in a double-check loop.
@@ -174,17 +174,19 @@ failed deploy — check the Actions run / `curl` the page before assuming infra.
 
 | Key | Used for | Where it lives |
 | --- | --- | --- |
-| **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `var/supabase.env` (gitignored; the skill writes it on first use). In the remote Claude Code environment also available as the `SUPABASE_SERVICE_ROLE_KEY` env var. |
+| **Supabase `service_role`** | all writes — PostgREST inserts (`upload_metrics.py`). Must be a `service_role` JWT or `sb_secret_…` key. | `SUPABASE_SERVICE_ROLE_KEY` env var (present in the remote Claude Code environment; otherwise export it for the session). |
 | **Supabase `anon`** | public read-only key shipped in `web/common.js`. | hardcoded in `web/common.js` (safe to publish). |
-| **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `var/supabase.env`; `web/common.js`. In the remote Claude Code environment also available as the `SUPABASE_URL` env var. |
+| **Supabase URL** | `https://rapkltwpfvzleejytgmq.supabase.co`. | `SUPABASE_URL` env var (present in the remote Claude Code environment); also hardcoded in `web/common.js`. |
 | **Supabase personal token** (`sbp_…`) | Management API only — run DDL/migrations via `curl`. | In the remote Claude Code environment this is available as `SUPABASE_ACCESS_TOKEN` env var. Otherwise generate at supabase.com/dashboard/account/tokens. |
 
-In the remote Claude Code environment, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-and `SUPABASE_ACCESS_TOKEN` are present as env vars, so a fresh container needs no
-`var/supabase.env` written by hand. The `check-site` skill reads its Supabase creds
-**only** from `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` in the environment.
-(Note the env var is `SUPABASE_SERVICE_ROLE_KEY`; `var/supabase.env` and the upload
-scripts use the name `SUPABASE_SERVICE_ROLE` — same value, different name.)
+All scripts (`upload_metrics.py`, `upload_pages.py`, `create_bucket.py`, and the
+`check-site` skill) read their Supabase creds **only** from the environment —
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` — with no `.env` file fallback. In
+the remote Claude Code environment `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and
+`SUPABASE_ACCESS_TOKEN` are already present, so a fresh container needs no setup.
+(The scripts key on the name `SUPABASE_SERVICE_ROLE` internally but read it from
+the `SUPABASE_SERVICE_ROLE_KEY` env var; the bare `SUPABASE_SERVICE_ROLE` name is
+also accepted as a fallback.)
 
 Sharp edges: `sbp_…` tokens don't work as a PostgREST `apikey` (Management API
 only). `service_role`/`sb_secret_…` keys can't run DDL. PostgREST needs the
