@@ -34,6 +34,7 @@ const SOURCE_LABELS = {
   "https://arxiv.org/abs/2412.19437": "DeepSeek-V3 technical report",
   "https://arxiv.org/abs/2508.06471": "GLM-4.5 technical report",
   "https://arxiv.org/abs/2505.09388": "Qwen3 technical report",
+  "https://arxiv.org/abs/2408.08926": "Cybench: cybersecurity LLM benchmark paper",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");

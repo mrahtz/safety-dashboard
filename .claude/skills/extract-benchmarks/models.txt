@@ -61,3 +61,9 @@ Mistral Large
 Kimi K2
 Qwen3 Thinking | Qwen 3 Thinking
 DeepSeek-R1-0528 | DeepSeek R1-0528
+
+# --- Added from Cybench paper (2025) ---
+Claude 3 Opus | claude-3-opus
+o1-preview | OpenAI o1-preview
+Mixtral 8x22B Instruct | Mixtral-8x22B-Instruct
+Llama 3 70B Chat | Llama-3-70B-Chat | Llama 3 70B
