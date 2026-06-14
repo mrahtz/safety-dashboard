@@ -96,6 +96,13 @@ async function load() {
   }
   MODELS = [...rowMeta.values()].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true }) || condRank(a.cond) - condRank(b.cond));
+  // Only show condition sub-label when a model appears under more than one condition.
+  const modelCondSets = new Map();
+  for (const m of MODELS) {
+    if (!modelCondSets.has(m.name)) modelCondSets.set(m.name, new Set());
+    modelCondSets.get(m.name).add(m.cond);
+  }
+  for (const m of MODELS) m.showCond = modelCondSets.get(m.name).size > 1;
   BENCHES = [...benchMeta.values()].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true }));
   document.getElementById("k-n").textContent = KEPT.length;
@@ -112,9 +119,10 @@ function visibleEntries(list) {
 }
 
 // A model-axis label is a model name with an optional condition sub-label.
-const modelTitle = m => esc(m.name) + (m.cond ? " · " + esc(m.cond) : "");
+// Only show the condition when the model appears under more than one condition.
+const modelTitle = m => esc(m.name) + (m.showCond && m.cond ? " · " + esc(m.cond) : "");
 const modelCellHTML = (tag, m) => `<${tag} class=model title="${modelTitle(m)}">` +
-  `<div class=nm>${esc(m.name)}</div>${m.cond ? `<div class=cond>${esc(m.cond)}</div>` : ""}</${tag}>`;
+  `<div class=nm>${esc(m.name)}</div>${m.showCond && m.cond ? `<div class=cond>${esc(m.cond)}</div>` : ""}</${tag}>`;
 
 function render() {
   const mq = document.getElementById("mq").value.toLowerCase();
