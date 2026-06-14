@@ -31,6 +31,11 @@
  table.mx td.model>div.cond{font-weight:600;font-size:10px;color:#7a4;text-transform:uppercase;letter-spacing:.03em}
  table.mx th.bench>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
  table.mx td.model>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
+ table.mx th.clk,table.mx td.clk{cursor:pointer}
+ table.mx th.clk:hover .nm,table.mx td.clk:hover .nm{text-decoration:underline}
+ table.mx .cnt{font-weight:500;font-size:9px;color:#8593a5;text-transform:none;letter-spacing:0;margin-top:1px}
+ table.mx .pinned{outline:2px solid #1565d8;outline-offset:-2px}
+ #shown a{color:#1565d8;cursor:pointer;text-decoration:underline}
 </style></head><body>
 <main>
  <div class=card>
@@ -58,6 +63,9 @@
 <script>
 let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)
+let MREG = [], BREG = [];                   // per-render: index -> model/bench id, for header onclick
+let MBCOUNT = new Map(), BMCOUNT = new Map();  // per-render: #benchmarks per model, #models per benchmark
+let pinModel = null, pinBench = null;       // click-to-filter: pin a single model row / benchmark column
 const SEP = "\u001f";
 const ck = (m, b) => m + SEP + b;
 const rank = c => STATUS_ORDER[effectiveStatus(c)] ?? 9;
@@ -118,17 +126,44 @@ function visibleEntries(list) {
   return trustOnly ? list.filter(c => TRUST.includes(effectiveStatus(c))) : list;
 }
 
-const modelCellHTML = (tag, m) =>
-  `<${tag} class=model title="${esc(m.name)}"><div class=nm>${esc(m.name)}</div></${tag}>`;
+// Header cells for a model row/column. They carry the model name plus a small
+// "N benchmarks" count label, and clicking them pins that model (see pinModelBy).
+// `cls` lets the same model render as a row header (model) or, when transposed,
+// a column header (bench). Bench headers work the same way via benchHeaderHTML.
+const modelCellHTML = (tag, m, cls = "model") => {
+  const i = MREG.push(m.id) - 1;
+  return `<${tag} class="${cls} clk${pinModel === m.id ? " pinned" : ""}" title="${esc(m.name)}" onclick="pinModelBy(${i})">` +
+    `<div class=nm>${esc(m.name)}</div><div class=cnt>${MBCOUNT.get(m.id) || 0} benchmarks</div></${tag}>`;
+};
+const benchHeaderHTML = (tag, b, cls = "bench") => {
+  const i = BREG.push(b.id) - 1;
+  return `<${tag} class="${cls} clk${pinBench === b.id ? " pinned" : ""}" title="${esc(b.name)}" onclick="pinBenchBy(${i})">` +
+    `<div class=nm>${esc(b.name)}</div><div class=cnt>${BMCOUNT.get(b.id) || 0} models</div></${tag}>`;
+};
+
+function pinModelBy(i) { const id = MREG[i]; pinModel = pinModel === id ? null : id; render(); }
+function pinBenchBy(i) { const id = BREG[i]; pinBench = pinBench === id ? null : id; render(); }
+function clearPins() { pinModel = pinBench = null; render(); }
 
 function render() {
   const mq = document.getElementById("mq").value.toLowerCase();
   const bq = document.getElementById("bq").value.toLowerCase();
-  const benches = BENCHES.filter(b => !bq || b.name.toLowerCase().includes(bq));
-  const models = MODELS.filter(m => !mq || m.name.toLowerCase().includes(mq));
+  MREG = []; BREG = [];
+  // Count labels: how many models have each benchmark, and how many benchmarks
+  // each model has. Computed over the full matrix under the current trust filter
+  // (independent of text/pin filters) so a label is a stable property of the axis.
+  MBCOUNT = new Map(); BMCOUNT = new Map();
+  for (const m of MODELS) for (const b of BENCHES) {
+    if (!visibleEntries(CELL.get(ck(m.id, b.id)) || []).length) continue;
+    MBCOUNT.set(m.id, (MBCOUNT.get(m.id) || 0) + 1);
+    BMCOUNT.set(b.id, (BMCOUNT.get(b.id) || 0) + 1);
+  }
+  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench));
+  const models = MODELS.filter(m => (!mq || m.name.toLowerCase().includes(mq)) && (!pinModel || m.id === pinModel));
   const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
   const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
-  document.getElementById("shown").textContent = `${liveM.length} models × ${liveB.length} columns`;
+  document.getElementById("shown").innerHTML = `${liveM.length} models × ${liveB.length} columns` +
+    (pinModel || pinBench ? ` · <a onclick="clearPins()">clear selection</a>` : "");
   if (!liveM.length || !liveB.length) {
     document.getElementById("t").innerHTML = "<tbody><tr><td style=padding:20px>No cells for this filter.</td></tr></tbody>";
     return;
@@ -176,21 +211,20 @@ function render() {
   if (transposed) {
     // Rows = benchmarks, columns = models (with condition sub-labels).
     html = `<thead><tr><th class=model>benchmark \\ model</th>`;
-    for (const m of liveM) html += modelCellHTML("th", m).replace("class=model", "class=bench");
+    for (const m of liveM) html += modelCellHTML("th", m, "bench");
     html += `</tr></thead><tbody>`;
     for (const b of liveB) {
-      html += `<tr><th class=model title="${esc(b.name)}"><div class=nm>${esc(b.name)}</div></th>`;
+      html += `<tr>${benchHeaderHTML("th", b, "model")}`;
       for (const m of liveM) html += bodyCell(m, b);
       html += `</tr>`;
     }
   } else {
     // Rows = models (with condition sub-labels), columns = benchmarks.
     let nameRow = `<th class=model>model \\ benchmark</th>`;
-    for (const b of liveB)
-      nameRow += `<th class=bench title="${esc(b.name)}"><div class=nm>${esc(b.name)}</div></th>`;
+    for (const b of liveB) nameRow += benchHeaderHTML("th", b, "bench");
     html = `<thead><tr>${nameRow}</tr></thead><tbody>`;
     for (const m of liveM) {
-      html += `<tr>${modelCellHTML("td", m)}`;
+      html += `<tr>${modelCellHTML("td", m, "model")}`;
       for (const b of liveB) html += bodyCell(m, b);
       html += "</tr>";
     }
