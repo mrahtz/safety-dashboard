@@ -142,3 +142,37 @@ GPT-4o (2024-11-20) | GPT-4o-1120 | GPT-4o-2024-1120 | ChatGPT-4o-latest
 GPT-4o (2024-08-06) | GPT-4o-0806
 GPT-4o (2024-05-13) | GPT-4o-0513
 GPT-4o (2024-07-18) | GPT-4o-2024-0718
+
+# === Flagged-name reconciliation after 10-card parallel ingest (2026-06-14) ===
+# --- OpenAI (GPT-5 system card variants + comparison models) ---
+GPT-5 thinking | gpt-5-thinking
+GPT-5 main | gpt-5-main
+GPT-5 thinking-pro | gpt-5-thinking-pro
+GPT-5 thinking-mini | gpt-5-thinking-mini
+GPT-5 thinking-nano | gpt-5-thinking-nano
+GPT-5 main-mini | gpt-5-main-mini
+GPT-5.1
+ChatGPT agent
+GPT-4.5
+# --- Google DeepMind (Gemini report + comparisons) ---
+Gemini 3 Pro
+Gemini 2.0 Pro
+Gemini 1.0 Ultra
+Gemini 1.5 Flash
+GPT-4o Audio Preview
+GPT-4o-mini Audio Preview
+GPT-4o transcribe
+# --- DeepSeek ---
+DeepSeek-V2-0506
+# --- Alibaba Qwen (extra baselines) ---
+Qwen2.5-0.5B
+Qwen2.5-1.5B
+# --- Meta (extra baselines) ---
+Llama 3.3 70B | Llama-3.3-70B
+Llama-3-8B
+Llama-3.1-8B-Instruct
+# --- xAI / Cohere / Anthropic (extra comparison models) ---
+Grok 2 | Grok-2
+Command-R
+Claude 3.5 Haiku | Claude-3.5-Haiku
+Claude 3.7 Sonnet | Claude-3.7-Sonnet
