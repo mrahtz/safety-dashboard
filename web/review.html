@@ -49,6 +49,9 @@
  .login{max-width:420px}
  .note{min-width:240px}
  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+ button.tog{font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid #c0cad8;
+   background:#f3f6fb;color:#334;cursor:pointer}
+ button.tog.active{background:#0a4fa8;color:#fff;border-color:#0a4fa8}
 </style></head><body>
 <main>
  <div class=card>
@@ -64,6 +67,11 @@
    <a id=openlink class=muted href=# target=_blank rel=noopener>open original ↗</a>
    <span id=count class=muted></span>
    <span style="margin-left:auto" class=muted><span id=who></span> · <a href=# onclick="signOut();return false">sign out</a></span>
+   <div style="width:100%;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:8px;border-top:1px solid #e6eaf1">
+     <span style="font-size:12px;color:#778">Hide:</span>
+     <button id=btn-empty class=tog onclick="toggleFilter('empty')">Empty pages</button>
+     <button id=btn-accepted class=tog onclick="toggleFilter('accepted')">Fully accepted pages</button>
+   </div>
  </div>
  <div id=gate class=card>Loading…</div>
  <div id=app style=display:none>
@@ -75,6 +83,15 @@
 <script src="common.js?v=20260612"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
+let HIDE_EMPTY = false, HIDE_ACCEPTED = false;
+
+function toggleFilter(type) {
+  if (type === "empty") HIDE_EMPTY = !HIDE_EMPTY;
+  else HIDE_ACCEPTED = !HIDE_ACCEPTED;
+  document.getElementById("btn-empty").classList.toggle("active", HIDE_EMPTY);
+  document.getElementById("btn-accepted").classList.toggle("active", HIDE_ACCEPTED);
+  render();
+}
 
 async function boot() {
   mountChrome("review.html");
@@ -201,6 +218,15 @@ function render() {
       if (a === null) return 1;
       if (b === null) return -1;
       return a - b;
+    });
+  }
+
+  if (HIDE_EMPTY || HIDE_ACCEPTED) {
+    pageNums = pageNums.filter(pageNum => {
+      const pageGroups = byPage.get(pageNum) || [];
+      if (HIDE_EMPTY && pageGroups.length === 0) return false;
+      if (HIDE_ACCEPTED && pageGroups.length > 0 && pageGroups.every(g => g.cells.every(c => c.accepted))) return false;
+      return true;
     });
   }
 
