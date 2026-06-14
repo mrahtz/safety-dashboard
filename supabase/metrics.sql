@@ -3,8 +3,12 @@
 --
 -- sources: one row per ingested card/paper. The skill upserts by origin_url.
 --
--- metrics: one row per (source, model, condition, benchmark) data point.
+-- metrics: one row per (source, model, condition, subset, benchmark) data point.
 --   accepted=false on insert; a reviewer flips it to true in review.html.
+--   condition = how the *model* was run (reasoning effort, tools, thinking,
+--   safeguards, attempts, sampling/scoring like Pass@1/5-shot, training variant).
+--   subset    = which *slice of the benchmark* was measured (language, language
+--   family, difficulty, topic/harm category, named split, context length, …).
 --   section_key = the source's table/figure number (fig_num from the CSV),
 --   used to group rows back into their original table for review.
 --   page_num = the PDF page the table/figure appears on (1-based); used by
@@ -37,6 +41,7 @@ create table if not exists public.metrics (
     source_id   bigint references public.sources(id),
     model       text,
     condition   text    default '',
+    subset      text    default '',
     benchmark   text,
     value       text,
     units       text    default '',
@@ -56,6 +61,7 @@ create policy metrics_read on public.metrics for select to anon, authenticated u
 
 -- Reconcile an already-existing table to this shape. Idempotent.
 alter table public.metrics add column if not exists source_id bigint references public.sources(id);
+alter table public.metrics add column if not exists subset text default '';
 alter table public.metrics drop column if exists source_url;
 alter table public.metrics drop column if exists crop_url;
 alter table public.metrics drop column if exists section_title;

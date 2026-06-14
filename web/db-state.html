@@ -43,7 +43,8 @@
            <tr><td>id<td>bigint<td>PK, auto
            <tr><td>source_id<td>bigint<td>FK → sources
            <tr><td>model<td>text<td>canonical model name
-           <tr><td>condition<td>text<td>e.g. 'low', 'high', 'with tools'
+           <tr><td>condition<td>text<td>how the model was run: 'low', 'high', 'with tools', 'thinking'
+           <tr><td>subset<td>text<td>benchmark slice: language, difficulty, category, …
            <tr><td>benchmark<td>text<td>canonical benchmark name
            <tr><td>value<td>text<td>exact printed value
            <tr><td>units<td>text<td>'%', '$', 'Elo', …
@@ -77,7 +78,7 @@
    </div>
  </div>
 </main>
-<script src="common.js?v=20260612"></script>
+<script src="common.js?v=20260614"></script>
 <script>
 async function load() {
   mountChrome("db-state.html");

@@ -1,0 +1,590 @@
+count,old_condition,new_condition,new_subset
+1928,,,
+203,thinking,thinking,
+128,non-thinking,non-thinking,
+112,5-shot,5-shot,
+74,Acc.,Acc.,
+66,French; non-thinking,non-thinking,French
+66,Portuguese; non-thinking,non-thinking,Portuguese
+66,Spanish; non-thinking,non-thinking,Spanish
+60,French; thinking,thinking,French
+60,Portuguese; thinking,thinking,Portuguese
+60,Spanish; thinking,thinking,Spanish
+55,Arabic; non-thinking,non-thinking,Arabic
+55,Italian; non-thinking,non-thinking,Italian
+55,Japanese; non-thinking,non-thinking,Japanese
+55,Korean; non-thinking,non-thinking,Korean
+52,MATH-500,,MATH-500
+50,Arabic; thinking,thinking,Arabic
+50,Italian; thinking,thinking,Italian
+50,Japanese; thinking,thinking,Japanese
+50,Korean; thinking,thinking,Korean
+50,v5,v5,
+48,extended thinking,extended thinking,
+44,German; non-thinking,non-thinking,German
+44,Indonesian; non-thinking,non-thinking,Indonesian
+44,Russian; non-thinking,non-thinking,Russian
+44,Vietnamese; non-thinking,non-thinking,Vietnamese
+43,0-shot,0-shot,
+43,14 languages,,14 languages
+43,2024-11-25,2024-11-25,
+43,strict prompt,strict prompt,
+43,v3,v3,
+42,visual-only,,visual-only
+40,German; thinking,thinking,German
+40,Indonesian; thinking,thinking,Indonesian
+40,Russian; thinking,thinking,Russian
+40,Vietnamese; thinking,thinking,Vietnamese
+40,main,main,
+38,Pass@1,Pass@1,
+36,3-shot,3-shot,
+35,audio+visual,,audio+visual
+33,Rating / Percentile,Rating / Percentile,
+33,Thai; non-thinking,non-thinking,Thai
+30,Thai; thinking,thinking,Thai
+30,multi-turn,multi-turn,
+24,128k,,128k
+24,image input,,image input
+24,k=10,k=10,
+24,with tools,with tools,
+21,Avg@4,Avg@4,
+21,EM,EM,
+21,no tools,no tools,
+20,8-shot,8-shot,
+20,Easy,,Easy
+20,best-of-30,best-of-30,
+20,overall,,overall
+18,no browsing,no browsing,
+17,Medium,,Medium
+16,4-shot,4-shot,
+16,high,high,
+15,1M,,1M
+15,single attempt,single attempt,
+15,total,,total
+15,vs Gemini 1.5 Flash 002,,vs Gemini 1.5 Flash 002
+14,Arabic,,Arabic
+14,Avg@64,Avg@64,
+14,Chinese,,Chinese
+14,English,,English
+14,French,,French
+14,Hard,,Hard
+14,Korean,,Korean
+14,Russian,,Russian
+14,no browsing launch candidate,no browsing launch candidate,
+14,visual+subtitles,,visual+subtitles
+13,Average,,Average
+13,without tools,without tools,
+12,1-Hallu.,1-Hallu.,
+12,1-shot,1-shot,
+12,End-to-End,,End-to-End
+12,Protocol Design,,Protocol Design
+12,browsing enabled,browsing enabled,
+12,kshots=10,kshots=10,
+12,public system prompt; no extended thinking,public system prompt; no extended thinking,
+12,thinking; browsing enabled,thinking; browsing enabled,
+12,with thinking,with thinking,
+12,without thinking,without thinking,
+10,extended thinking; k=1,extended thinking; k=1,
+10,extended thinking; k=10,extended thinking; k=10,
+10,extended thinking; k=100,extended thinking; k=100,
+9,33 lang,,33 lang
+9,Afro-Asiatic,,Afro-Asiatic
+9,Austroasiatic,,Austroasiatic
+9,Austronesian,,Austronesian
+9,COT,COT,
+9,Code,,Code
+9,Dravidian,,Dravidian
+9,Indo-European,,Indo-European
+9,Logic,,Logic
+9,Math,,Math
+9,Objective QA,,Objective QA
+9,Other,,Other
+9,Overall,,Overall
+9,Python tools,Python tools,
+9,Sequence Design,,Sequence Design
+9,Sino-Tibetan,,Sino-Tibetan
+9,Stage 3 Thinking Mode Fusion; non-thinking,Stage 3 Thinking Mode Fusion; non-thinking,
+9,Stage 4 General RL; non-thinking,Stage 4 General RL; non-thinking,
+9,Subjective QA,,Subjective QA
+9,Tai-Kadai,,Tai-Kadai
+9,Text Generation,,Text Generation
+9,Text Processing,,Text Processing
+9,Turkic,,Turkic
+9,Uralic,,Uralic
+9,browsing,browsing,
+9,browsing disabled,browsing disabled,
+9,multiple attempts,multiple attempts,
+9,single-turn benign,single-turn benign,
+9,single-turn violative,single-turn violative,
+9,thinking; browsing disabled,thinking; browsing disabled,
+8,2-shot,2-shot,
+8,21 lang,,21 lang
+8,25-shot,25-shot,
+8,Stage 2 Reasoning RL; thinking,Stage 2 Reasoning RL; thinking,
+8,Stage 3 Thinking Mode Fusion; thinking,Stage 3 Thinking Mode Fusion; thinking,
+8,Stage 4 General RL; thinking,Stage 4 General RL; thinking,
+8,default,default,
+8,k=1,k=1,
+8,k=100,k=100,
+8,no mitigations,no mitigations,
+8,pass@1,pass@1,
+8,reward-hack-prone coding tasks,,reward-hack-prone coding tasks
+8,standard thinking,standard thinking,
+8,thinking; browsing launch candidate,thinking; browsing launch candidate,
+8,with mitigations,with mitigations,
+7,500 Acc.,500 Acc.,
+7,Agentless Single-Patch Pass@1,Agentless Single-Patch Pass@1,
+7,Avg@16,Avg@16,
+7,Avg@32,Avg@32,
+7,Avg@8,Avg@8,
+7,Correct,Correct,
+7,Ethics & Morality,,Ethics & Morality
+7,Hack the Box (hard),,Hack the Box (hard)
+7,Illegal Activities,,Illegal Activities
+7,In-house CTF (medium),,In-house CTF (medium)
+7,InterCode-CTF (easy),,InterCode-CTF (easy)
+7,Mental Health,,Mental Health
+7,Offensiveness,,Offensiveness
+7,Physical Health,,Physical Health
+7,Privacy & Property,,Privacy & Property
+7,Prompt Strict,Prompt Strict,
+7,Unfairness & Bias,,Unfairness & Bias
+7,audio+visual+subtitles,,audio+visual+subtitles
+7,en Avg@4,en Avg@4,
+7,v2.0 Creative Writing Win rate,v2.0 Creative Writing Win rate,
+7,v2.0 Hard Prompt Win rate,v2.0 Hard Prompt Win rate,
+7,v6 Pass@1,v6 Pass@1,
+6,+ On-policy Distillation,+ On-policy Distillation,
+6,+ Reinforcement Learning,+ Reinforcement Learning,
+6,Adjusted,Adjusted,
+6,Agentic Single-Attempt Pass@1,Agentic Single-Attempt Pass@1,
+6,Chat,,Chat
+6,Chat-Hard,,Chat-Hard
+6,Code-Dev Acc.,Code-Dev Acc.,
+6,Hindi,,Hindi
+6,Off-policy Distillation,Off-policy Distillation,
+6,RULER 128K; non-thinking,non-thinking,RULER 128K
+6,RULER 128K; thinking,thinking,RULER 128K
+6,RULER 16K; non-thinking,non-thinking,RULER 16K
+6,RULER 16K; thinking,thinking,RULER 16K
+6,RULER 32K; non-thinking,non-thinking,RULER 32K
+6,RULER 32K; thinking,thinking,RULER 32K
+6,RULER 4K; non-thinking,non-thinking,RULER 4K
+6,RULER 4K; thinking,thinking,RULER 4K
+6,RULER 64K; non-thinking,non-thinking,RULER 64K
+6,RULER 64K; thinking,thinking,RULER 64K
+6,RULER 8K; non-thinking,non-thinking,RULER 8K
+6,RULER 8K; thinking,thinking,RULER 8K
+6,RULER Avg.; non-thinking,non-thinking,RULER Avg.
+6,RULER Avg.; thinking,thinking,RULER Avg.
+6,Reasoning,,Reasoning
+6,Safety,,Safety
+6,extended thinking; with safeguards; 1 attempt,extended thinking; with safeguards; 1 attempt,
+6,extended thinking; with safeguards; 200 attempts,extended thinking; with safeguards; 200 attempts,
+6,extended thinking; without safeguards; 1 attempt,extended thinking; without safeguards; 1 attempt,
+6,extended thinking; without safeguards; 200 attempts,extended thinking; without safeguards; 200 attempts,
+6,no web,no web,
+6,single attempt high,single attempt high,
+6,standard thinking; with safeguards; 1 attempt,standard thinking; with safeguards; 1 attempt,
+6,standard thinking; with safeguards; 200 attempts,standard thinking; with safeguards; 200 attempts,
+6,standard thinking; without safeguards; 1 attempt,standard thinking; without safeguards; 1 attempt,
+6,standard thinking; without safeguards; 200 attempts,standard thinking; without safeguards; 200 attempts,
+6,thinking; no web,thinking; no web,
+5,"Arabic, high",high,Arabic
+5,"Average, high",high,Average
+5,"Bengali, high",high,Bengali
+5,"Chinese, high",high,Chinese
+5,Extended Thinking,Extended Thinking,
+5,"French, high",high,French
+5,"German, high",high,German
+5,"Hindi, high",high,Hindi
+5,"Indonesian, high",high,Indonesian
+5,"Italian, high",high,Italian
+5,"Japanese, high",high,Japanese
+5,"Korean, high",high,Korean
+5,"Portuguese, high",high,Portuguese
+5,"Spanish, high",high,Spanish
+5,"Swahili, high",high,Swahili
+5,Terminus Acc.,Terminus Acc.,
+5,"Yoruba, high",high,Yoruba
+5,maj@64,maj@64,
+5,no tools; text-only subset,no tools,text-only subset
+5,public split,,public split
+5,thinking-helpful-only; July 26,thinking-helpful-only; July 26,
+5,thinking; July 13,thinking; July 13,
+5,top 2 bugs removed,top 2 bugs removed,
+5,vs Gemini 1.5 Pro 002,,vs Gemini 1.5 Pro 002
+4,10-shot,10-shot,
+4,128k high,high,128k
+4,5-shot Avg@8,5-shot Avg@8,
+4,6-shot,6-shot,
+4,Afro-Asiatic; non-thinking,non-thinking,Afro-Asiatic
+4,Afro-Asiatic; thinking,thinking,Afro-Asiatic
+4,Austroasiatic; non-thinking,non-thinking,Austroasiatic
+4,Austroasiatic; thinking,thinking,Austroasiatic
+4,Austronesian; non-thinking,non-thinking,Austronesian
+4,Austronesian; thinking,thinking,Austronesian
+4,Avg Token Usage per Interaction,Avg Token Usage per Interaction,
+4,Criminal / Base64,,Criminal / Base64
+4,Criminal / Basic,,Criminal / Basic
+4,Criminal / Crescendo,,Criminal / Crescendo
+4,Criminal / Iterative Jailbreak,,Criminal / Iterative Jailbreak
+4,Criminal / Prompt Injection,,Criminal / Prompt Injection
+4,Distinguish biology-related from other conversations,,Distinguish biology-related from other conversations
+4,Distinguish uplifting dual-use or weaponization content from other biology conversations,,Distinguish uplifting dual-use or weaponization content from other biology conversations
+4,Dravidian; non-thinking,non-thinking,Dravidian
+4,Dravidian; thinking,thinking,Dravidian
+4,Harmful / Base64,,Harmful / Base64
+4,Harmful / Basic,,Harmful / Basic
+4,Harmful / Crescendo,,Harmful / Crescendo
+4,Harmful / Iterative Jailbreak,,Harmful / Iterative Jailbreak
+4,Harmful / Prompt Injection,,Harmful / Prompt Injection
+4,Indo-European; non-thinking,non-thinking,Indo-European
+4,Indo-European; thinking,thinking,Indo-European
+4,Misinformation / Base64,,Misinformation / Base64
+4,Misinformation / Basic,,Misinformation / Basic
+4,Misinformation / Crescendo,,Misinformation / Crescendo
+4,Misinformation / Iterative Jailbreak,,Misinformation / Iterative Jailbreak
+4,Misinformation / Prompt Injection,,Misinformation / Prompt Injection
+4,OSS-SFT,OSS-SFT,
+4,OSS-SFT + RL,OSS-SFT + RL,
+4,Other; non-thinking,non-thinking,Other
+4,Other; thinking,thinking,Other
+4,Privacy / Base64,,Privacy / Base64
+4,Privacy / Basic,,Privacy / Basic
+4,Privacy / Crescendo,,Privacy / Crescendo
+4,Privacy / Iterative Jailbreak,,Privacy / Iterative Jailbreak
+4,Privacy / Prompt Injection,,Privacy / Prompt Injection
+4,RULER 128K,,RULER 128K
+4,RULER 16K,,RULER 16K
+4,RULER 32K,,RULER 32K
+4,RULER 4K,,RULER 4K
+4,RULER 64K,,RULER 64K
+4,RULER 8K,,RULER 8K
+4,RULER Avg.,,RULER Avg.
+4,Security / Base64,,Security / Base64
+4,Security / Basic,,Security / Basic
+4,Security / Crescendo,,Security / Crescendo
+4,Security / Iterative Jailbreak,,Security / Iterative Jailbreak
+4,Security / Prompt Injection,,Security / Prompt Injection
+4,Sino-Tibetan; non-thinking,non-thinking,Sino-Tibetan
+4,Sino-Tibetan; thinking,thinking,Sino-Tibetan
+4,Tai-Kadai; non-thinking,non-thinking,Tai-Kadai
+4,Tai-Kadai; thinking,thinking,Tai-Kadai
+4,Tool Calling Success Rate,Tool Calling Success Rate,
+4,Turkic; non-thinking,non-thinking,Turkic
+4,Turkic; thinking,thinking,Turkic
+4,Uralic; non-thinking,non-thinking,Uralic
+4,Uralic; thinking,thinking,Uralic
+4,abuse/disinformation/hate prompts,,abuse/disinformation/hate prompts
+4,base; 3-shot,base; 3-shot,
+4,helpful-only-2025-04-03; high,helpful-only-2025-04-03; high,
+4,illicit/non-violent-crime prompts,,illicit/non-violent-crime prompts
+4,impossible tasks anti-hack prompt,,impossible tasks anti-hack prompt
+4,impossible tasks no prompt,,impossible tasks no prompt
+4,maj@4,maj@4,
+4,model only,model only,
+4,model with improved safeguards,model with improved safeguards,
+4,model with old safeguards,model with old safeguards,
+4,no safeguards,no safeguards,
+4,no tools; full,no tools,full
+4,non-English; 5-shot,5-shot,non-English
+4,platinum 8-shot,platinum 8-shot,
+4,self-harm/intent and self-harm/instructions,,self-harm/intent and self-harm/instructions
+4,sexual-content prompts,,sexual-content prompts
+4,standard thinking; ambiguous,standard thinking,ambiguous
+4,standard thinking; disambiguated,standard thinking,disambiguated
+4,subset of training data,,subset of training data
+4,thinking-pro; browsing launch candidate,thinking-pro; browsing launch candidate,
+4,thinking; browsing helpful-only,thinking; browsing helpful-only,
+4,thinking; no browsing launch candidate,thinking; no browsing launch candidate,
+4,v6 1-shot,v6 1-shot,
+4,validation,,validation
+4,violence prompts,,violence prompts
+4,without FileTool reminder,without FileTool reminder,
+3,256K-1M,,256K-1M
+3,64k thinking,thinking,64k
+3,Actor Critic; vs Gemini 1.5 Flash 002,Actor Critic,vs Gemini 1.5 Flash 002
+3,Agentic Multi-Attempt Pass@1,Agentic Multi-Attempt Pass@1,
+3,Airline (corrected),,Airline (corrected)
+3,Airline (original),,Airline (original)
+3,Beam Search; vs Gemini 1.5 Flash 002,Beam Search,vs Gemini 1.5 Flash 002
+3,Challenging prompts from red teamers with biosafety-relevant PhDs,,Challenging prompts from red teamers with biosafety-relevant PhDs
+3,Filtered adversarial sample of production prompts,,Filtered adversarial sample of production prompts
+3,N=100,N=100,
+3,N=100 + thinking,N=100 + thinking,
+3,N=1000,N=1000,
+3,N=1000 + thinking,N=1000 + thinking,
+3,N=500,N=500,
+3,N=500 + thinking,N=500 + thinking,
+3,N=5000,N=5000,
+3,RL only,RL only,
+3,RL-only,RL-only,
+3,Retail,,Retail
+3,SFT,SFT,
+3,SFT on Magistral Medium Traces,SFT on Magistral Medium Traces,
+3,SFT on Magistral Medium Traces + RL,SFT on Magistral Medium Traces + RL,
+3,SFT+RL,SFT+RL,
+3,Sequence Design (Pass@5),,Sequence Design (Pass@5)
+3,TAP; vs Gemini 1.5 Flash 002,TAP,vs Gemini 1.5 Flash 002
+3,Telecom,,Telecom
+3,Winner vs OpenAI o3,,Winner vs OpenAI o3
+3,ambiguous accuracy,,ambiguous accuracy
+3,ambiguous bias,,ambiguous bias
+3,assigned individually tailored subsets,,assigned individually tailored subsets
+3,disambiguated accuracy,,disambiguated accuracy
+3,disambiguated bias,,disambiguated bias
+3,domestic polarization; helpful-only,helpful-only,domestic polarization
+3,main; browsing disabled,main; browsing disabled,
+3,main; browsing enabled,main; browsing enabled,
+3,no extended thinking,no extended thinking,
+3,no thinking,no thinking,
+3,professional red-team; with safeguards,with safeguards,professional red-team
+3,professional red-team; without safeguards,without safeguards,professional red-team
+3,single policy model; general prompts,single policy model,general prompts
+3,voter suppression; helpful-only,helpful-only,voter suppression
+3,with extended thinking,with extended thinking,
+3,with tool result clearing,with tool result clearing,
+3,with tool result clearing + memory,with tool result clearing + memory,
+3,without mitigations,without mitigations,
+2,+ On-policy Distillation; pass@64,+ On-policy Distillation; pass@64,
+2,+ Reinforcement Learning; pass@64,+ Reinforcement Learning; pass@64,
+2,+ User Jailbreak,+ User Jailbreak,
+2,128k; Extended Thinking,Extended Thinking,128k
+2,"Arabic, low",low,Arabic
+2,"Arabic, medium",medium,Arabic
+2,"Average, low",low,Average
+2,"Average, medium",medium,Average
+2,"Bengali, low",low,Bengali
+2,"Bengali, medium",medium,Bengali
+2,Broad,,Broad
+2,"Chinese, low",low,Chinese
+2,"Chinese, medium",medium,Chinese
+2,"French, low",low,French
+2,"French, medium",medium,French
+2,"German, low",low,German
+2,"German, medium",medium,German
+2,"Hindi, low",low,Hindi
+2,"Hindi, medium",medium,Hindi
+2,"Indonesian, low",low,Indonesian
+2,"Indonesian, medium",medium,Indonesian
+2,"Italian, low",low,Italian
+2,"Italian, medium",medium,Italian
+2,"Japanese, low",low,Japanese
+2,"Japanese, medium",medium,Japanese
+2,"Korean, low",low,Korean
+2,"Korean, medium",medium,Korean
+2,Off-policy Distillation; pass@64,Off-policy Distillation; pass@64,
+2,"Portuguese, low",low,Portuguese
+2,"Portuguese, medium",medium,Portuguese
+2,RL-only;maj@64,RL-only; maj@64,
+2,RL-only;pass@1,RL-only; pass@1,
+2,SFT+RL;maj@64,SFT+RL; maj@64,
+2,SFT+RL;pass@1,SFT+RL; pass@1,
+2,SFT;maj@64,SFT; maj@64,
+2,SFT;pass@1,SFT; pass@1,
+2,"Spanish, low",low,Spanish
+2,"Spanish, medium",medium,Spanish
+2,Strict,,Strict
+2,"Swahili, low",low,Swahili
+2,"Swahili, medium",medium,Swahili
+2,Winner vs gpt-5-thinking,,Winner vs gpt-5-thinking
+2,"Yoruba, low",low,Yoruba
+2,"Yoruba, medium",medium,Yoruba
+2,browsing; Acquisition,browsing,Acquisition
+2,browsing; Formulation,browsing,Formulation
+2,browsing; Release,browsing,Release
+2,extended thinking; 1 attempt; no safeguards,extended thinking; 1 attempt; no safeguards,
+2,extended thinking; 1 attempt; with safeguards,extended thinking; 1 attempt; with safeguards,
+2,extended thinking; 1 attempt; without safeguards,extended thinking; 1 attempt; without safeguards,
+2,extended thinking; 200 attempts; no safeguards,extended thinking; 200 attempts; no safeguards,
+2,extended thinking; 200 attempts; with safeguards,extended thinking; 200 attempts; with safeguards,
+2,extended thinking; 200 attempts; without safeguards,extended thinking; 200 attempts; without safeguards,
+2,main; no web,main; no web,
+2,no browsing launch candidate; Cyber Range: Light with Hints (pass@1),no browsing launch candidate,Cyber Range: Light with Hints (pass@1)
+2,no browsing launch candidate; Cyber Range: Medium (pass@12),no browsing launch candidate,Cyber Range: Medium (pass@12)
+2,no browsing launch candidate; Cyber Range: Medium with Hints (pass@1),no browsing launch candidate,Cyber Range: Medium with Hints (pass@1)
+2,no browsing; Cyber Range: Light with Hints (pass@1),no browsing,Cyber Range: Light with Hints (pass@1)
+2,no browsing; Cyber Range: Medium (pass@12),no browsing,Cyber Range: Medium (pass@12)
+2,no browsing; Cyber Range: Medium with Hints (pass@1),no browsing,Cyber Range: Medium with Hints (pass@1)
+2,no tools high,no tools high,
+2,standard thinking; 1 attempt; no safeguards,standard thinking; 1 attempt; no safeguards,
+2,standard thinking; 1 attempt; with safeguards,standard thinking; 1 attempt; with safeguards,
+2,standard thinking; 1 attempt; without safeguards,standard thinking; 1 attempt; without safeguards,
+2,standard thinking; 200 attempts; no safeguards,standard thinking; 200 attempts; no safeguards,
+2,standard thinking; 200 attempts; with safeguards,standard thinking; 200 attempts; with safeguards,
+2,standard thinking; 200 attempts; without safeguards,standard thinking; 200 attempts; without safeguards,
+2,thinking; browsing launch candidate; Acquisition,thinking; browsing launch candidate,Acquisition
+2,thinking; browsing launch candidate; Formulation,thinking; browsing launch candidate,Formulation
+2,thinking; browsing launch candidate; Ideation,thinking; browsing launch candidate,Ideation
+2,thinking; browsing launch candidate; Release,thinking; browsing launch candidate,Release
+2,thinking; k=10,thinking; k=10,
+2,thinking; winner (more safe) vs o3,thinking,winner (more safe) vs o3
+2,v6,v6,
+2,with Codex-Max,with Codex-Max,
+2,with FileTool reminder,with FileTool reminder,
+1,+ System Jailbreak,+ System Jailbreak,
+1,2024-11-25 / ; Stage 2 Reasoning RL; thinking,2024-11-25 /; Stage 2 Reasoning RL; thinking,
+1,2024-11-25 / ; Stage 3 Thinking Mode Fusion; non-thinking,2024-11-25 /; Stage 3 Thinking Mode Fusion; non-thinking,
+1,2024-11-25 / ; Stage 3 Thinking Mode Fusion; thinking,2024-11-25 /; Stage 3 Thinking Mode Fusion; thinking,
+1,2024-11-25 / ; Stage 4 General RL; non-thinking,2024-11-25 /; Stage 4 General RL; non-thinking,
+1,2024-11-25 / ; Stage 4 General RL; thinking,2024-11-25 /; Stage 4 General RL; thinking,
+1,Actor Critic; vs Gemini 1.5 Pro 002,Actor Critic,vs Gemini 1.5 Pro 002
+1,Average; maj@6,maj@6,Average
+1,Beam Search; vs Gemini 1.5 Pro 002,Beam Search,vs Gemini 1.5 Pro 002
+1,BrowseComp-Plus TTC; + context awareness,BrowseComp-Plus TTC; + context awareness,
+1,BrowseComp-Plus TTC; + memory tool new context tool,BrowseComp-Plus TTC; + memory tool new context tool,
+1,BrowseComp-Plus TTC; + subagents,BrowseComp-Plus TTC; + subagents,
+1,BrowseComp-Plus TTC; + tool break clearing,BrowseComp-Plus TTC; + tool break clearing,
+1,BrowseComp-Plus TTC; with fetch tool; Opus 4.5,BrowseComp-Plus TTC; with fetch tool; Opus 4.5,
+1,Chat-Hard; maj@6,maj@6,Chat-Hard
+1,Chat; maj@6,maj@6,Chat
+1,Chinese;pass@1,pass@1,Chinese
+1,English;pass@1,pass@1,English
+1,French;pass@1,pass@1,French
+1,German;pass@1,pass@1,German
+1,Italian;pass@1,pass@1,Italian
+1,Multi-stage Training,Multi-stage Training,
+1,OSS-SFT + RL;v5,OSS-SFT + RL; v5,
+1,OSS-SFT;v5,OSS-SFT; v5,
+1,RL (Code only),RL (Code only),
+1,RL (Code only);v5,RL (Code only); v5,
+1,RL (Math only),RL (Math only),
+1,RL (Math only);v5,RL (Math only); v5,
+1,RL only;v5,RL only; v5,
+1,RL-only;v5,RL-only; v5,
+1,RL-only;v6,RL-only; v6,
+1,Reasoning; maj@6,maj@6,Reasoning
+1,Russian;pass@1,pass@1,Russian
+1,SFT on Magistral Medium Traces + RL;v5,SFT on Magistral Medium Traces + RL; v5,
+1,SFT on Magistral Medium Traces;v5,SFT on Magistral Medium Traces; v5,
+1,SFT+RL;v5,SFT+RL; v5,
+1,SFT+RL;v6,SFT+RL; v6,
+1,SFT;v5,SFT; v5,
+1,SFT;v6,SFT; v6,
+1,Safety; maj@6,maj@6,Safety
+1,Sequence-mean,Sequence-mean,
+1,Single-stage Training,Single-stage Training,
+1,Spanish;pass@1,pass@1,Spanish
+1,Stage one,Stage one,
+1,Stage two,Stage two,
+1,Starting Checkpoint,Starting Checkpoint,
+1,Starting Checkpoint;v5,Starting Checkpoint; v5,
+1,TAP; vs Gemini 1.5 Pro 002,TAP,vs Gemini 1.5 Pro 002
+1,Token-weighted mean,Token-weighted mean,
+1,auto-truncation,auto-truncation,
+1,baseline; offline evaluation,baseline; offline evaluation,
+1,browsing; Ideation,browsing,Ideation
+1,browsing; Magnification,browsing,Magnification
+1,early checkpoint thinking_budget=0,early checkpoint thinking_budget=0,
+1,early checkpoint thinking_budget=16k,early checkpoint thinking_budget=16k,
+1,empty scratchpads distilled into Opus 4.5 base,empty scratchpads distilled into Opus 4.5 base,
+1,end of instruction-following RL,end of instruction-following RL,
+1,experimental scaffold,experimental scaffold,
+1,high; 0-shot; Arabic,high; 0-shot,Arabic
+1,high; 0-shot; Bengali,high; 0-shot,Bengali
+1,high; 0-shot; Chinese (Simplified),high; 0-shot,Chinese (Simplified)
+1,high; 0-shot; French,high; 0-shot,French
+1,high; 0-shot; German,high; 0-shot,German
+1,high; 0-shot; Hindi,high; 0-shot,Hindi
+1,high; 0-shot; Indonesian,high; 0-shot,Indonesian
+1,high; 0-shot; Italian,high; 0-shot,Italian
+1,high; 0-shot; Japanese,high; 0-shot,Japanese
+1,high; 0-shot; Korean,high; 0-shot,Korean
+1,high; 0-shot; Portuguese (Brazil),high; 0-shot,Portuguese (Brazil)
+1,high; 0-shot; Spanish,high; 0-shot,Spanish
+1,high; 0-shot; Swahili,high; 0-shot,Swahili
+1,high; 0-shot; Yoruba,high; 0-shot,Yoruba
+1,high; k=10,high; k=10,
+1,main; 0-shot; Arabic,main; 0-shot,Arabic
+1,main; 0-shot; Bengali,main; 0-shot,Bengali
+1,main; 0-shot; Chinese (Simplified),main; 0-shot,Chinese (Simplified)
+1,main; 0-shot; French,main; 0-shot,French
+1,main; 0-shot; German,main; 0-shot,German
+1,main; 0-shot; Hindi,main; 0-shot,Hindi
+1,main; 0-shot; Indonesian,main; 0-shot,Indonesian
+1,main; 0-shot; Italian,main; 0-shot,Italian
+1,main; 0-shot; Japanese,main; 0-shot,Japanese
+1,main; 0-shot; Korean,main; 0-shot,Korean
+1,main; 0-shot; Portuguese (Brazil),main; 0-shot,Portuguese (Brazil)
+1,main; 0-shot; Spanish,main; 0-shot,Spanish
+1,main; 0-shot; Swahili,main; 0-shot,Swahili
+1,main; 0-shot; Yoruba,main; 0-shot,Yoruba
+1,main; offline evaluation,main; offline evaluation,
+1,main; preliminary online prevalence vs 4o; free users,main,preliminary online prevalence vs 4o; free users
+1,main; preliminary online prevalence vs 4o; paid users,main,preliminary online prevalence vs 4o; paid users
+1,main; without browse; ambiguous questions,main; without browse,ambiguous questions
+1,main; without browse; disambiguated questions,main; without browse,disambiguated questions
+1,multi-agent system,multi-agent system,
+1,multi-agent; website-specific prompts,multi-agent,website-specific prompts
+1,no tools; no thinking and API refusals,no tools; no thinking and API refusals,
+1,original scratchpads distilled into Opus 4.5 base thinking_budget=16k,original scratchpads distilled into Opus 4.5 base thinking_budget=16k,
+1,paraphrased scratchpads distilled into Opus 4.5 base thinking_budget=16k,paraphrased scratchpads distilled into Opus 4.5 base thinking_budget=16k,
+1,pass@2,pass@2,
+1,pass@3,pass@3,
+1,pass@4,pass@4,
+1,preview; k=10,preview; k=10,
+1,single attempt; Extended Thinking,single attempt; Extended Thinking,
+1,strict prompt; Stage 2 Reasoning RL; thinking,strict prompt; Stage 2 Reasoning RL; thinking,
+1,strict prompt; Stage 3 Thinking Mode Fusion; non-thinking,strict prompt; Stage 3 Thinking Mode Fusion; non-thinking,
+1,strict prompt; Stage 3 Thinking Mode Fusion; thinking,strict prompt; Stage 3 Thinking Mode Fusion; thinking,
+1,strict prompt; Stage 4 General RL; non-thinking,strict prompt; Stage 4 General RL; non-thinking,
+1,strict prompt; Stage 4 General RL; thinking,strict prompt; Stage 4 General RL; thinking,
+1,thinking; 0-shot; Arabic,thinking; 0-shot,Arabic
+1,thinking; 0-shot; Bengali,thinking; 0-shot,Bengali
+1,thinking; 0-shot; Chinese (Simplified),thinking; 0-shot,Chinese (Simplified)
+1,thinking; 0-shot; French,thinking; 0-shot,French
+1,thinking; 0-shot; German,thinking; 0-shot,German
+1,thinking; 0-shot; Hindi,thinking; 0-shot,Hindi
+1,thinking; 0-shot; Indonesian,thinking; 0-shot,Indonesian
+1,thinking; 0-shot; Italian,thinking; 0-shot,Italian
+1,thinking; 0-shot; Japanese,thinking; 0-shot,Japanese
+1,thinking; 0-shot; Korean,thinking; 0-shot,Korean
+1,thinking; 0-shot; Portuguese (Brazil),thinking; 0-shot,Portuguese (Brazil)
+1,thinking; 0-shot; Spanish,thinking; 0-shot,Spanish
+1,thinking; 0-shot; Swahili,thinking; 0-shot,Swahili
+1,thinking; 0-shot; Yoruba,thinking; 0-shot,Yoruba
+1,thinking; browsing helpful-only; Acquisition,thinking; browsing helpful-only,Acquisition
+1,thinking; browsing helpful-only; Formulation,thinking; browsing helpful-only,Formulation
+1,thinking; browsing helpful-only; Ideation,thinking; browsing helpful-only,Ideation
+1,thinking; browsing helpful-only; Magnification,thinking; browsing helpful-only,Magnification
+1,thinking; browsing helpful-only; Release,thinking; browsing helpful-only,Release
+1,thinking; offline evaluation,thinking; offline evaluation,
+1,thinking; with web search; ambiguous questions,thinking; with web search,ambiguous questions
+1,thinking; with web search; disambiguated questions,thinking; with web search,disambiguated questions
+1,thinking; without web search; ambiguous questions,thinking; without web search,ambiguous questions
+1,thinking; without web search; disambiguated questions,thinking; without web search,disambiguated questions
+1,v3; Stage 2 Reasoning RL; thinking,v3; Stage 2 Reasoning RL; thinking,
+1,v3; Stage 3 Thinking Mode Fusion; non-thinking,v3; Stage 3 Thinking Mode Fusion; non-thinking,
+1,v3; Stage 3 Thinking Mode Fusion; thinking,v3; Stage 3 Thinking Mode Fusion; thinking,
+1,v3; Stage 4 General RL; non-thinking,v3; Stage 4 General RL; non-thinking,
+1,v3; Stage 4 General RL; thinking,v3; Stage 4 General RL; thinking,
+1,v5; Stage 2 Reasoning RL; thinking,v5; Stage 2 Reasoning RL; thinking,
+1,v5; Stage 3 Thinking Mode Fusion; non-thinking,v5; Stage 3 Thinking Mode Fusion; non-thinking,
+1,v5; Stage 3 Thinking Mode Fusion; thinking,v5; Stage 3 Thinking Mode Fusion; thinking,
+1,v5; Stage 4 General RL; non-thinking,v5; Stage 4 General RL; non-thinking,
+1,v5; Stage 4 General RL; thinking,v5; Stage 4 General RL; thinking,
+1,vs ChatGPT-4o-latest / Loss,,vs ChatGPT-4o-latest / Loss
+1,vs ChatGPT-4o-latest / Tie,,vs ChatGPT-4o-latest / Tie
+1,vs ChatGPT-4o-latest / Win,,vs ChatGPT-4o-latest / Win
+1,vs Claude Sonnet 4 - Lose,,vs Claude Sonnet 4 - Lose
+1,vs Claude Sonnet 4 - Tie,,vs Claude Sonnet 4 - Tie
+1,vs Claude Sonnet 4 - Win,,vs Claude Sonnet 4 - Win
+1,vs Claude-Sonnet-4 / Loss,,vs Claude-Sonnet-4 / Loss
+1,vs Claude-Sonnet-4 / Tie,,vs Claude-Sonnet-4 / Tie
+1,vs Claude-Sonnet-4 / Win,,vs Claude-Sonnet-4 / Win
+1,vs DeepSeek-V3-0324 / Loss,,vs DeepSeek-V3-0324 / Loss
+1,vs DeepSeek-V3-0324 / Tie,,vs DeepSeek-V3-0324 / Tie
+1,vs DeepSeek-V3-0324 / Win,,vs DeepSeek-V3-0324 / Win
+1,vs Kimi K2 - Lose,,vs Kimi K2 - Lose
+1,vs Kimi K2 - Tie,,vs Kimi K2 - Tie
+1,vs Kimi K2 - Win,,vs Kimi K2 - Win
+1,vs Qwen3-Coder - Lose,,vs Qwen3-Coder - Lose
+1,vs Qwen3-Coder - Tie,,vs Qwen3-Coder - Tie
+1,vs Qwen3-Coder - Win,,vs Qwen3-Coder - Win
+1,winner (more safe) vs gpt-5-thinking,,winner (more safe) vs gpt-5-thinking
+1,with web search; ambiguous questions,with web search,ambiguous questions
+1,with web search; disambiguated questions,with web search,disambiguated questions
+1,without browse; ambiguous questions,without browse,ambiguous questions
+1,without browse; disambiguated questions,without browse,disambiguated questions
+1,xhigh,xhigh,

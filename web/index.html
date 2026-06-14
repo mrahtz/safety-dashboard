@@ -21,15 +21,18 @@
  table.mx td.grp{background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
  table.mx td.model>div.nm{max-width:150px;overflow:hidden;text-overflow:ellipsis}
  table.mx td.model>div.cond{font-weight:600;font-size:10px;color:#7a4;text-transform:uppercase;letter-spacing:.03em}
+ table.mx th.bench>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
+ table.mx td.model>div.subset{font-weight:600;font-size:10px;color:#86c;text-transform:uppercase;letter-spacing:.03em}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Model × benchmark dashboard</div>
-   <div class=muted>Rows are <b>models</b>, split by <b>condition</b> (low/medium/high,
-     with/without tools, …); columns are <b>benchmarks</b>. Each cell aggregates every
-     source's reported value for that model·condition × benchmark — click it to see each
-     source value with its provenance crop. A blue outline marks a table whose numbers a
-     reviewer has signed off.</div>
+   <div class=muted>Rows are <b>models</b>, split by <b>condition</b> (how the model was
+     run: low/medium/high, with/without tools, …) and <b>subset</b> (the benchmark slice:
+     language, difficulty, category, …); columns are <b>benchmarks</b>. Each cell
+     aggregates every source's reported value for that model·condition·subset × benchmark —
+     click it to see each source value with its provenance crop. A blue outline marks a
+     table whose numbers a reviewer has signed off.</div>
  </div>
  <div class="card kpi" id=kpi><div><b id=k-n>…</b><div>numbers</div></div>
    <div><b id=k-m>…</b><div>models</div></div><div><b id=k-b>…</b><div>benchmarks</div></div>
@@ -45,7 +48,7 @@
 </main>
 <div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
   <div class=modal id=modalBody></div></div>
-<script src="common.js?v=20260612"></script>
+<script src="common.js?v=20260614"></script>
 <script>
 let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)
@@ -86,8 +89,9 @@ async function load() {
     const model = cleanLabel(c.model);
     const bench = cleanLabel(c.benchmark);
     const cond = (c.condition || "").trim();
-    const rowId = model + SEP2 + cond;
-    if (!rowMeta.has(rowId)) rowMeta.set(rowId, { id: rowId, name: model, cond });
+    const subset = (c.subset || "").trim();
+    const rowId = model + SEP2 + cond + SEP2 + subset;
+    if (!rowMeta.has(rowId)) rowMeta.set(rowId, { id: rowId, name: model, cond, subset });
     if (!benchMeta.has(bench)) benchMeta.set(bench, { id: bench, name: bench });
     const k = ck(rowId, bench);
     if (!CELL.has(k)) CELL.set(k, []);
@@ -95,7 +99,9 @@ async function load() {
     KEPT.push(c);
   }
   MODELS = [...rowMeta.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true }) || condRank(a.cond) - condRank(b.cond));
+    a.name.localeCompare(b.name, undefined, { numeric: true })
+    || (a.subset || "").localeCompare(b.subset || "", undefined, { numeric: true })
+    || condRank(a.cond) - condRank(b.cond));
   BENCHES = [...benchMeta.values()].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true }));
   document.getElementById("k-n").textContent = KEPT.length;
@@ -111,10 +117,13 @@ function visibleEntries(list) {
   return trustOnly ? list.filter(c => TRUST.includes(effectiveStatus(c))) : list;
 }
 
-// A model-axis label is a model name with an optional condition sub-label.
-const modelTitle = m => esc(m.name) + (m.cond ? " · " + esc(m.cond) : "");
+// A model-axis label is a model name with optional subset + condition sub-labels.
+const subLabel = m => [m.subset, m.cond].filter(Boolean).join(" · ");
+const modelTitle = m => esc(m.name) + (subLabel(m) ? " · " + esc(subLabel(m)) : "");
 const modelCellHTML = (tag, m) => `<${tag} class=model title="${modelTitle(m)}">` +
-  `<div class=nm>${esc(m.name)}</div>${m.cond ? `<div class=cond>${esc(m.cond)}</div>` : ""}</${tag}>`;
+  `<div class=nm>${esc(m.name)}</div>` +
+  `${m.subset ? `<div class=subset>${esc(m.subset)}</div>` : ""}` +
+  `${m.cond ? `<div class=cond>${esc(m.cond)}</div>` : ""}</${tag}>`;
 
 function render() {
   const mq = document.getElementById("mq").value.toLowerCase();
@@ -177,6 +186,7 @@ function openCell(idx) {
     const st = effectiveStatus(c);
     return `<tr><td style="font-weight:700">${esc(fmtVal(c.value, c.units))}</td>
       <td>${esc(c.condition || "—")}</td>
+      <td>${esc(c.subset || "—")}</td>
       <td>${esc(sourceLabel(c.sources?.origin_url))}</td>
       <td><span class="flag s-${st}">${st}</span></td></tr>`;
   }).join("");
@@ -184,7 +194,7 @@ function openCell(idx) {
     `<div style="font-size:16px;font-weight:700">${esc(m)} <span class=muted>×</span> ${esc(b)}${cond ? ` <span class=muted>·</span> ${esc(cond)}` : ""}</div>
      <div class=muted style="margin:4px 0 10px">${list.length} value(s) for this model × benchmark.</div>
      <table style="border-collapse:collapse;width:100%"><tr style="text-align:left;color:#566;font-size:12px">
-       <th>value<th>condition<th>source<th>status</tr>${rows}</table>
+       <th>value<th>condition<th>subset<th>source<th>status</tr>${rows}</table>
      <div style="text-align:right;margin-top:12px"><button onclick="document.getElementById('modal').classList.remove('show')">close</button></div>`;
   document.getElementById("modal").classList.add("show");
 }

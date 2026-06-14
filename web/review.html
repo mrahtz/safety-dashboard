@@ -80,7 +80,7 @@
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.3/dist/panzoom.min.js"></script>
-<script src="common.js?v=20260612"></script>
+<script src="common.js?v=20260614"></script>
 <script>
 let sb, SESSION = null, METRICS = [], BY_SOURCE = new Map();
 let HIDE_EMPTY = false, HIDE_ACCEPTED = false;
@@ -330,7 +330,8 @@ async function decide(btn, sourceId, sectionKey, accepted) {
 
 function tokensOf(c) {
   return [c.model && "m:" + c.model, c.benchmark && "b:" + c.benchmark,
-    ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s)]
+    ...(c.condition || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "c:" + s),
+    ...(c.subset || "").split(",").map(s => s.trim()).filter(Boolean).map(s => "s:" + s)]
     .filter(Boolean);
 }
 const intersect = sets => sets.length ? sets.reduce((a, b) => a.filter(x => b.includes(x))) : [];
@@ -354,7 +355,7 @@ function reconTable(cells) {
       cols.map(c => {
         const cell = grid.get(r + "," + c);
         return cell
-          ? `<td class=v title="${esc(cell.model + " · " + cell.benchmark + " · " + (cell.condition || ""))}">${esc(fmtVal(cell.value, cell.units))}</td>`
+          ? `<td class=v title="${esc([cell.model, cell.benchmark, cell.condition, cell.subset].filter(Boolean).join(" · "))}">${esc(fmtVal(cell.value, cell.units))}</td>`
           : "<td></td>";
       }).join("") + "</tr>";
   }
@@ -362,9 +363,9 @@ function reconTable(cells) {
 }
 
 function schemaTable(cells) {
-  let html = "<table class=schema><tr><th>model<th>condition<th>benchmark<th>value<th>units</tr>";
+  let html = "<table class=schema><tr><th>model<th>condition<th>subset<th>benchmark<th>value<th>units</tr>";
   for (const c of cells) {
-    html += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td>` +
+    html += `<tr><td>${esc(c.model)}</td><td>${esc(c.condition || "—")}</td><td>${esc(c.subset || "—")}</td>` +
       `<td>${esc(c.benchmark)}</td><td>${esc(c.value)}</td><td>${esc(c.units || "")}</td></tr>`;
   }
   return html + "</table>";
