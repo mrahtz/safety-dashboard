@@ -28,32 +28,31 @@ model,condition,subset,benchmark,value,units,fig_num,row_idx,col_idx,page_num
 Work in a scratch dir (e.g. `var/extract/<source-slug>/`) — keep the source,
 the page images, and the CSV together so the verify pass can re-look.
 
-## 0. Credentials — set up `var/supabase.env` if missing
+## 0. Credentials — environment variables
 
-Before doing anything else, check whether `var/supabase.env` exists (it lives at
-the repo root, is gitignored, and holds the Supabase write credentials).
-
-```bash
-test -f var/supabase.env && echo "exists" || echo "missing"
-```
-
-If it is **missing**, ask the user for:
+All upload scripts read the Supabase write credentials **straight from the
+environment** — there is no `var/supabase.env` file anymore. Two env vars are
+required:
 - `SUPABASE_URL` — the project URL, e.g. `https://rapkltwpfvzleejytgmq.supabase.co`
-- `SUPABASE_SERVICE_ROLE` — a `service_role` JWT or `sb_secret_…` key (from the
-  Supabase dashboard → Settings → API keys)
+- `SUPABASE_SERVICE_ROLE_KEY` — a `service_role` JWT or `sb_secret_…` key (from
+  the Supabase dashboard → Settings → API keys)
 
-Then write the file:
+In the remote Claude Code environment both are already present, so nothing to do.
+Check they're set:
 
 ```bash
-mkdir -p var
-cat > var/supabase.env <<EOF
-SUPABASE_URL=<value from user>
-SUPABASE_SERVICE_ROLE=<value from user>
-EOF
+test -n "$SUPABASE_URL" && test -n "$SUPABASE_SERVICE_ROLE_KEY" && echo "set" || echo "missing"
 ```
 
-The file is gitignored — it will never be committed. Do not log or echo the key
-value. Once the file exists, proceed.
+If either is **missing**, ask the user for the values and export them for the
+session (do not log or echo the key value, and do not write it to a file):
+
+```bash
+export SUPABASE_URL=<value from user>
+export SUPABASE_SERVICE_ROLE_KEY=<value from user>
+```
+
+Once both are set, proceed.
 
 ## 1. Canonical name files (read these first, keep them growing)
 

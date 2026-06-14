@@ -11,24 +11,30 @@ Usage:
     python3 .claude/skills/extract-benchmarks/upload_pages.py <slug> <source_id>
 """
 
+import os
 import pathlib
 import sys
 import time
 import urllib.error
 import urllib.request
 
-ENV_PATH = pathlib.Path("var/supabase.env")
 BUCKET = "page-images"
 
 
 def _env() -> dict[str, str]:
-    if not ENV_PATH.exists():
-        raise SystemExit(f"Missing {ENV_PATH}.")
-    return dict(
-        line.split("=", 1)
-        for line in ENV_PATH.read_text().splitlines()
-        if "=" in line
-    )
+    """Supabase write credentials, read straight from the environment.
+    Internally we key on SUPABASE_SERVICE_ROLE; the env var is
+    SUPABASE_SERVICE_ROLE_KEY (the older SUPABASE_SERVICE_ROLE name is also
+    accepted)."""
+    url = os.environ.get("SUPABASE_URL", "").strip()
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+           or os.environ.get("SUPABASE_SERVICE_ROLE", "")).strip()
+    if not url or not key:
+        raise SystemExit(
+            "Missing Supabase credentials. Set SUPABASE_URL and "
+            "SUPABASE_SERVICE_ROLE_KEY in the environment."
+        )
+    return {"SUPABASE_URL": url, "SUPABASE_SERVICE_ROLE": key}
 
 
 def _upload(env: dict[str, str], storage_path: str, data: bytes, tries: int = 4) -> None:
