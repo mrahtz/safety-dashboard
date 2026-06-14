@@ -25,16 +25,16 @@
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Model × benchmark dashboard</div>
-   <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>, split by
-     <b>condition</b> (low/medium/high, with/without tools, …). Each cell is the reported
-     value with its units — click it to see every source value with its provenance crop.
-     A blue outline marks a table whose numbers a reviewer has signed off.</div>
+   <div class=muted>Rows are <b>models</b>, split by <b>condition</b> (low/medium/high,
+     with/without tools, …); columns are <b>benchmarks</b>. Each cell aggregates every
+     source's reported value for that model·condition × benchmark — click it to see each
+     source value with its provenance crop. A blue outline marks a table whose numbers a
+     reviewer has signed off.</div>
  </div>
  <div class="card kpi" id=kpi><div><b id=k-n>…</b><div>numbers</div></div>
    <div><b id=k-m>…</b><div>models</div></div><div><b id=k-b>…</b><div>benchmarks</div></div>
    <div><b id=k-v>…</b><div>trusted (accepted)</div></div></div>
  <div class="card controls">
-   <label>benchmark group <select id=grp onchange=render()></select></label>
    <input id=mq placeholder="filter models…" oninput=render() size=16>
    <input id=bq placeholder="filter benchmarks…" oninput=render() size=18>
    <button id=trust class=on onclick="toggleTrust(this)">trusted only</button>
@@ -47,9 +47,10 @@
   <div class=modal id=modalBody></div></div>
 <script src="common.js?v=20260612"></script>
 <script>
-let DATA = [], MODELS = [], BENCHES = [], GROUPS = [], CELL = new Map(), trustOnly = true, transposed = false;
+let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)
 const SEP = "\u001f";
+const SEP2 = "";                       // rowId = model <SEP2> condition
 const ck = (m, b) => m + SEP + b;
 const rank = c => STATUS_ORDER[effectiveStatus(c)] ?? 9;
 // Order conditions low < medium < high, then anything else, blanks last.
@@ -71,11 +72,13 @@ const isJunkAxis = raw => {
 async function load() {
   mountChrome("index.html");
   DATA = await loadMetrics();
-  // A benchmark COLUMN is qualified by source + table (section) + benchmark +
-  // condition, so e.g. AIME·low / AIME·medium / AIME·high become distinct
-  // columns instead of colliding. Group = "card · table".
-  const benchMeta = new Map();              // benchId -> {id, name, cond, group, col}
-  const modelSet = new Set(), groupSet = new Set();
+  // A benchmark COLUMN is qualified by its name only, so the same benchmark from
+  // any source/table collapses to one column. CONDITION moves onto the model
+  // ROW axis: a row is model · condition (e.g. GPT-5 · high), so AIME·low /
+  // AIME·medium / AIME·high are three rows of the same AIME column. Every
+  // source's value for a given model·condition × benchmark lands in one cell.
+  const benchMeta = new Map();              // benchName -> {id, name}
+  const rowMeta = new Map();                // rowId -> {id, name (model), cond}
   const KEPT = [];
   for (const c of DATA) {
     if (isJunkAxis(c.model) || isJunkAxis(c.benchmark)) continue;
@@ -83,29 +86,22 @@ async function load() {
     const model = cleanLabel(c.model);
     const bench = cleanLabel(c.benchmark);
     const cond = (c.condition || "").trim();
-    const url = c.sources?.origin_url || "";
-    const group = sourceLabel(url);
-    const benchId = [url, c.section_key || "", bench, cond].join("::");
-    modelSet.add(model); groupSet.add(group);
-    if (!benchMeta.has(benchId))
-      benchMeta.set(benchId, { id: benchId, name: bench, cond, group, col: c.col_idx ?? 99 });
-    const k = ck(model, benchId);
+    const rowId = model + SEP2 + cond;
+    if (!rowMeta.has(rowId)) rowMeta.set(rowId, { id: rowId, name: model, cond });
+    if (!benchMeta.has(bench)) benchMeta.set(bench, { id: bench, name: bench });
+    const k = ck(rowId, bench);
     if (!CELL.has(k)) CELL.set(k, []);
     CELL.get(k).push(c);
     KEPT.push(c);
   }
-  MODELS = [...modelSet].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  MODELS = [...rowMeta.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true }) || condRank(a.cond) - condRank(b.cond));
   BENCHES = [...benchMeta.values()].sort((a, b) =>
-    a.group.localeCompare(b.group) || a.name.localeCompare(b.name) ||
-    condRank(a.cond) - condRank(b.cond) || a.col - b.col);
-  GROUPS = [...groupSet].sort();
+    a.name.localeCompare(b.name, undefined, { numeric: true }));
   document.getElementById("k-n").textContent = KEPT.length;
-  document.getElementById("k-m").textContent = MODELS.length;
-  document.getElementById("k-b").textContent = new Set(BENCHES.map(b => b.name)).size;
+  document.getElementById("k-m").textContent = new Set(MODELS.map(r => r.name)).size;
+  document.getElementById("k-b").textContent = BENCHES.length;
   document.getElementById("k-v").textContent = KEPT.filter(c => TRUST.includes(effectiveStatus(c))).length;
-  const sel = document.getElementById("grp");
-  sel.innerHTML = `<option value="">All groups (${GROUPS.length})</option>` +
-    GROUPS.map(g => `<option>${esc(g)}</option>`).join("");
   render();
 }
 
@@ -115,74 +111,57 @@ function visibleEntries(list) {
   return trustOnly ? list.filter(c => TRUST.includes(effectiveStatus(c))) : list;
 }
 
+// A model-axis label is a model name with an optional condition sub-label.
+const modelTitle = m => esc(m.name) + (m.cond ? " · " + esc(m.cond) : "");
+const modelCellHTML = (tag, m) => `<${tag} class=model title="${modelTitle(m)}">` +
+  `<div class=nm>${esc(m.name)}</div>${m.cond ? `<div class=cond>${esc(m.cond)}</div>` : ""}</${tag}>`;
+
 function render() {
-  const g = document.getElementById("grp").value;
   const mq = document.getElementById("mq").value.toLowerCase();
   const bq = document.getElementById("bq").value.toLowerCase();
-  const benches = BENCHES.filter(b => (!g || b.group === g) && (!bq || b.name.toLowerCase().includes(bq)));
-  const models = MODELS.filter(m => !mq || m.toLowerCase().includes(mq));
-  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
-  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m, b.id)) || []).length));
+  const benches = BENCHES.filter(b => !bq || b.name.toLowerCase().includes(bq));
+  const models = MODELS.filter(m => !mq || m.name.toLowerCase().includes(mq));
+  const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
+  const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
   document.getElementById("shown").textContent = `${liveM.length} models × ${liveB.length} columns`;
   if (!liveM.length || !liveB.length) {
     document.getElementById("t").innerHTML = "<tbody><tr><td style=padding:20px>No cells for this filter.</td></tr></tbody>";
     return;
   }
   CELLKEYS = [];
+  // Render one body cell for row m × column b (both refer to the same CELL key
+  // regardless of orientation); pushes onto CELLKEYS for the click handler.
+  const bodyCell = (m, b) => {
+    const vis = visibleEntries(CELL.get(ck(m.id, b.id)) || []);
+    if (!vis.length) return `<td class=empty>·</td>`;
+    const best = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
+    const st = effectiveStatus(best);
+    const distinct = new Set(vis.map(c => fmtVal(c.value, c.units))).size;
+    const mark = vis.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${vis.length}</span>` : "";
+    const idx = CELLKEYS.push(ck(m.id, b.id)) - 1;
+    return `<td class="cell v-${st}" onclick="openCell(${idx})" ` +
+      `title="${modelTitle(m)} · ${esc(b.name)} — ${esc(st)}">${esc(fmtVal(best.value, best.units))}${mark}</td>`;
+  };
   let html;
   if (transposed) {
+    // Rows = benchmarks, columns = models (with condition sub-labels).
     html = `<thead><tr><th class=model>benchmark \\ model</th>`;
-    for (const m of liveM)
-      html += `<th class=bench title="${esc(m)}"><div class=nm>${esc(m)}</div></th>`;
+    for (const m of liveM) html += modelCellHTML("th", m).replace("class=model", "class=bench");
     html += `</tr></thead><tbody>`;
-    let prevGroup = null;
     for (const b of liveB) {
-      if (b.group !== prevGroup) {
-        html += `<tr><td class=grp colspan="${liveM.length + 1}" title="${esc(b.group)}">${esc(b.group)}</td></tr>`;
-        prevGroup = b.group;
-      }
-      html += `<tr><td class=model title="${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""}">` +
-        `<div class=nm>${esc(b.name)}</div>${b.cond ? `<div class=cond>${esc(b.cond)}</div>` : ""}</td>`;
-      for (const m of liveM) {
-        const all = CELL.get(ck(m, b.id)) || [];
-        const vis = visibleEntries(all);
-        if (!vis.length) { html += `<td class=empty>·</td>`; continue; }
-        const best = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
-        const st = effectiveStatus(best);
-        const distinct = new Set(vis.map(c => fmtVal(c.value, c.units))).size;
-        const mark = vis.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${vis.length}</span>` : "";
-        const idx = CELLKEYS.push(ck(m, b.id)) - 1;
-        html += `<td class="cell v-${st}" onclick="openCell(${idx})" ` +
-          `title="${esc(m)} · ${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""} — ${esc(st)}">` +
-          `${esc(fmtVal(best.value, best.units))}${mark}</td>`;
-      }
+      html += `<tr><th class=model title="${esc(b.name)}"><div class=nm>${esc(b.name)}</div></th>`;
+      for (const m of liveM) html += bodyCell(m, b);
       html += `</tr>`;
     }
   } else {
-    let groupRow = "<th class='model grp'></th>", nameRow = `<th class=model>model \\ benchmark</th>`;
-    let prev = null, span = 0, spans = [];
-    liveB.forEach(b => { if (b.group === prev) span++; else { if (prev !== null) spans.push([prev, span]); prev = b.group; span = 1; } });
-    if (prev !== null) spans.push([prev, span]);
-    for (const [gl, n] of spans) groupRow += `<th class=grp colspan=${n} title="${esc(gl)}">${esc(gl)}</th>`;
+    // Rows = models (with condition sub-labels), columns = benchmarks.
+    let nameRow = `<th class=model>model \\ benchmark</th>`;
     for (const b of liveB)
-      nameRow += `<th class=bench title="${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""}">` +
-        `<div class=nm>${esc(b.name)}</div>${b.cond ? `<div class=cond>${esc(b.cond)}</div>` : ""}</th>`;
-    html = `<thead><tr>${groupRow}</tr><tr>${nameRow}</tr></thead><tbody>`;
+      nameRow += `<th class=bench title="${esc(b.name)}"><div class=nm>${esc(b.name)}</div></th>`;
+    html = `<thead><tr>${nameRow}</tr></thead><tbody>`;
     for (const m of liveM) {
-      html += `<tr><td class=model title="${esc(m)}">${esc(m)}</td>`;
-      for (const b of liveB) {
-        const all = CELL.get(ck(m, b.id)) || [];
-        const vis = visibleEntries(all);
-        if (!vis.length) { html += `<td class=empty>·</td>`; continue; }
-        const best = vis.slice().sort((a, c) => rank(a) - rank(c))[0];
-        const st = effectiveStatus(best);
-        const distinct = new Set(vis.map(c => fmtVal(c.value, c.units))).size;
-        const mark = vis.length > 1 ? `<span class=multi>${distinct > 1 ? "±" : ""}${vis.length}</span>` : "";
-        const idx = CELLKEYS.push(ck(m, b.id)) - 1;
-        html += `<td class="cell v-${st}" onclick="openCell(${idx})" `
-          + `title="${esc(m)} · ${esc(b.name)}${b.cond ? " · " + esc(b.cond) : ""} — ${esc(st)}">`
-          + `${esc(fmtVal(best.value, best.units))}${mark}</td>`;
-      }
+      html += `<tr>${modelCellHTML("td", m)}`;
+      for (const b of liveB) html += bodyCell(m, b);
       html += "</tr>";
     }
   }
