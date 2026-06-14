@@ -199,3 +199,10 @@ The two are not interchangeable.
 ## Branch / git
 
 Push to `main`. Don't open PRs unless asked.
+
+**Always finish on `main`.** When you're done with a task, merge your work to
+`main` and push it — that's what triggers the Pages deploy. Don't leave the
+change stranded on a feature branch: a branch that only lives on `origin` never
+deploys (`pages.yml` runs on push to `main` only). If you developed on a feature
+branch, merge it into `main` and `git push origin main` before calling the task
+done, then verify the deploy with `check-site` (see "Frontend changes").
