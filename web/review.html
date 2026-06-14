@@ -103,7 +103,7 @@ function showLogin(msg) {
   g.style.display = "";
   g.innerHTML = `<div class=login><b>Reviewer sign-in</b>
     <p class=muted>Saving decisions is reviewer-only. Enter your email for a magic link.</p>
-    <div class=bar><input id=email type=email placeholder="you@example.com" class=note>
+    <div class=bar><input id=email type=email autocomplete=email placeholder="you@example.com" class=note>
       <button class=on onclick=sendLink()>Send magic link</button></div>
     <p id=loginmsg class=muted>${esc(msg || "")}</p></div>`;
 }
