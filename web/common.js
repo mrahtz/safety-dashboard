@@ -1,6 +1,6 @@
 /* Shared config + helpers for the three dashboard pages.
  * All three pages are fully static: they read from Supabase (PostgREST) with the
- * public read-only anon key, and crops from public Storage. The review page also
+ * public read-only anon key, and page images from public Storage. The review page also
  * uses Supabase Auth so a signed-in reviewer can write table-level decisions. */
 
 const SUPABASE_URL = "https://rapkltwpfvzleejytgmq.supabase.co";
@@ -72,13 +72,6 @@ function groupBySection(cells, fallback = "?") {
   return m;
 }
 
-async function sbGet(path) {
-  const res = await fetch(SUPABASE_URL + "/rest/v1/" + path,
-    { headers: { apikey: ANON, Authorization: "Bearer " + ANON } });
-  if (!res.ok) throw new Error("HTTP " + res.status + ": " + (await res.text()).slice(0, 200));
-  return res.json();
-}
-
 // Page through PostgREST (default max 1000 rows/request) until exhausted.
 async function sbGetAll(table, select) {
   const out = []; const step = 1000;
@@ -142,6 +135,6 @@ function mountChrome(active) {
   h.className = "top";
   h.innerHTML = `<b>LLM safety-metrics</b><nav>` +
     NAV.map(([href, label]) => `<a href="${href}" class="${href === active ? "on" : ""}">${label}</a>`).join("") +
-    `</nav><span class="sp">every number is bound to a bounding box in its source</span>`;
+    `</nav><span class="sp">every number links back to the source page it came from</span>`;
   document.body.prepend(h);
 }

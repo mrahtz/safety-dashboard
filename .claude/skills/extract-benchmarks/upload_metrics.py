@@ -12,8 +12,9 @@ CSV columns (exact): model,condition,subset,benchmark,value,units,fig_num,row_id
   - row_idx/col_idx: table rows only; graph rows leave them empty
   - page_num:  1-based PDF page the table/figure appears on; always set
 
-Auth/retry: service-role key from var/supabase.env, the `apikey` header (PostgREST
-401s without it), and a small backoff on transient 5xx/429. stdlib only.
+Auth/retry: service-role key from the SUPABASE_SERVICE_ROLE_KEY env var, the
+`apikey` header (PostgREST 401s without it), and a small backoff on transient
+5xx/429. stdlib only.
 
 Usage:
     python3 upload_metrics.py <result.csv> <source-url> <num_pages_total>
@@ -21,32 +22,34 @@ Usage:
 
 import csv
 import json
+import os
 import pathlib
 import sys
 import time
 import urllib.error
 import urllib.request
 
-ENV_PATH = pathlib.Path("var/supabase.env")
 _TEXT = ("model", "condition", "subset", "benchmark", "value", "units")
 _INT = ("row_idx", "col_idx", "page_num")
 
 
 def _env() -> dict[str, str]:
-    if not ENV_PATH.exists():
+    """Supabase write credentials, read straight from the environment.
+    Internally we key on SUPABASE_SERVICE_ROLE; the env var is
+    SUPABASE_SERVICE_ROLE_KEY (the older SUPABASE_SERVICE_ROLE name is also
+    accepted)."""
+    url = os.environ.get("SUPABASE_URL", "").strip()
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+           or os.environ.get("SUPABASE_SERVICE_ROLE", "")).strip()
+    if not url or not key:
         raise SystemExit(
-            f"Missing {ENV_PATH}. Create it with:\n"
-            f"  mkdir -p var\n"
-            f"  echo 'SUPABASE_URL=https://<ref>.supabase.co' >> {ENV_PATH}\n"
-            f"  echo 'SUPABASE_SERVICE_ROLE=<service_role_key>' >> {ENV_PATH}\n"
-            f"(service_role key from Supabase dashboard → Settings → API keys)"
+            "Missing Supabase credentials. Set these env vars:\n"
+            "  SUPABASE_URL=https://<ref>.supabase.co\n"
+            "  SUPABASE_SERVICE_ROLE_KEY=<service_role key>\n"
+            "(service_role JWT or sb_secret_… key from Supabase dashboard → "
+            "Settings → API keys)"
         )
-    out: dict[str, str] = {}
-    for line in ENV_PATH.read_text().splitlines():
-        if "=" in line:
-            k, v = line.split("=", 1)
-            out[k] = v.strip()
-    return out
+    return {"SUPABASE_URL": url, "SUPABASE_SERVICE_ROLE": key}
 
 
 def _req(method: str, url: str, headers: dict[str, str], data: bytes | None = None, tries: int = 4) -> bytes:
