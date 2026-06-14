@@ -37,6 +37,7 @@ const SOURCE_LABELS = {
   "https://www-cdn.anthropic.com/fed9cc193a14b84131812372d8d5857f8f304c52/Model_Card_Claude_3_Addendum.pdf": "Claude 3.5 Sonnet model card addendum",
   "https://github.com/meta-llama/llama-models/blob/main/models/llama4/MODEL_CARD.md": "Llama 4 model card",
   "https://huggingface.co/mistralai/Mistral-Large-Instruct-2407": "Mistral Large model card",
+  "https://www.anthropic.com/claude-sonnet-4-5-system-card": "Claude Sonnet 4.5 system card",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");
