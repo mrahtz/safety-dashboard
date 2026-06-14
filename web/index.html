@@ -36,6 +36,8 @@
  table.mx .cnt{font-weight:500;font-size:9px;color:#8593a5;text-transform:none;letter-spacing:0;margin-top:1px}
  table.mx .pinned{outline:2px solid #1565d8;outline-offset:-2px}
  #shown a{color:#1565d8;cursor:pointer;text-decoration:underline}
+ .modal a{color:#1565d8}
+ .modal a.pglink{margin-left:6px;font-size:11px;white-space:nowrap}
 </style></head><body>
 <main>
  <div class=card>
@@ -239,10 +241,20 @@ function openCell(idx) {
   const m = list[0].model || "", b = list[0].benchmark || "";
   const rows = list.map(c => {
     const st = effectiveStatus(c);
+    const url = c.sources?.origin_url || "";
+    // Two links: the source label opens the whole card; "p.N" jumps to the exact
+    // PDF page the number came from (#page=N is honoured by inline PDF viewers).
+    const label = esc(sourceLabel(url));
+    const source = url
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener">${label}</a>` +
+        (c.page_num != null
+          ? ` <a class=pglink href="${esc(url)}#page=${c.page_num}" target="_blank" rel="noopener" title="Open source at page ${c.page_num}">p.${c.page_num}</a>`
+          : "")
+      : label;
     return `<tr><td style="font-weight:700">${esc(fmtVal(c.value, c.units))}</td>
       <td>${esc(c.condition || "—")}</td>
       <td>${esc(c.subset || "—")}</td>
-      <td>${esc(sourceLabel(c.sources?.origin_url))}</td>
+      <td>${source}</td>
       <td><span class="flag s-${st}">${st}</span></td></tr>`;
   }).join("");
   document.getElementById("modalBody").innerHTML =
