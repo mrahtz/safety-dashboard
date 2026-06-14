@@ -22,7 +22,7 @@ to Supabase. The output is a CSV with these exact columns:
 > several plausible candidates and need them to disambiguate which one to ingest.
 
 ```
-model,condition,benchmark,value,units,fig_num,row_idx,col_idx,page_num
+model,condition,subset,benchmark,value,units,fig_num,row_idx,col_idx,page_num
 ```
 
 Work in a scratch dir (e.g. `var/extract/<source-slug>/`) — keep the source,
@@ -110,12 +110,13 @@ often in an appendix.
 ## 3. First pass — extract to CSV
 
 Walk the source top to bottom and emit one CSV row per (model, condition,
-benchmark) data point. Column rules:
+subset, benchmark) data point. Column rules:
 
 | column | meaning |
 | --- | --- |
 | `model` | canonical model name from `models.txt` (normalize). |
-| `condition` | the eval setting that distinguishes otherwise-identical rows: tool use ("no tools", "with browsing"), reasoning effort ("high"), shot count, split, temperature, pass@k, etc. Empty if the source gives none. |
+| `condition` | how the **model** was run — the setting applied to the model itself: tool use ("no tools", "with browsing"), reasoning effort ("high"), thinking ("thinking"/"non-thinking"), safeguards/mitigations, attempt budget ("200 attempts"), and the **sampling/scoring protocol** the number was computed under (shot count "5-shot", "pass@1", "Avg@4", "maj@64", metric name like "Acc."/"EM"), and training variant ("SFT+RL", checkpoint). Empty if the source gives none. |
+| `subset` | which **slice of the benchmark** the number is for — a property of the eval, not the model: language or language family ("Portuguese", "Indo-European"), difficulty ("Hard"), topic/harm category ("Criminal / Basic", "Ethics & Morality"), context length ("128k", "RULER 32K"), modality ("audio+visual"), named split/subset ("public split", "validation"), task sub-category ("Code", "Sequence Design"), aggregate ("overall", "Average"), or head-to-head baseline ("vs Gemini 1.5 Flash 002"). Empty if the eval has no sub-slice. |
 | `benchmark` | canonical eval name from `benchmarks.txt` (normalize). |
 | `value` | the number **exactly as printed** (keep the source's precision/sign; e.g. `91.4`, `0.82`, `1247`). Don't round or rescale. |
 | `units` | `%`, `accuracy`, `Elo`, `pass@1`, `s`, … — whatever the source states. Empty if unitless. |
@@ -150,6 +151,13 @@ Extraction rules:
   that one company runs (not a public/shared eval), make that explicit by
   prefixing the owner, e.g. `OpenAI Illicit`, `OpenAI Harassment`, `Anthropic
   internal eval`. Store it that way in the CSV *and* in `benchmarks.txt`.
+- **Split model-run setting from benchmark slice.** When one label bundles both,
+  put each part in the right column — don't dump the whole thing in `condition`.
+  A header like "Portuguese (non-thinking)" or "Arabic, high" → `subset` =
+  `Portuguese`/`Arabic` (the eval slice), `condition` = `non-thinking`/`high`
+  (how the model ran). Rule of thumb: if it describes *the model's setup* it's
+  `condition`; if it describes *which part of the eval* the number covers it's
+  `subset`. Sampling/scoring (shots, pass@k, Avg@k, metric name) is `condition`.
 - **Normalize as you go.** Map each model/benchmark to its canonical form via the
   txt files; append confidently-canonical new names (§0).
 
@@ -160,7 +168,7 @@ Write the CSV (quote any field containing a comma; standard CSV quoting).
 Do **not** trust the first pass. Loop:
 
 1. **Double-check every number.** Go cell-by-cell / point-by-point back to the
-   page image and confirm the `value` (and its `units`, `condition`,
+   page image and confirm the `value` (and its `units`, `condition`, `subset`,
    `fig_num`, `page_num`, and for tables its `row_idx`/`col_idx`) matches. Fix
    any mismatch.
 2. **Double-check every name** (`benchmark` and `model`). For each, confirm:

@@ -43,8 +43,8 @@ rows show on the dashboard. Two tables, one boolean, no staging.
     split out of a single `condition` column on 2026-06-14 — see
     `condition_subset_mapping.csv` (the applied classification) and
     `condition_premigration_backup.json` (id → original `condition`, for revert).
-    NOTE: `upload_metrics.py` does not yet emit `subset`, so new extractions land
-    with `subset=''` until the skill is taught to populate it.
+    The `extract-benchmarks` skill populates `subset` on new extractions (its CSV
+    has a `subset` column); `upload_metrics.py` tolerates older CSVs without it.
   - `promote.sql` — reviewer UPDATE policy on `metrics`.
 - `.github/workflows/pages.yml` — deploys `web/` to GitHub Pages on push to `main`.
 - `.claude/skills/extract-benchmarks/` — the ingestion skill (standalone, no pipeline deps).
