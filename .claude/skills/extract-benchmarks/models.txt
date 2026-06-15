@@ -88,3 +88,14 @@ Perplexity Deep Research (Opus 4.5)
 Gemini Deep Research
 OpenAI Deep Research (o3)
 OpenAI Deep Research (o4-mini)
+# --- Added from Claude Fable 5 & Mythos 5 system card (2026-06) ---
+Claude Mythos 5 | Mythos 5
+Claude Fable 5 | Fable 5
+Claude Opus 4.8 | Opus 4.8
+Claude Opus 4.7 | Opus 4.7
+Claude Mythos 5 (helpful-only)
+GPT-5.5
+GPT-5.5 Pro
+GPT-5.4 Pro
+Gemini 3.5 Flash
+Gemini 3 Pro Preview
