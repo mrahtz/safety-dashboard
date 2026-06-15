@@ -200,3 +200,8 @@ OpenAI IH: phrase protection (system/user)
 OpenAI IH: password protection (system/user)
 OpenAI IH: phrase protection (dev/user)
 OpenAI IH: password protection (dev/user)
+
+# --- Added from AgentCyberRange paper (Fudan / Nuwa, 2026) ---
+# Two task tracks of the AgentCyberRange offensive-cyber agent benchmark.
+AgentCyberRange Web Exploitation | WebExploitBench
+AgentCyberRange Post Exploitation | PostExploitBench

@@ -78,3 +78,12 @@ Gemini 3 Pro
 GPT-5.2 | GPT 5.2
 Qwen 3.5 | Qwen3.5
 DeepSeek V4 Pro | DeepSeek-V4-Pro
+
+# --- Added from AgentCyberRange paper (2026) ---
+# (DeepSeek V4 Pro reused from above.) Agent harnesses (Codex / Claude Code /
+# Qwen Code / Kimi Code) are recorded in `condition`, not here.
+GPT-5.5
+Claude Opus 4.7 | Claude-Opus-4.7
+GLM-5.1
+Qwen 3.7 Max | Qwen-3.7-Max | Qwen3.7-Max
+Kimi K2.6 | Kimi-2.6 | Kimi-K2.6
