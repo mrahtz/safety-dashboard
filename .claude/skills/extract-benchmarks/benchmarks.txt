@@ -208,7 +208,6 @@ OpenAI IH: password protection (dev/user)
 # Capabilities (public / shared evals)
 BrowseComp
 DeepSearchQA
-DRACO
 ArxivMath
 RiemannBench
 CritPt
