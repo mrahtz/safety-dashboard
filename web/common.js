@@ -11,6 +11,7 @@ const STATUS_ORDER = { accepted: 0, needs_review: 1 };
 
 // Friendly titles for each source card (falls back to a prettified URL).
 const SOURCE_LABELS = {
+  "https://www.anthropic.com/claude-fable-5-mythos-5-system-card": "Claude Fable 5 & Mythos 5 system card",
   "https://deploymentsafety.openai.com/gpt-5-5": "GPT-5.5 system card",
   "https://deploymentsafety.openai.com/gpt-5-2": "GPT-5.2 system card",
   "https://deploymentsafety.openai.com/gpt-5-1": "GPT-5.1 system card",

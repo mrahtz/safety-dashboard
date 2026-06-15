@@ -200,3 +200,95 @@ OpenAI IH: phrase protection (system/user)
 OpenAI IH: password protection (system/user)
 OpenAI IH: phrase protection (dev/user)
 OpenAI IH: password protection (dev/user)
+
+# --- Added from Claude Fable 5 & Mythos 5 system card (2026-06) ---
+# Capabilities (public / shared evals)
+BrowseComp
+DeepSearchQA
+DRACO
+ArxivMath
+RiemannBench
+CritPt
+FrontierCode
+GraphWalks Parents
+Terminal-bench 2.1 | Terminal-Bench 2.1
+OSWorld-Verified
+CursorBench
+BioMysteryBench | BioMystery Bench
+BenchCAD
+ChartQAPro
+ChartMuseum
+Toolathlon
+Legal Agent Benchmark
+Blueprint-Bench 2
+AutomationBench
+OfficeQA Pro
+GDP.pdf
+GDPval-AA
+HealthBench Professional
+HealthAdminBench
+GMMLU | Global MMLU
+MILU
+INCLUDE
+LABBench2 | LAB-Bench 2
+LatchBio Bioinformatics
+ProteinGym Hard
+Structural biology open-ended
+Organic chemistry
+Protocol troubleshooting
+ECLeKTic
+AA-Omniscience
+100Q-Hard
+BBQ Bias Score
+# Cyber (public)
+ExploitBench
+OSS-Fuzz
+# Cyber / agentic red-teaming (external)
+Agent Red Teaming (ART) | Gray Swan ART
+Shade
+# Anthropic-internal cyber evals
+Anthropic Firefox 147
+# Anthropic-internal safety / harmlessness evals
+Anthropic Harmful Request Harmless Response Rate
+Anthropic Benign Request Refusal Rate
+Anthropic Multi-turn Appropriate Response Rate
+Anthropic Child Safety Single-turn Harmless Response Rate
+Anthropic Child Safety Single-turn Benign Refusal Rate
+Anthropic Child Safety Multi-turn Appropriate Response Rate
+Anthropic Mental Health Single-turn Harmless Response Rate
+Anthropic Mental Health Single-turn Benign Refusal Rate
+Anthropic Mental Health Multi-turn Appropriate Response Rate
+Anthropic Election Integrity Single-turn Harmless Response Rate
+Anthropic Election Integrity Single-turn Benign Refusal Rate
+Anthropic Pairwise Political Bias
+# Anthropic-internal agentic-safety evals
+Anthropic Malicious use of Claude Code
+Anthropic Malicious computer use
+Anthropic Malicious agentic influence campaigns
+Anthropic Professional red-teamer prompt injection (browser use)
+# Anthropic-internal CBRN / AI R&D evals
+Anthropic Multimodal Virology (VCT)
+Anthropic LLM Training Speedup
+# Anthropic-internal alignment evals
+Anthropic Automated behavioral audit
+Anthropic Adherence to the constitution
+Anthropic Hacking behavior on GUI computer use tasks
+Anthropic NLA-measured grader awareness
+Anthropic Evaluation awareness discriminability
+Anthropic CoT controllability
+Anthropic SHADE-Arena
+Anthropic Minimal-LinuxBench
+Anthropic Secret leak rate
+Anthropic Silent fallback
+Anthropic CLI command fabrication
+Anthropic Code summary dishonesty rate
+Anthropic Missing-context hallucinations
+Anthropic False premises: factual recall
+Anthropic False premises: STEM-reasoning
+Anthropic Refusal to assist with AI safety R&D
+Anthropic Lazy investigation
+Anthropic AI-identity disclosure
+Anthropic Trust & Safety classifier block rate
+# Anthropic-internal capability evals
+Real-World Finance v1
+Real-World Finance v2
