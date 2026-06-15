@@ -371,7 +371,6 @@ BrowseComp-Plus
 C-Eval
 C3
 CCPM
-Cloning Scenarios
 CLUEWSC
 CMath
 CMMLU
@@ -381,7 +380,6 @@ CoVoST2
 Creative Writing v3
 CRUXEval-I
 CRUXEval-O
-CSimpleQA
 EgoSchema
 EgoTempo
 EvalPlus
@@ -391,7 +389,6 @@ FaithJudge
 FLEURS
 FRAMES
 FullStackBench
-Global MMLU (Lite)
 Google Attack Success Rate
 Google CTF Capture-the-Flag
 Google Dangerous Content Policy Violations (ART)
@@ -411,9 +408,9 @@ HiddenMath-Hard
 HMMT 2025
 HumanEval+
 HumanEval-Mul
-LAB-Bench Cloning Scenarios
+LAB-Bench Cloning Scenarios | Cloning Scenarios
 LAB-Bench ProtocolQA
-LAB-Bench SeqQA
+LAB-Bench SeqQA | SeqQA
 LiveBench
 LOFT (hard retrieval)
 LongBench v2
@@ -527,12 +524,11 @@ SecureBio Molecular Biology Capabilities Test
 SecureBio Virology Capabilities Test (text-only)
 SecureBio VMQA-5C
 SecureBio World Class Biology
-SeqQA
 SHADE-Arena Evasion Success Rate
 Simple-QA-Verified Correct Rate
 Simple-QA-Verified Incorrect Rate
 Simple-QA-Verified Uncertain Rate
-SimpleQA (Chinese)
+SimpleQA (Chinese) | CSimpleQA
 SuperGPQA
 SWE-bench Verified Hard
 SWE-Lancer
