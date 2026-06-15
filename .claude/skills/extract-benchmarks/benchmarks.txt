@@ -27,6 +27,9 @@ SimpleQA
 Humanity's Last Exam | HLE
 USAMO 2026
 
+# --- Deep research (open-ended, rubric-graded) ---
+DRACO | DRACO Benchmark
+
 # --- Math ---
 MATH | MATH-500 | MATH 500
 GSM8K
