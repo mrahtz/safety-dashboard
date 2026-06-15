@@ -38,6 +38,7 @@ const SOURCE_LABELS = {
   "https://arxiv.org/abs/2510.24317": "CAIBench: cybersecurity AI benchmark paper",
   "https://arxiv.org/abs/2602.08023": "CTFExplorer: multi-target web CTF benchmark paper",
   "https://arxiv.org/abs/2410.17141": "AutoPentest: LLM penetration testing benchmark paper",
+  "https://arxiv.org/abs/2602.11685": "DRACO: deep research benchmark paper",
 };
 function prettyFromUrl(url) {
   const last = (url || "").split("/").pop().replace(/\.pdf$/i, "").replace(/-/g, " ");

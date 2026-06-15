@@ -78,3 +78,13 @@ Gemini 3 Pro
 GPT-5.2 | GPT 5.2
 Qwen 3.5 | Qwen3.5
 DeepSeek V4 Pro | DeepSeek-V4-Pro
+
+# --- Added from DRACO paper (Zhong et al., 2026) — deep research SYSTEMS ---
+# Each row is an evaluated deep-research system (agent harness + base model), not
+# a bare model. Standalone Claude Opus 4.6/4.5 (built-in search+code) map to the
+# existing Anthropic entries above.
+Perplexity Deep Research (Opus 4.6)
+Perplexity Deep Research (Opus 4.5)
+Gemini Deep Research
+OpenAI Deep Research (o3)
+OpenAI Deep Research (o4-mini)
