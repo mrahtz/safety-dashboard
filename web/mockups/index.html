@@ -3,100 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Model Selection & Sort — UI Mockups</title>
+<title>LLM safety-metrics — UI Mockups</title>
 <style>
 body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#111;background:#eef1f5}
 header{background:#0b1320;color:#fff;padding:10px 22px;display:flex;align-items:baseline;gap:16px}
 header b{font-size:17px}
-.back{color:#9fb3c8;text-decoration:none;font-size:13px}
 .num{margin-left:auto;color:#9fb3c8;font-size:12px}
 main{padding:16px;max-width:1400px;margin:0 auto}
 .card{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:14px 16px;margin:10px 0}
-.muted{color:#566;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px}
+.mc{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.mc-num{font-size:11px;color:#9fb3c8;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mc-name{font-size:15px;font-weight:700;color:#0b1320}
+.mc-desc{font-size:13px;color:#566;line-height:1.5;flex:1}
+.mc a{display:inline-block;padding:6px 16px;background:#1565d8;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;margin-top:4px;width:fit-content}
+.mc a:hover{background:#1050b8}
 </style>
 </head>
 <body>
 <header>
-  <b>LLM safety-metrics</b>
-  <a href="../index.html" class="back">← dashboard</a>
-  <span class="num">Model Selection &amp; Sort — UI Mockups</span>
+  <b>LLM safety-metrics — UI Mockups</b>
+  <span class="num">10 concepts</span>
 </header>
 <main>
-  <h2 style="margin:0 0 4px">Model Selection &amp; Sort — UI Mockups</h2>
-  <p class="muted" style="margin:0 0 20px">10 interface concepts for multi-model comparison and benchmark sorting.</p>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 1 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Sidebar Checklist</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">A persistent left sidebar with checkboxes for each model and a sort dropdown, keeping controls visually separate from the data table.</p>
-      <a href="01-sidebar-checklist.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+  <div class="card">
+    <p style="margin:0;color:#566;font-size:14px">Interactive prototypes exploring different UX patterns for toggling models and sorting benchmark columns in the LLM safety-metrics matrix. Each mockup is fully self-contained — try the interactions, then come back here to compare approaches.</p>
+  </div>
+  <div class="grid">
+    <div class="mc">
+      <div class="mc-num">01</div>
+      <div class="mc-name">Sidebar Checklist</div>
+      <div class="mc-desc">Left panel with model checkboxes and sort dropdown. Classic filter-sidebar pattern keeps controls out of the table area.</div>
+      <a href="01-sidebar-checklist.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 2 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Chip Token Input</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">Selected models appear as removable chips in a tag-input style box; click '+ add model' to pick from a dropdown of unselected models.</p>
-      <a href="02-chip-input.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">02</div>
+      <div class="mc-name">Chip Token Input</div>
+      <div class="mc-desc">Removable model chips with an "add" picker dropdown; sort via clicking benchmark column headers directly.</div>
+      <a href="02-chip-input.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 3 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Row Toggle (Dim Unselected)</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">Click any model name in the table itself to dim or un-dim that row; all models remain visible with deselected rows at reduced opacity.</p>
-      <a href="03-row-dimming.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">03</div>
+      <div class="mc-name">Row Toggle (Dim)</div>
+      <div class="mc-desc">Click model row headers to dim or undim them. No separate control panel — the table is the UI.</div>
+      <a href="03-row-dimming.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 4 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Model Card Strip</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">A horizontal strip of visual toggle cards above the table; each card represents one model and can be clicked to include or exclude it.</p>
-      <a href="04-card-strip.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">04</div>
+      <div class="mc-name">Card Strip</div>
+      <div class="mc-desc">Horizontal row of toggle-able model cards above the table. Each card shows inclusion status; sort via a dropdown or column headers.</div>
+      <a href="04-card-strip.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 5 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Native Multi-select Listbox</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">A standard HTML multi-select element for model filtering (Ctrl+click for multi-select) paired with a sort dropdown — no custom UI needed.</p>
-      <a href="05-multiselect-listbox.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">05</div>
+      <div class="mc-name">Native Multi-select</div>
+      <div class="mc-desc">HTML select[multiple] for models with Ctrl/Cmd+click or Shift+click; sort dropdown alongside. Zero custom JS for selection.</div>
+      <a href="05-multiselect-listbox.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 6 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Checkbox Column in Table</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">A checkbox column prepended to the matrix table; the header checkbox selects all or none with indeterminate support for partial selections.</p>
-      <a href="06-checkbox-column.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">06</div>
+      <div class="mc-name">Checkbox Column</div>
+      <div class="mc-desc">Checkboxes as the first table column; header checkbox selects or deselects all. Sort arrows on benchmark column headers.</div>
+      <a href="06-checkbox-column.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 7 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Sort-First, Then Filter</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">A two-step flow: first pick a benchmark to rank models by, then a ranked checklist lets you pick which ranked models to include in the table.</p>
-      <a href="07-ranked-list.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">07</div>
+      <div class="mc-name">Sort-First Ranked List</div>
+      <div class="mc-desc">Pick a benchmark first to rank models by score, then check which ranked models to include. Two-step flow surfaces context before selection.</div>
+      <a href="07-ranked-list.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 8 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Command Search / Add</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">Click '+ Add model' to reveal a search input; type to filter available models and click to add; selected models shown as removable badges.</p>
-      <a href="08-command-search.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">08</div>
+      <div class="mc-name">Command Search</div>
+      <div class="mc-desc">Type to search and add models; selected models appear as removable badges. Sort via dropdown. Scales gracefully to many models.</div>
+      <a href="08-command-search.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 9 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Floating Bottom Bar</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">Model toggles and sort control live in a fixed bottom HUD bar, leaving the full viewport height available for the comparison table.</p>
-      <a href="09-floating-bar.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">09</div>
+      <div class="mc-name">Floating Bottom Bar</div>
+      <div class="mc-desc">Fixed bottom HUD with model toggle chips and sort select. Table fills the full viewport; controls stay accessible while scrolling.</div>
+      <a href="09-floating-bar.html">Try it →</a>
     </div>
-
-    <div class="card">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;font-weight:700;margin-bottom:4px">Mockup 10 / 10</div>
-      <div style="font-size:16px;font-weight:700;margin-bottom:6px">Benchmark-Anchored View</div>
-      <p class="muted" style="margin:0 0 14px;font-size:13px">Benchmark tabs at the top rank models by that metric; model chips below show each model's rank and score, and can be toggled in/out of the table.</p>
-      <a href="10-benchmark-anchor.html" style="display:inline-block;padding:6px 14px;background:#1565d8;color:#fff;border-radius:7px;text-decoration:none;font-size:13px">Try it →</a>
+    <div class="mc">
+      <div class="mc-num">10</div>
+      <div class="mc-name">Benchmark-Anchored</div>
+      <div class="mc-desc">Click a benchmark then models rank by that score then toggle which to compare. Unified rank-and-select flow; score context drives inclusion decisions.</div>
+      <a href="10-benchmark-anchor.html">Try it →</a>
     </div>
-
   </div>
 </main>
 </body>
