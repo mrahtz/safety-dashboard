@@ -180,7 +180,7 @@ GMMLU,Multilingual & IF
 Google Helpfulness / Instruction Following,Multilingual & IF
 IFEval,Multilingual & IF
 INCLUDE,Multilingual & IF
-MGSM,Multilingual & IF
+MGSM,Math
 MILU,Multilingual & IF
 MLogiQA,Multilingual & IF
 Moonshot Chinese In-house Eval,Multilingual & IF
