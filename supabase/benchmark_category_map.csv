@@ -1,0 +1,484 @@
+benchmark,category
+100Q-Hard,Knowledge & Reasoning
+AA-Omniscience,Knowledge & Reasoning
+AGIEval,Knowledge & Reasoning
+ARC-AGI-2,Knowledge & Reasoning
+ARC-Challenge,Knowledge & Reasoning
+ARC-Easy,Knowledge & Reasoning
+AutoLogi,Knowledge & Reasoning
+BIG-Bench Hard,Knowledge & Reasoning
+CritPt,Knowledge & Reasoning
+DROP,Knowledge & Reasoning
+FRAMES,Knowledge & Reasoning
+GPQA,Knowledge & Reasoning
+GPQA Diamond,Knowledge & Reasoning
+GraphWalks BFS,Knowledge & Reasoning
+GraphWalks Parents,Knowledge & Reasoning
+HealthAdminBench,Knowledge & Reasoning
+HealthBench,Knowledge & Reasoning
+HealthBench Consensus,Knowledge & Reasoning
+HealthBench Hard,Knowledge & Reasoning
+HealthBench Professional,Knowledge & Reasoning
+HellaSwag,Knowledge & Reasoning
+Humanity's Last Exam,Knowledge & Reasoning
+LiveBench,Knowledge & Reasoning
+LOFT (hard retrieval),Knowledge & Reasoning
+LongBench v2,Knowledge & Reasoning
+LongFact-Concepts,Knowledge & Reasoning
+LongFact-Objects,Knowledge & Reasoning
+MMLU,Knowledge & Reasoning
+MMLU-Pro,Knowledge & Reasoning
+MMLU-Redux,Knowledge & Reasoning
+MRCR,Knowledge & Reasoning
+MRCR-V2 (8-needle),Knowledge & Reasoning
+NaturalQuestions,Knowledge & Reasoning
+Needle In A Haystack,Knowledge & Reasoning
+OpenAI HealthBench Consensus Global Health Errors,Knowledge & Reasoning
+OpenAI HealthBench Consensus Urgent Errors,Knowledge & Reasoning
+OpenAI-MRCR,Knowledge & Reasoning
+OpenAI-Proof Q&A,Knowledge & Reasoning
+Pile-test,Knowledge & Reasoning
+PIQA,Knowledge & Reasoning
+Qwen CounterFactQA,Knowledge & Reasoning
+RACE-High,Knowledge & Reasoning
+RACE-Middle,Knowledge & Reasoning
+Real-World Finance v1,Knowledge & Reasoning
+Real-World Finance v2,Knowledge & Reasoning
+RULER,Knowledge & Reasoning
+SimpleQA,Knowledge & Reasoning
+SuperGPQA,Knowledge & Reasoning
+TriviaQA,Knowledge & Reasoning
+WinoGrande,Knowledge & Reasoning
+ZebraLogic,Knowledge & Reasoning
+Zhipu Novel Logical Reasoning,Knowledge & Reasoning
+AIME 2024,Math
+AIME 2025,Math
+ArxivMath,Math
+CMath,Math
+CNMO 2024,Math
+GSM8K,Math
+HiddenMath,Math
+HiddenMath-Hard,Math
+HMMT 2025,Math
+MATH,Math
+Minerva,Math
+MT-AIME 2024,Math
+PolyMath,Math
+RiemannBench,Math
+USAMO 2026,Math
+AceBench,Code & Agentic
+AgentDojo,Code & Agentic
+Aider Edit,Code & Agentic
+Aider Polyglot,Code & Agentic
+Anthropic Agentic Coding Eval,Code & Agentic
+Anthropic AI R&D Internal Suite 2,Code & Agentic
+Anthropic AI R&D Kernel Task,Code & Agentic
+Anthropic AI R&D LLM Training,Code & Agentic
+Anthropic AI R&D Novel Compiler,Code & Agentic
+Anthropic AI R&D Quadruped RL,Code & Agentic
+Anthropic AI R&D Text-based RL,Code & Agentic
+Anthropic AI R&D Time Series Forecasting,Code & Agentic
+Anthropic Claude Code Dual-use Success Rate,Code & Agentic
+Anthropic LLM Training Speedup,Code & Agentic
+Anthropic Minimal-LinuxBench,Code & Agentic
+AutomationBench,Code & Agentic
+BenchCAD,Code & Agentic
+BFCL,Code & Agentic
+Bird-SQL,Code & Agentic
+Blueprint-Bench 2,Code & Agentic
+BrowseComp,Code & Agentic
+BrowseComp-Plus,Code & Agentic
+Codeforces,Code & Agentic
+CRUXEval-I,Code & Agentic
+CRUXEval-O,Code & Agentic
+CursorBench,Code & Agentic
+DeepSearchQA,Code & Agentic
+DRACO,Code & Agentic
+EvalPlus,Code & Agentic
+FrontierCode,Code & Agentic
+FullStackBench,Code & Agentic
+HumanEval,Code & Agentic
+HumanEval+,Code & Agentic
+HumanEval-Mul,Code & Agentic
+Legal Agent Benchmark,Code & Agentic
+LiveCodeBench,Code & Agentic
+MBPP,Code & Agentic
+MBPP+,Code & Agentic
+MCP Atlas,Code & Agentic
+Mistral Internal Function Calling,Code & Agentic
+MLE-Bench-30,Code & Agentic
+Moonshot Terminal Bench In-House,Code & Agentic
+Multi-SWE-bench,Code & Agentic
+MultiPL-E,Code & Agentic
+OfficeQA Pro,Code & Agentic
+OJBench,Code & Agentic
+OpenAI PRs,Code & Agentic
+OSWorld,Code & Agentic
+OSWorld-Verified,Code & Agentic
+PaperBench,Code & Agentic
+Qwen ToolUse,Code & Agentic
+SciCode,Code & Agentic
+SWE-bench Multilingual,Code & Agentic
+SWE-bench Multimodal,Code & Agentic
+SWE-bench Pro,Code & Agentic
+SWE-bench Verified,Code & Agentic
+SWE-bench Verified Hard,Code & Agentic
+SWE-Lancer,Code & Agentic
+Tau-bench Airline,Code & Agentic
+Tau-bench Retail,Code & Agentic
+Tau2-bench Airline,Code & Agentic
+Tau2-bench Retail,Code & Agentic
+Tau2-bench Telecom,Code & Agentic
+Terminal-bench,Code & Agentic
+Terminal-bench 2.0,Code & Agentic
+Terminal-bench 2.1,Code & Agentic
+Toolathlon,Code & Agentic
+WebArena,Code & Agentic
+Zhipu CC-Bench,Code & Agentic
+1H-VideoQA,Multimodal
+ActivityNet-QA,Multimodal
+AI2D,Multimodal
+BetterChartQA,Multimodal
+ChartMuseum,Multimodal
+ChartQA,Multimodal
+ChartQAPro,Multimodal
+CharXiv Reasoning,Multimodal
+DocVQA,Multimodal
+EgoSchema,Multimodal
+EgoTempo,Multimodal
+LVBench,Multimodal
+MathVista,Multimodal
+MMMU,Multimodal
+MMMU-Pro,Multimodal
+MMMU-Pro (Vision),Multimodal
+Neptune,Multimodal
+Perception Test,Multimodal
+QVHighlights,Multimodal
+ScreenSpot-Pro,Multimodal
+VATEX,Multimodal
+VATEX-ZH,Multimodal
+Vibe-Eval (Reka),Multimodal
+VideoMME,Multimodal
+VideoMMMU,Multimodal
+YouCook2 Cap,Multimodal
+ZeroBench,Multimodal
+AlignBench v1.1,Multilingual & IF
+AlpacaEval 2.0,Multilingual & IF
+Arena-Hard,Multilingual & IF
+Belebele,Multilingual & IF
+C-Eval,Multilingual & IF
+C3,Multilingual & IF
+CCPM,Multilingual & IF
+CLUEWSC,Multilingual & IF
+CMMLU,Multilingual & IF
+CMRC,Multilingual & IF
+CoVoST2,Multilingual & IF
+Creative Writing v3,Multilingual & IF
+ECLeKTic,Multilingual & IF
+FLEURS,Multilingual & IF
+GMMLU,Multilingual & IF
+Google Helpfulness / Instruction Following,Multilingual & IF
+IFEval,Multilingual & IF
+INCLUDE,Multilingual & IF
+MGSM,Multilingual & IF
+MILU,Multilingual & IF
+MLogiQA,Multilingual & IF
+Moonshot Chinese In-house Eval,Multilingual & IF
+MT Bench,Multilingual & IF
+MTOB,Multilingual & IF
+Multi-IF,Multilingual & IF
+MultiChallenge,Multilingual & IF
+Multilingual MMLU,Multilingual & IF
+Qwen LengthCtrl,Multilingual & IF
+Qwen ThinkFollow,Multilingual & IF
+SimpleQA (Chinese),Multilingual & IF
+SysBench,Multilingual & IF
+TydiQA,Multilingual & IF
+WildBench,Multilingual & IF
+WritingBench,Multilingual & IF
+Zhipu Human Eval Chinese,Multilingual & IF
+Zhipu Human Eval English,Multilingual & IF
+Zhipu Human Eval Other-Language,Multilingual & IF
+Zhipu Translation Eval,Multilingual & IF
+AgentCyberRange Post Exploitation,Cyber
+AgentCyberRange Web Exploitation,Cyber
+Anthropic Cyber CTF (Crypto),Cyber
+Anthropic Cyber CTF (Forensics),Cyber
+Anthropic Cyber CTF (Misc),Cyber
+Anthropic Cyber CTF (Network),Cyber
+Anthropic Cyber CTF (Pwn),Cyber
+Anthropic Cyber CTF (Rev),Cyber
+Anthropic Cyber CTF (Web),Cyber
+Anthropic Firefox 147,Cyber
+Anthropic Firefox 147 Full Exploitation,Cyber
+Anthropic Firefox 147 Partial Exploitation,Cyber
+Anthropic Multi-turn Cyber Harm,Cyber
+AutoPentest Benchmark,Cyber
+CAIBench A&D,Cyber
+CAIBench Base,Cyber
+CAIBench Cybench,Cyber
+CAIBench CyberRanges,Cyber
+CAIBench RCTF2,Cyber
+CTFExplorer,Cyber
+CTI-MCQ,Cyber
+CTI-RCM,Cyber
+Cybench,Cyber
+CyberGym,Cyber
+CyberMetric,Cyber
+CyberPII-Bench,Cyber
+ExploitBench,Cyber
+Google CTF Capture-the-Flag,Cyber
+Google Key Skills CTF,Cyber
+OpenAI Capture the Flag (Collegiate),Cyber
+OpenAI Capture the Flag (Professional),Cyber
+OpenAI Cyber Range,Cyber
+OSS-Fuzz,Cyber
+SecEval,Cyber
+AbstentionBench,Safety & Refusal
+Agent Red Teaming (ART),Safety & Refusal
+AgentHarm,Safety & Refusal
+Anthropic Benign Request Refusal Rate,Safety & Refusal
+Anthropic Benign Requests Refusal Rate,Safety & Refusal
+Anthropic Child Safety Benign Refusal Rate,Safety & Refusal
+Anthropic Child Safety Harmlessness,Safety & Refusal
+Anthropic Child Safety Multi-turn,Safety & Refusal
+Anthropic Child Safety Multi-turn Appropriate Response Rate,Safety & Refusal
+Anthropic Child Safety Single-turn Benign Refusal Rate,Safety & Refusal
+Anthropic Child Safety Single-turn Harmless Response Rate,Safety & Refusal
+Anthropic Claude Code Malicious-Covert Refusal Rate,Safety & Refusal
+Anthropic Claude Code Malicious-Overt Refusal Rate,Safety & Refusal
+Anthropic Claude for Chrome Prompt Injection Attack Success,Safety & Refusal
+Anthropic Computer Use Prompt Injection Prevention Rate,Safety & Refusal
+Anthropic Disordered Eating Benign Refusal Rate,Safety & Refusal
+Anthropic Disordered Eating Harmlessness,Safety & Refusal
+Anthropic Election Integrity Single-turn Benign Refusal Rate,Safety & Refusal
+Anthropic Election Integrity Single-turn Harmless Response Rate,Safety & Refusal
+Anthropic Harmful Request Harmless Response Rate,Safety & Refusal
+Anthropic Higher-Difficulty Benign Refusal Rate,Safety & Refusal
+Anthropic Higher-Difficulty Violative Harmlessness,Safety & Refusal
+Anthropic Malicious agentic influence campaigns,Safety & Refusal
+Anthropic Malicious Agentic Influence Task Completion,Safety & Refusal
+Anthropic Malicious Claude Code Dual-use & Benign Success Rate,Safety & Refusal
+Anthropic Malicious Claude Code Refusal Rate,Safety & Refusal
+Anthropic Malicious Code Dual-use Success Rate,Safety & Refusal
+Anthropic Malicious Code Refusal Rate,Safety & Refusal
+Anthropic Malicious Coding Agent Refusal Rate,Safety & Refusal
+Anthropic Malicious computer use,Safety & Refusal
+Anthropic Malicious Computer Use Refusal Rate,Safety & Refusal
+Anthropic Malicious use of Claude Code,Safety & Refusal
+Anthropic MCP Prompt Injection Prevention Rate,Safety & Refusal
+Anthropic Mental Health Multi-turn Appropriate Response Rate,Safety & Refusal
+Anthropic Mental Health Single-turn Benign Refusal Rate,Safety & Refusal
+Anthropic Mental Health Single-turn Harmless Response Rate,Safety & Refusal
+Anthropic Multi-turn Appropriate Response Rate,Safety & Refusal
+Anthropic Multi-turn Deadly Weapons,Safety & Refusal
+Anthropic Multi-turn Hate and Discrimination,Safety & Refusal
+Anthropic Multi-turn Influence Operations,Safety & Refusal
+Anthropic Multi-turn Romance Scams,Safety & Refusal
+Anthropic Multi-turn Tracking and Surveillance,Safety & Refusal
+Anthropic Multi-turn Violent Extremism,Safety & Refusal
+Anthropic Pairwise Political Bias,Safety & Refusal
+Anthropic Political Bias Evenhandedness,Safety & Refusal
+Anthropic Political Bias Opposing Perspectives,Safety & Refusal
+Anthropic Political Bias Refusals,Safety & Refusal
+Anthropic Professional red-teamer prompt injection (browser use),Safety & Refusal
+Anthropic Refusal to assist with AI safety R&D,Safety & Refusal
+Anthropic Shade Browser Use IPI Attack Success,Safety & Refusal
+Anthropic Shade Coding IPI Attack Success,Safety & Refusal
+Anthropic Shade Computer Use Attack Success,Safety & Refusal
+Anthropic Shade Computer Use IPI Attack Success,Safety & Refusal
+Anthropic Shade Indirect Prompt Injection Attack Success,Safety & Refusal
+Anthropic Shade Indirect+Direct Prompt Injection Attack Success,Safety & Refusal
+Anthropic Suicide/Self-harm Benign Refusal Rate,Safety & Refusal
+Anthropic Suicide/Self-harm Harmlessness,Safety & Refusal
+Anthropic Suicide/Self-harm Multi-turn,Safety & Refusal
+Anthropic Tool Use Prompt Injection Prevention Rate,Safety & Refusal
+Anthropic Trust & Safety classifier block rate,Safety & Refusal
+Anthropic Violative Requests Harmlessness,Safety & Refusal
+BBQ,Safety & Refusal
+BBQ Bias Score,Safety & Refusal
+Google Attack Success Rate,Safety & Refusal
+Google Dangerous Content Policy Violations (ART),Safety & Refusal
+Google EN text-to-text Policy Violations,Safety & Refusal
+Google Helpfulness Violations (ART),Safety & Refusal
+Google i18n text-to-text Policy Violations,Safety & Refusal
+Google Image to Text Safety,Safety & Refusal
+Google Image-to-text Policy Violations,Safety & Refusal
+Google Multilingual Safety,Safety & Refusal
+Google Text to Text Safety,Safety & Refusal
+Google Tone,Safety & Refusal
+Moonshot Safety Evaluation,Safety & Refusal
+OpenAI Attack Planning Red Teaming Win Rate,Safety & Refusal
+OpenAI Bio Model Safety Training,Safety & Refusal
+OpenAI Browsing Prompt Injections,Safety & Refusal
+OpenAI Coding Prompt Injections,Safety & Refusal
+OpenAI IH: phrase protection (malicious developer message),Safety & Refusal
+OpenAI IH: phrase protection (malicious user message),Safety & Refusal
+OpenAI IH: system prompt extraction (academic developer vs system),Safety & Refusal
+OpenAI IH: system prompt extraction (academic user vs system),Safety & Refusal
+OpenAI IH: system prompt extraction (realistic user vs system),Safety & Refusal
+OpenAI Image Input Safety: attack planning,Safety & Refusal
+OpenAI Image Input Safety: extremism,Safety & Refusal
+OpenAI Image Input Safety: harms-erotic,Safety & Refusal
+OpenAI Image Input Safety: hate,Safety & Refusal
+OpenAI Image Input Safety: illicit,Safety & Refusal
+OpenAI Image Input Safety: self-harm,Safety & Refusal
+OpenAI Jailbreak: abuse/disinformation/hate,Safety & Refusal
+OpenAI Jailbreak: illicit/non-violent-crime,Safety & Refusal
+OpenAI Jailbreak: sexual-content,Safety & Refusal
+OpenAI Jailbreak: violence,Safety & Refusal
+OpenAI Multimodal Refusal: attack planning,Safety & Refusal
+OpenAI Multimodal Refusal: extremism,Safety & Refusal
+OpenAI Multimodal Refusal: harms-erotic,Safety & Refusal
+OpenAI Multimodal Refusal: hate,Safety & Refusal
+OpenAI Multimodal Refusal: illicit,Safety & Refusal
+OpenAI Multimodal Refusal: self-harm,Safety & Refusal
+OpenAI Production: extremism,Safety & Refusal
+OpenAI Production: harassment/threatening,Safety & Refusal
+OpenAI Production: hate/threatening,Safety & Refusal
+OpenAI Production: illicit/nonviolent,Safety & Refusal
+OpenAI Production: illicit/violent,Safety & Refusal
+OpenAI Production: non-violent hate,Safety & Refusal
+OpenAI Production: personal-data,Safety & Refusal
+OpenAI Production: self-harm/instructions,Safety & Refusal
+OpenAI Production: self-harm/intent,Safety & Refusal
+OpenAI Production: sexual/exploitative,Safety & Refusal
+OpenAI Production: sexual/minors,Safety & Refusal
+OpenAI Standard Disallowed: hate,Safety & Refusal
+OpenAI Standard Disallowed: illicit/non-violent,Safety & Refusal
+OpenAI Standard Disallowed: illicit/violent,Safety & Refusal
+OpenAI Standard Disallowed: personal-data,Safety & Refusal
+OpenAI Standard Disallowed: personal-data/restricted,Safety & Refusal
+OpenAI Standard Disallowed: personal-data/semi,Safety & Refusal
+OpenAI Standard Disallowed: self-harm,Safety & Refusal
+OpenAI Standard Disallowed: self-harm/intent and self-harm/instructions,Safety & Refusal
+OpenAI Standard Disallowed: sexual/exploitative,Safety & Refusal
+OpenAI Standard Disallowed: sexual/minors,Safety & Refusal
+OpenAI System-level Protection (F1),Safety & Refusal
+OpenAI System-level Protection (Precision),Safety & Refusal
+OpenAI System-level Protection (Recall),Safety & Refusal
+OpenAI System-level Protection (System Reliability),Safety & Refusal
+OpenAI Tool-calling Prompt Injections,Safety & Refusal
+SafetyBench,Safety & Refusal
+Shade,Safety & Refusal
+StrongREJECT,Safety & Refusal
+Wildcat Non-toxic,Safety & Refusal
+Wildcat Toxic,Safety & Refusal
+xAI Refusals,Safety & Refusal
+xAI SoB Bias,Safety & Refusal
+XSTest,Safety & Refusal
+Anthropic Creative Biology,CBRN & Bio
+Anthropic Long-form Virology Task 1,CBRN & Bio
+Anthropic Long-form Virology Task 2,CBRN & Bio
+Anthropic Multi-turn Biological Weapons,CBRN & Bio
+Anthropic Multimodal Virology (VCT),CBRN & Bio
+Apollo Pairwise Bioweaponization Win Rate,CBRN & Bio
+BioLP-Bench,CBRN & Bio
+BioMysteryBench,CBRN & Bio
+Biorisk Tacit Knowledge and Troubleshooting,CBRN & Bio
+LAB-Bench Cloning Scenarios,CBRN & Bio
+LAB-Bench FigQA,CBRN & Bio
+LAB-Bench ProtocolQA,CBRN & Bio
+LAB-Bench SeqQA,CBRN & Bio
+LABBench2,CBRN & Bio
+LatchBio Bioinformatics,CBRN & Bio
+Multimodal Troubleshooting Virology,CBRN & Bio
+OpenAI Gryphon Free Response,CBRN & Bio
+Organic chemistry,CBRN & Bio
+ProteinGym Hard,CBRN & Bio
+Protocol troubleshooting,CBRN & Bio
+ProtocolQA Open-Ended,CBRN & Bio
+SecureBio Human Pathogen Capabilities Test,CBRN & Bio
+SecureBio Molecular Biology Capabilities Test,CBRN & Bio
+SecureBio Virology Capabilities Test (text-only),CBRN & Bio
+SecureBio VMQA-5C,CBRN & Bio
+SecureBio World Class Biology,CBRN & Bio
+Structural biology open-ended,CBRN & Bio
+TroubleshootingBench,CBRN & Bio
+WMDP,CBRN & Bio
+AA-Omniscience Correct Rate,Alignment & Honesty
+AA-Omniscience Incorrect Rate,Alignment & Honesty
+AA-Omniscience Uncertain Rate,Alignment & Honesty
+Anthropic 100Q-Hard Correct Rate,Alignment & Honesty
+Anthropic 100Q-Hard Incorrect Rate,Alignment & Honesty
+Anthropic 100Q-Hard Uncertain Rate,Alignment & Honesty
+Anthropic Adherence to the constitution,Alignment & Honesty
+Anthropic AI-identity disclosure,Alignment & Honesty
+Anthropic Automated behavioral audit,Alignment & Honesty
+Anthropic Average In-Eval Hack Rate,Alignment & Honesty
+Anthropic CLI command fabrication,Alignment & Honesty
+Anthropic Code summary dishonesty rate,Alignment & Honesty
+Anthropic CoT controllability,Alignment & Honesty
+Anthropic Deceptive Choice Rate,Alignment & Honesty
+Anthropic Evaluation awareness discriminability,Alignment & Honesty
+Anthropic False Premises Dishonesty Rate,Alignment & Honesty
+Anthropic False Premises Honesty Rate,Alignment & Honesty
+Anthropic False premises: factual recall,Alignment & Honesty
+Anthropic False premises: STEM-reasoning,Alignment & Honesty
+Anthropic Feedback Non-Sycophantic Response Rate,Alignment & Honesty
+Anthropic Hacking behavior on GUI computer use tasks,Alignment & Honesty
+Anthropic Harmful Choice Rate,Alignment & Honesty
+Anthropic Internal Codebase Sabotage Propensity,Alignment & Honesty
+Anthropic Lazy investigation,Alignment & Honesty
+Anthropic Missing-context hallucinations,Alignment & Honesty
+Anthropic Model Preferences for Task Engagement,Alignment & Honesty
+Anthropic NLA-measured grader awareness,Alignment & Honesty
+Anthropic Reward Hacking Classifier Hack Rate,Alignment & Honesty
+Anthropic Reward Hacking Coding Classifier Hack Rate,Alignment & Honesty
+Anthropic Reward Hacking Coding Hidden Test Hack Rate,Alignment & Honesty
+Anthropic Reward Hacking Eval Average,Alignment & Honesty
+Anthropic Reward Hacking Hidden Test Hack Rate,Alignment & Honesty
+Anthropic Reward Hacking Impossible Tasks Anti-hack,Alignment & Honesty
+Anthropic Reward Hacking Impossible Tasks Classifier,Alignment & Honesty
+Anthropic Reward Hacking Training Distribution,Alignment & Honesty
+Anthropic Secret leak rate,Alignment & Honesty
+Anthropic SHADE-Arena,Alignment & Honesty
+Anthropic Silent fallback,Alignment & Honesty
+Anthropic Subversion Strategy Win Rate,Alignment & Honesty
+Apollo Covert Action Rate,Alignment & Honesty
+Apollo Evaluation Awareness (Overall rate),Alignment & Honesty
+Apollo Evaluation Awareness (Rate on scheming samples),Alignment & Honesty
+FACTS Grounding,Alignment & Honesty
+FActScore,Alignment & Honesty
+FaithJudge,Alignment & Honesty
+HHEM v2.1,Alignment & Honesty
+MASK,Alignment & Honesty
+OpenAI Browsing Broken Tools Deception,Alignment & Honesty
+OpenAI CharXiv Missing Image Deception,Alignment & Honesty
+OpenAI Coding Deception,Alignment & Honesty
+OpenAI Coding Deception Eval: App Config & Runtime Params,Alignment & Honesty
+OpenAI Coding Deception Eval: False Premises & Unverified Claims,Alignment & Honesty
+OpenAI Coding Deception Eval: Git Operations & Access,Alignment & Honesty
+OpenAI Coding Deception Eval: Hardware & Device Access,Alignment & Honesty
+OpenAI Coding Deception Eval: Missing Dependencies & Tools,Alignment & Honesty
+OpenAI Coding Deception Eval: Network & External Resource Access,Alignment & Honesty
+OpenAI Coding Deception Eval: Nonexistent Files/Directories/Data,Alignment & Honesty
+OpenAI Coding Deception Eval: Prohibitively Large Coding Tasks,Alignment & Honesty
+OpenAI Coding Deception Eval: System Features & Services,Alignment & Honesty
+OpenAI Coding Deception Eval: Task Repo Mismatch,Alignment & Honesty
+OpenAI Coding Deception Eval: Unit Test Integrity,Alignment & Honesty
+OpenAI HealthBench Hard Hallucinations,Alignment & Honesty
+OpenAI MakeMeSay,Alignment & Honesty
+OpenAI Production Deception: Claims To Perform Action It Didn't,Alignment & Honesty
+OpenAI Production Deception: Continues deception from prior turn,Alignment & Honesty
+OpenAI Production Deception: Deliberately Violates Search/Citation Policy,Alignment & Honesty
+OpenAI Production Deception: Fabricated Citation,Alignment & Honesty
+OpenAI Production Deception: Fabricated Fact,Alignment & Honesty
+OpenAI Production Deception: Fabricated Tool Result,Alignment & Honesty
+OpenAI Production Deception: Gives Overconfident Answer,Alignment & Honesty
+OpenAI Production Deception: Other,Alignment & Honesty
+OpenAI Production Deception: Pretends Partial Answer Is Complete,Alignment & Honesty
+OpenAI Production Deception: Pretends To Be A Human,Alignment & Honesty
+OpenAI Production Deception: Pretends To Be Working In The Background,Alignment & Honesty
+OpenAI Production Factuality: % incorrect claims,Alignment & Honesty
+OpenAI Production Factuality: % responses with 1+ major incorrect claims,Alignment & Honesty
+OpenAI Production Factuality: number of correct claims per response,Alignment & Honesty
+OpenAI Sycophancy,Alignment & Honesty
+RewardBench,Alignment & Honesty
+SHADE-Arena Evasion Success Rate,Alignment & Honesty
+Simple-QA-Verified Correct Rate,Alignment & Honesty
+Simple-QA-Verified Incorrect Rate,Alignment & Honesty
+Simple-QA-Verified Uncertain Rate,Alignment & Honesty
+xAI Sycophancy,Alignment & Honesty
+GDP.pdf,Other
+GDPval-AA,Other

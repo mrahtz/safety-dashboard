@@ -40,11 +40,21 @@
  #shown a{color:#1565d8;cursor:pointer;text-decoration:underline}
  .modal a{color:#1565d8}
  .modal a.pglink{margin-left:6px;font-size:11px;white-space:nowrap}
+ /* category filter chips */
+ #catbar{gap:6px}
+ #catbar .chip{font:inherit;font-size:12px;padding:3px 9px;border-radius:13px;border:1px solid #b9c2d0;background:#e9eef6;color:#1b3a5c;cursor:pointer;line-height:1.35}
+ #catbar .chip.off{background:#fff;color:#9aa6b4;border-style:dashed;text-decoration:line-through}
+ #catbar .chip .cc{opacity:.6;margin-left:4px;font-weight:400}
+ #catbar a{color:#1565d8;cursor:pointer;text-decoration:underline;font-size:12px}
+ /* grouped header: category band row sits above the benchmark-name row, both sticky */
+ table.mx thead tr.benchrow th{top:var(--bandh,26px)}
+ table.mx tr.bandtr td.grp{position:sticky;left:0;z-index:2}
 </style></head><body>
 <main>
  <div class=card>
    <div style="font-size:18px;font-weight:700">Model × benchmark dashboard</div>
-   <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>. When a model
+   <div class=muted>Rows are <b>models</b>; columns are <b>benchmarks</b>, grouped into
+     <b>categories</b> (use the chips below to show/hide a category). When a model
      was measured under multiple conditions (reasoning effort, tools, …) or benchmark
      subsets (language, difficulty, category, …), the cell expands to a mini-table showing
      each combination. Click any cell to see each source value with a link to the source page it came from.</div>
@@ -61,17 +71,26 @@
    <button id=tpose onclick="toggleTranspose(this)">transpose</button>
    <span id=shown class=muted></span>
  </div>
+ <div class="card controls" id=catbar></div>
  <div class=mwrap><table class=mx id=t><tbody><tr><td style=padding:20px>Loading from Supabase…</td></tr></tbody></table></div>
 </main>
 <div class="modal-bg" id=modal onclick="if(event.target===this)this.classList.remove('show')">
   <div class=modal id=modalBody></div></div>
-<script src="common.js?v=20260615a"></script>
+<script src="common.js?v=20260616a"></script>
 <script>
 let DATA = [], MODELS = [], BENCHES = [], CELL = new Map(), trustOnly = true, transposed = false;
 let CELLKEYS = [];                          // per-render: index -> cell key (safe onclick ids)
 let MREG = [], BREG = [];                   // per-render: index -> model/bench id, for header onclick
 let MBCOUNT = new Map(), BMCOUNT = new Map();  // per-render: #benchmarks per model, #models per benchmark
 let pinModel = null, pinBench = null;       // click-to-filter: pin a single model row / benchmark column
+let BCAT = new Map();                        // bench id -> category (a property of the benchmark)
+let hiddenCats = new Set();                  // categories toggled off via the chips
+// Fixed display order for the benchmark categories (matches categories.txt); the
+// matrix groups columns in this order and the chips are laid out the same way.
+const CAT_ORDER = ["Knowledge & Reasoning", "Math", "Code & Agentic", "Multimodal",
+  "Multilingual & IF", "Cyber", "Safety & Refusal", "CBRN & Bio", "Alignment & Honesty", "Other"];
+const catOf = b => BCAT.get(b.id) || "Other";
+const catRank = c => { const i = CAT_ORDER.indexOf(c); return i < 0 ? CAT_ORDER.length : i; };
 const SEP = "\u001f";
 const ck = (m, b) => m + SEP + b;
 const rank = c => STATUS_ORDER[effectiveStatus(c)] ?? 9;
@@ -110,6 +129,10 @@ async function load() {
     const rowId = model;
     if (!rowMeta.has(rowId)) rowMeta.set(rowId, { id: rowId, name: model });
     if (!benchMeta.has(bench)) benchMeta.set(bench, { id: bench, name: bench });
+    // Category is a property of the benchmark, so all rows of a bench agree; take
+    // the first non-empty, and upgrade a stray "Other" if a real one shows up.
+    const cat = (c.category || "").trim() || "Other";
+    if (!BCAT.has(bench) || (BCAT.get(bench) === "Other" && cat !== "Other")) BCAT.set(bench, cat);
     const k = ck(rowId, bench);
     if (!CELL.has(k)) CELL.set(k, []);
     CELL.get(k).push(c);
@@ -123,8 +146,27 @@ async function load() {
   document.getElementById("k-m").textContent = MODELS.length;
   document.getElementById("k-b").textContent = BENCHES.length;
   document.getElementById("k-v").textContent = KEPT.filter(c => TRUST.includes(effectiveStatus(c))).length;
+  buildCatBar();
   render();
 }
+
+// One toggle chip per category present in the data, in CAT_ORDER, each showing
+// how many benchmarks it holds. Clicking a chip shows/hides that category.
+function buildCatBar() {
+  const counts = new Map();
+  for (const c of BCAT.values()) counts.set(c, (counts.get(c) || 0) + 1);
+  const present = CAT_ORDER.filter(c => counts.has(c));
+  document.getElementById("catbar").innerHTML = `<span class=muted>categories:</span>` +
+    present.map(c => `<button class="chip${hiddenCats.has(c) ? " off" : ""}" data-cat="${esc(c)}" ` +
+      `onclick="toggleCat(this)" title="show/hide ${esc(c)} benchmarks">${esc(c)}<span class=cc>${counts.get(c)}</span></button>`).join("") +
+    (hiddenCats.size ? ` <a onclick="allCats()" title="show all categories">reset</a>` : "");
+}
+function toggleCat(btn) {
+  const c = btn.dataset.cat;
+  hiddenCats.has(c) ? hiddenCats.delete(c) : hiddenCats.add(c);
+  buildCatBar(); render();
+}
+function allCats() { hiddenCats.clear(); buildCatBar(); render(); }
 
 function toggleTrust(btn) { trustOnly = !trustOnly; btn.classList.toggle("on", trustOnly); render(); }
 function toggleTranspose(btn) { transposed = !transposed; btn.classList.toggle("on", transposed); render(); }
@@ -169,7 +211,10 @@ function render() {
     MBCOUNT.set(m.id, (MBCOUNT.get(m.id) || 0) + 1);
     BMCOUNT.set(b.id, (BMCOUNT.get(b.id) || 0) + 1);
   }
-  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench) && (BMCOUNT.get(b.id) || 0) >= minModels);
+  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench) && (BMCOUNT.get(b.id) || 0) >= minModels && !hiddenCats.has(catOf(b)));
+  // Order benchmarks by category (then name) so each category's columns/rows are
+  // contiguous and the category bands can span them.
+  benches.sort((a, b) => catRank(catOf(a)) - catRank(catOf(b)) || a.name.localeCompare(b.name, undefined, { numeric: true }));
   const models = MODELS.filter(m => (!mq || m.name.toLowerCase().includes(mq)) && (!pinModel || m.id === pinModel) && (MBCOUNT.get(m.id) || 0) >= minBenches);
   const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
   const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
@@ -218,29 +263,51 @@ function render() {
     }).join("");
     return `<td class="cell v-${overallSt}" onclick="openCell(${idx})" title="${title}"><table class=sub>${subRows}</table></td>`;
   };
+  // Contiguous runs of same-category benchmarks (liveB is category-sorted), used
+  // to draw the category bands. Pages with no benchmarks left in a category just
+  // don't produce a run.
+  const runs = [];
+  for (const b of liveB) {
+    const c = catOf(b);
+    if (runs.length && runs[runs.length - 1].cat === c) runs[runs.length - 1].items.push(b);
+    else runs.push({ cat: c, items: [b] });
+  }
   let html;
   if (transposed) {
-    // Rows = benchmarks, columns = models (with condition sub-labels).
+    // Rows = benchmarks (grouped under full-width category band rows), columns = models.
     html = `<thead><tr><th class=model>benchmark \\ model</th>`;
     for (const m of liveM) html += modelCellHTML("th", m, "bench");
     html += `</tr></thead><tbody>`;
-    for (const b of liveB) {
-      html += `<tr>${benchHeaderHTML("th", b, "model")}`;
-      for (const m of liveM) html += bodyCell(m, b);
-      html += `</tr>`;
+    for (const r of runs) {
+      html += `<tr class=bandtr><td class=grp colspan=${liveM.length + 1}>${esc(r.cat)}</td></tr>`;
+      for (const b of r.items) {
+        html += `<tr>${benchHeaderHTML("th", b, "model")}`;
+        for (const m of liveM) html += bodyCell(m, b);
+        html += `</tr>`;
+      }
     }
   } else {
-    // Rows = models (with condition sub-labels), columns = benchmarks.
-    let nameRow = `<th class=model>model \\ benchmark</th>`;
+    // Rows = models, columns = benchmarks. Two-row head: a category band row spanning
+    // each category's columns, above the benchmark-name row.
+    let band = `<tr class=grprow><th class=model rowspan=2>model \\ benchmark</th>`;
+    for (const r of runs) band += `<th class=grp colspan=${r.items.length}>${esc(r.cat)}</th>`;
+    band += `</tr>`;
+    let nameRow = `<tr class=benchrow>`;
     for (const b of liveB) nameRow += benchHeaderHTML("th", b, "bench");
-    html = `<thead><tr>${nameRow}</tr></thead><tbody>`;
+    nameRow += `</tr>`;
+    html = `<thead>${band}${nameRow}</thead><tbody>`;
     for (const m of liveM) {
       html += `<tr>${modelCellHTML("td", m, "model")}`;
       for (const b of liveB) html += bodyCell(m, b);
       html += "</tr>";
     }
   }
-  document.getElementById("t").innerHTML = html + "</tbody>";
+  const t = document.getElementById("t");
+  t.innerHTML = html + "</tbody>";
+  // The benchmark-name row sticks below the category band; offset it by the band's
+  // measured height (forced layout read, set before paint so there's no flicker).
+  const gr = t.querySelector("thead tr.grprow");
+  t.style.setProperty("--bandh", (gr ? gr.offsetHeight : 0) + "px");
 }
 
 function openCell(idx) {

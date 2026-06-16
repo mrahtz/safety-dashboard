@@ -5,9 +5,11 @@ produced a clean CSV. First upserts a row in `sources` (by origin_url), then
 inserts one `metrics` row per CSV row, linked via source_id. Rows land with
 `accepted = false`; a reviewer flips sections to true in review.html.
 
-CSV columns (exact): model,condition,subset,benchmark,value,units,fig_num,row_idx,col_idx,page_num
+CSV columns (exact): model,condition,subset,benchmark,category,value,units,fig_num,row_idx,col_idx,page_num
   - condition  -> how the model was run (effort/tools/thinking/sampling/scoring)
   - subset     -> which slice of the benchmark (language/difficulty/category/…)
+  - category   -> broad family of the benchmark itself (see categories.txt). A
+                  property of the benchmark; same for every row of a benchmark.
   - fig_num    -> stored as section_key (groups a table's cells for the review page)
   - row_idx/col_idx: table rows only; graph rows leave them empty
   - page_num:  1-based PDF page the table/figure appears on; always set
@@ -29,7 +31,7 @@ import time
 import urllib.error
 import urllib.request
 
-_TEXT = ("model", "condition", "subset", "benchmark", "value", "units")
+_TEXT = ("model", "condition", "subset", "benchmark", "category", "value", "units")
 _INT = ("row_idx", "col_idx", "page_num")
 
 

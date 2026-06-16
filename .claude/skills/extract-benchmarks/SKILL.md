@@ -22,7 +22,7 @@ to Supabase. The output is a CSV with these exact columns:
 > several plausible candidates and need them to disambiguate which one to ingest.
 
 ```
-model,condition,subset,benchmark,value,units,fig_num,row_idx,col_idx,page_num
+model,condition,subset,benchmark,category,value,units,fig_num,row_idx,col_idx,page_num
 ```
 
 Work in a scratch dir (e.g. `var/extract/<source-slug>/`) — keep the source,
@@ -117,6 +117,7 @@ subset, benchmark) data point. Column rules:
 | `condition` | how the **model** was run — the setting applied to the model itself: tool use ("no tools", "with browsing"), reasoning effort ("high"), thinking ("thinking"/"non-thinking"), safeguards/mitigations, attempt budget ("200 attempts"), and the **sampling/scoring protocol** the number was computed under (shot count "5-shot", "pass@1", "Avg@4", "maj@64", metric name like "Acc."/"EM"), and training variant ("SFT+RL", checkpoint). Empty if the source gives none. |
 | `subset` | which **slice of the benchmark** the number is for — a property of the eval, not the model: language or language family ("Portuguese", "Indo-European"), difficulty ("Hard"), topic/harm category ("Criminal / Basic", "Ethics & Morality"), context length ("128k", "RULER 32K"), modality ("audio+visual"), named split/subset ("public split", "validation"), task sub-category ("Code", "Sequence Design"), aggregate ("overall", "Average"), or head-to-head baseline ("vs Gemini 1.5 Flash 002"). Empty if the eval has no sub-slice. |
 | `benchmark` | canonical eval name from `benchmarks.txt` (normalize). |
+| `category` | the broad family of the **benchmark itself**, from the fixed list in `categories.txt` (Knowledge & Reasoning · Math · Code & Agentic · Multimodal · Multilingual & IF · Cyber · Safety & Refusal · CBRN & Bio · Alignment & Honesty · Other). A property of the **benchmark**, not the row — every row for a given benchmark gets the **same** category. Pick the closest bucket; use `Other` only when nothing fits. The dashboard groups and filters columns by this, so keep it consistent with how the same benchmark was categorized before (check `benchmark_category_map.csv`). |
 | `value` | the number **exactly as printed** (keep the source's precision/sign; e.g. `91.4`, `0.82`, `1247`). Don't round or rescale. |
 | `units` | `%`, `accuracy`, `Elo`, `pass@1`, `s`, … — whatever the source states. Empty if unitless. |
 | `fig_num` | **always set** (tables *and* graphs): the table/figure the row came from, **namespaced by kind** — `tbl-<n>` for a table, `fig-<n>` for a graph. Use the source's printed number (Table 3 → `tbl-3`, Figure 2 → `fig-2`); if the source doesn't number them, count from `1` in reading order, tables and figures each in their own sequence (`tbl-1`, `tbl-2`, …; `fig-1`, `fig-2`, …). This value becomes the row's `section_key`, so it must be unique per source table/figure (see below). |
@@ -159,6 +160,11 @@ Extraction rules:
   `subset`. Sampling/scoring (shots, pass@k, Avg@k, metric name) is `condition`.
 - **Normalize as you go.** Map each model/benchmark to its canonical form via the
   txt files; append confidently-canonical new names (§0).
+- **Categorize each benchmark.** Assign one `category` per the fixed list in
+  `categories.txt`. First check `benchmark_category_map.csv` — if the benchmark is
+  already there, reuse that category verbatim so the column stays in one group.
+  For a new benchmark, pick the closest bucket (the keyword hints in
+  `categories.txt` help); `Other` only as a last resort.
 
 Write the CSV (quote any field containing a comma; standard CSV quoting).
 

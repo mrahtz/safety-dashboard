@@ -9,6 +9,12 @@
 --   safeguards, attempts, sampling/scoring like Pass@1/5-shot, training variant).
 --   subset    = which *slice of the benchmark* was measured (language, language
 --   family, difficulty, topic/harm category, named split, context length, …).
+--   category  = the broad family of the *benchmark itself* (Knowledge & Reasoning,
+--   Math, Code & Agentic, Multimodal, Multilingual & IF, Cyber, Safety & Refusal,
+--   CBRN & Bio, Alignment & Honesty, Other). A property of the benchmark, so all
+--   rows sharing a `benchmark` carry the same category; the dashboard groups and
+--   filters columns by it. Backfilled by supabase/backfill_categories.py from
+--   supabase/benchmark_category_map.csv; new extractions set it in the CSV.
 --   section_key = the source's table/figure number (fig_num from the CSV),
 --   used to group rows back into their original table for review.
 --   page_num = the PDF page the table/figure appears on (1-based); used by
@@ -43,6 +49,7 @@ create table if not exists public.metrics (
     condition   text    default '',
     subset      text    default '',
     benchmark   text,
+    category    text    default '',
     value       text,
     units       text    default '',
     row_idx     integer,
@@ -62,6 +69,7 @@ create policy metrics_read on public.metrics for select to anon, authenticated u
 -- Reconcile an already-existing table to this shape. Idempotent.
 alter table public.metrics add column if not exists source_id bigint references public.sources(id);
 alter table public.metrics add column if not exists subset text default '';
+alter table public.metrics add column if not exists category text default '';
 alter table public.metrics drop column if exists source_url;
 alter table public.metrics drop column if exists crop_url;
 alter table public.metrics drop column if exists section_title;

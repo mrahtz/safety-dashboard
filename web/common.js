@@ -90,7 +90,7 @@ async function sbGetAll(table, select) {
 
 async function loadMetrics() {
   return sbGetAll("metrics",
-    "id,source_id,model,condition,subset,benchmark,value,units,row_idx,col_idx,accepted," +
+    "id,source_id,model,condition,subset,benchmark,category,value,units,row_idx,col_idx,accepted," +
     "section_key,page_num,sources(origin_url,num_pages_total)");
 }
 

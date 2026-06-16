@@ -1,0 +1,78 @@
+# Canonical benchmark CATEGORIES — the fixed `category` column values.
+#
+# A category is a property of the *benchmark itself* (not the model run, not the
+# eval slice — those are `condition` / `subset`). Every metrics row for a given
+# benchmark carries the SAME category. The dashboard (index.html) groups the
+# benchmark columns into bands and offers category filter chips, both keyed on
+# this value, so keep it consistent: if a benchmark already appears in
+# supabase/benchmark_category_map.csv, reuse that category verbatim.
+#
+# Use EXACTLY one of these ten strings (match the spelling/casing):
+#
+# Knowledge & Reasoning | Math | Code & Agentic | Multimodal |
+# Multilingual & IF | Cyber | Safety & Refusal | CBRN & Bio |
+# Alignment & Honesty | Other
+#
+# Pick the closest bucket; fall back to "Other" only when nothing fits.
+# When a benchmark could fit two buckets, these tie-breakers apply (top wins):
+#   1. Bio/chem/nuclear domain  -> CBRN & Bio   (even if multimodal/agentic)
+#   2. Cybersecurity domain      -> Cyber        (CTF, exploit, pentest, cyber range)
+#   3. Deception / honesty / scheming / reward-hacking -> Alignment & Honesty
+#   4. Refusal / jailbreak / harmful-content / bias    -> Safety & Refusal
+# i.e. a "malicious-cyber refusal" eval is Cyber by domain; a generic
+# harmful-content refusal is Safety & Refusal; a hallucination/factuality eval is
+# Alignment & Honesty, not Knowledge.
+
+# --- The ten categories, with keyword signals (hints, not rules) ---
+
+Knowledge & Reasoning
+#   General knowledge, QA, commonsense, logic/abstract reasoning, long-context
+#   retrieval, factual recall as capability. e.g. MMLU, GPQA, ARC, BBH, DROP,
+#   HLE, AGIEval, TriviaQA, FRAMES, RULER, Needle-in-a-Haystack, HealthBench.
+
+Math
+#   Mathematics and competition math. e.g. MATH, GSM8K, AIME, HMMT, Minerva,
+#   PolyMath, HiddenMath, ArxivMath, USAMO.
+
+Code & Agentic
+#   Coding, software engineering, tool use / function calling, computer/browser
+#   use, agentic task suites, ML-research/AI-R&D. e.g. SWE-bench, HumanEval,
+#   LiveCodeBench, Aider, Terminal-bench, Tau-bench, OSWorld, WebArena, BFCL,
+#   BrowseComp, Anthropic AI R&D *, PaperBench.
+
+Multimodal
+#   Vision / video / image / chart / document understanding. e.g. MMMU, DocVQA,
+#   ChartQA, MathVista, ScreenSpot, VideoMME, EgoSchema, AI2D, ZeroBench.
+
+Multilingual & IF
+#   Multilingual / translation / non-English evals, and instruction-following /
+#   chat-quality. e.g. MMMLU, Global MMLU, Belebele, FLEURS, C-Eval, CMMLU,
+#   TydiQA, IFEval, Multi-IF, MultiChallenge, Arena-Hard, MT-Bench, WritingBench.
+
+Cyber
+#   Offensive/defensive cybersecurity capability and cyber-harm. e.g. Cybench,
+#   CTF (capture-the-flag), CyberGym, AutoPentest, exploitation, cyber range,
+#   CAIBench, CTI-*, Firefox exploitation.
+
+Safety & Refusal
+#   Refusal / harmlessness / jailbreak resistance / disallowed-content / prompt-
+#   injection defense / bias / harm-category refusals (not bio/cyber domain).
+#   e.g. StrongREJECT, HarmBench, XSTest, AdvBench, BBQ, WMDP-adjacent refusals,
+#   OpenAI Standard Disallowed / Production: *, Anthropic *Refusal Rate*,
+#   prompt-injection prevention, political bias.
+
+CBRN & Bio
+#   Biology / chemistry / bioweapon / pathogen / virology capability and the
+#   bio-chem-nuclear harm domain. e.g. SecureBio, ProtocolQA, LAB-Bench,
+#   ProteinGym, WMDP, Virology Capabilities Test, Long-form Virology, Organic
+#   chemistry.
+
+Alignment & Honesty
+#   Deception, scheming, reward hacking, sabotage, sycophancy, honesty /
+#   hallucination / factuality, eval-awareness, calibration. e.g. MASK,
+#   TruthfulQA, FActScore, FaithJudge, HHEM, RewardBench, Apollo *, Anthropic
+#   Reward Hacking *, OpenAI * Deception / Factuality, SHADE-Arena.
+
+Other
+#   Genuinely cross-cutting or unclassifiable benchmarks only. Prefer a real
+#   bucket; reach for Other last.
