@@ -208,7 +208,6 @@ OpenAI IH: password protection (dev/user)
 # Capabilities (public / shared evals)
 BrowseComp
 DeepSearchQA
-DRACO
 ArxivMath
 RiemannBench
 CritPt
@@ -295,3 +294,270 @@ Anthropic Trust & Safety classifier block rate
 # Anthropic-internal capability evals
 Real-World Finance v1
 Real-World Finance v2
+
+# --- Added by names QA sweep (2026-06-15); present in DB, were missing from this list ---
+1H-VideoQA
+AA-Omniscience Correct Rate
+AA-Omniscience Incorrect Rate
+AA-Omniscience Uncertain Rate
+AbstentionBench
+AceBench
+ActivityNet-QA
+AgentCyberRange Post Exploitation
+AgentCyberRange Web Exploitation
+AgentDojo
+AgentHarm
+AGIEval
+AI2D
+Aider Edit
+AlignBench v1.1
+AlpacaEval 2.0
+Anthropic 100Q-Hard Correct Rate
+Anthropic 100Q-Hard Incorrect Rate
+Anthropic 100Q-Hard Uncertain Rate
+Anthropic Agentic Coding Eval
+Anthropic AI R&D Text-based RL
+Anthropic Average In-Eval Hack Rate
+Anthropic Claude Code Dual-use Success Rate
+Anthropic Claude Code Malicious-Covert Refusal Rate
+Anthropic Claude Code Malicious-Overt Refusal Rate
+Anthropic Claude for Chrome Prompt Injection Attack Success
+Anthropic Computer Use Prompt Injection Prevention Rate
+Anthropic Creative Biology
+Anthropic Cyber CTF (Crypto)
+Anthropic Cyber CTF (Forensics)
+Anthropic Cyber CTF (Misc)
+Anthropic Cyber CTF (Network)
+Anthropic Cyber CTF (Pwn)
+Anthropic Cyber CTF (Rev)
+Anthropic Cyber CTF (Web)
+Anthropic Deceptive Choice Rate
+Anthropic False Premises Dishonesty Rate
+Anthropic Feedback Non-Sycophantic Response Rate
+Anthropic Harmful Choice Rate
+Anthropic Internal Codebase Sabotage Propensity
+Anthropic Malicious Claude Code Dual-use & Benign Success Rate
+Anthropic Malicious Claude Code Refusal Rate
+Anthropic Malicious Coding Agent Refusal Rate
+Anthropic MCP Prompt Injection Prevention Rate
+Anthropic Model Preferences for Task Engagement
+Anthropic Reward Hacking Classifier Hack Rate
+Anthropic Reward Hacking Coding Classifier Hack Rate
+Anthropic Reward Hacking Coding Hidden Test Hack Rate
+Anthropic Reward Hacking Eval Average
+Anthropic Reward Hacking Hidden Test Hack Rate
+Anthropic Reward Hacking Impossible Tasks Anti-hack
+Anthropic Reward Hacking Impossible Tasks Classifier
+Anthropic Reward Hacking Training Distribution
+Anthropic Shade Computer Use Attack Success
+Anthropic Shade Indirect Prompt Injection Attack Success
+Anthropic Shade Indirect+Direct Prompt Injection Attack Success
+Anthropic Subversion Strategy Win Rate
+Anthropic Tool Use Prompt Injection Prevention Rate
+Apollo Covert Action Rate
+Apollo Evaluation Awareness (Overall rate)
+Apollo Evaluation Awareness (Rate on scheming samples)
+Apollo Pairwise Bioweaponization Win Rate
+ARC-Challenge
+ARC-Easy
+Arena-Hard
+AutoLogi
+Belebele
+BetterChartQA
+BFCL
+BioLP-Bench
+Bird-SQL
+BrowseComp-Plus
+C-Eval
+C3
+CCPM
+CLUEWSC
+CMath
+CMMLU
+CMRC
+CNMO 2024
+CoVoST2
+Creative Writing v3
+CRUXEval-I
+CRUXEval-O
+EgoSchema
+EgoTempo
+EvalPlus
+FACTS Grounding
+FActScore
+FaithJudge
+FLEURS
+FRAMES
+FullStackBench
+Google Attack Success Rate
+Google CTF Capture-the-Flag
+Google Dangerous Content Policy Violations (ART)
+Google EN text-to-text Policy Violations
+Google Helpfulness / Instruction Following
+Google Helpfulness Violations (ART)
+Google i18n text-to-text Policy Violations
+Google Image to Text Safety
+Google Image-to-text Policy Violations
+Google Key Skills CTF
+Google Multilingual Safety
+Google Text to Text Safety
+Google Tone
+HHEM v2.1
+HiddenMath
+HiddenMath-Hard
+HMMT 2025
+HumanEval+
+HumanEval-Mul
+LAB-Bench Cloning Scenarios | Cloning Scenarios
+LAB-Bench ProtocolQA
+LAB-Bench SeqQA | SeqQA
+LiveBench
+LOFT (hard retrieval)
+LongBench v2
+LongFact-Concepts
+LongFact-Objects
+LVBench
+MBPP+
+MCP Atlas
+Minerva
+Mistral Internal Function Calling
+MLE-Bench-30
+MLogiQA
+MMMU-Pro
+MMMU-Pro (Vision)
+Moonshot Chinese In-house Eval
+Moonshot Safety Evaluation
+Moonshot Terminal Bench In-House
+MRCR
+MRCR-V2 (8-needle)
+MT Bench
+MT-AIME 2024
+MTOB
+Multi-IF
+Multi-SWE-bench
+MultiChallenge
+MultiPL-E
+NaturalQuestions
+Needle In A Haystack
+Neptune
+OJBench
+OpenAI Attack Planning Red Teaming Win Rate
+OpenAI Bio Model Safety Training
+OpenAI Browsing Broken Tools Deception
+OpenAI Browsing Prompt Injections
+OpenAI CharXiv Missing Image Deception
+OpenAI Coding Deception
+OpenAI Coding Deception Eval: App Config & Runtime Params
+OpenAI Coding Deception Eval: False Premises & Unverified Claims
+OpenAI Coding Deception Eval: Git Operations & Access
+OpenAI Coding Deception Eval: Hardware & Device Access
+OpenAI Coding Deception Eval: Missing Dependencies & Tools
+OpenAI Coding Deception Eval: Network & External Resource Access
+OpenAI Coding Deception Eval: Nonexistent Files/Directories/Data
+OpenAI Coding Deception Eval: Prohibitively Large Coding Tasks
+OpenAI Coding Deception Eval: System Features & Services
+OpenAI Coding Deception Eval: Task Repo Mismatch
+OpenAI Coding Deception Eval: Unit Test Integrity
+OpenAI Coding Prompt Injections
+OpenAI HealthBench Consensus Global Health Errors
+OpenAI HealthBench Consensus Urgent Errors
+OpenAI HealthBench Hard Hallucinations
+OpenAI IH: phrase protection (malicious developer message)
+OpenAI IH: phrase protection (malicious user message)
+OpenAI IH: system prompt extraction (academic developer vs system)
+OpenAI IH: system prompt extraction (academic user vs system)
+OpenAI IH: system prompt extraction (realistic user vs system)
+OpenAI Image Input Safety: attack planning
+OpenAI Image Input Safety: extremism
+OpenAI Image Input Safety: harms-erotic
+OpenAI Image Input Safety: hate
+OpenAI Image Input Safety: illicit
+OpenAI Image Input Safety: self-harm
+OpenAI MakeMeSay
+OpenAI Multimodal Refusal: attack planning
+OpenAI Multimodal Refusal: extremism
+OpenAI Multimodal Refusal: harms-erotic
+OpenAI Multimodal Refusal: hate
+OpenAI Multimodal Refusal: illicit
+OpenAI Multimodal Refusal: self-harm
+OpenAI Production Deception: Claims To Perform Action It Didn't
+OpenAI Production Deception: Continues deception from prior turn
+OpenAI Production Deception: Deliberately Violates Search/Citation Policy
+OpenAI Production Deception: Fabricated Citation
+OpenAI Production Deception: Fabricated Fact
+OpenAI Production Deception: Fabricated Tool Result
+OpenAI Production Deception: Gives Overconfident Answer
+OpenAI Production Deception: Other
+OpenAI Production Deception: Pretends Partial Answer Is Complete
+OpenAI Production Deception: Pretends To Be A Human
+OpenAI Production Deception: Pretends To Be Working In The Background
+OpenAI Production Factuality: % incorrect claims
+OpenAI Production Factuality: % responses with 1+ major incorrect claims
+OpenAI Production Factuality: number of correct claims per response
+OpenAI Standard Disallowed: personal-data
+OpenAI Standard Disallowed: self-harm/intent and self-harm/instructions
+OpenAI Sycophancy
+OpenAI System-level Protection (F1)
+OpenAI System-level Protection (Precision)
+OpenAI System-level Protection (Recall)
+OpenAI System-level Protection (System Reliability)
+OpenAI Tool-calling Prompt Injections
+OpenAI-MRCR
+OpenAI-Proof Q&A
+Perception Test
+Pile-test
+PIQA
+PolyMath
+QVHighlights
+Qwen CounterFactQA
+Qwen LengthCtrl
+Qwen ThinkFollow
+Qwen ToolUse
+RACE-High
+RACE-Middle
+RewardBench
+RULER
+SafetyBench
+SciCode
+SecureBio Human Pathogen Capabilities Test
+SecureBio Molecular Biology Capabilities Test
+SecureBio Virology Capabilities Test (text-only)
+SecureBio VMQA-5C
+SecureBio World Class Biology
+SHADE-Arena Evasion Success Rate
+Simple-QA-Verified Correct Rate
+Simple-QA-Verified Incorrect Rate
+Simple-QA-Verified Uncertain Rate
+SimpleQA (Chinese) | CSimpleQA
+SuperGPQA
+SWE-bench Verified Hard
+SWE-Lancer
+SysBench
+Tau2-bench Airline
+Tau2-bench Retail
+Tau2-bench Telecom
+TriviaQA
+TydiQA
+VATEX
+VATEX-ZH
+Vibe-Eval (Reka)
+VideoMME
+VideoMMMU
+WebArena
+WildBench
+Wildcat Non-toxic
+Wildcat Toxic
+WinoGrande
+WritingBench
+xAI Refusals
+xAI SoB Bias
+xAI Sycophancy
+YouCook2 Cap
+ZebraLogic
+ZeroBench
+Zhipu CC-Bench
+Zhipu Human Eval Chinese
+Zhipu Human Eval English
+Zhipu Human Eval Other-Language
+Zhipu Novel Logical Reasoning
+Zhipu Translation Eval
