@@ -147,6 +147,21 @@ Extraction rules:
 - **Graphs — numbers only.** Include a graph data point **only if the value is
   printed on the chart** (a label on the bar/point/line). **Never read a value
   off the axis/scale** — if a bar has no printed number, skip it.
+  **CRITICAL:** Bar/point labels are frequently rendered as **vector graphics**
+  and will not appear in `pdftotext` output — do **not** use text extraction to
+  decide whether a chart has printed values. Always **visually inspect the page
+  image**. If labels look small, crop and enlarge the chart area with Python
+  Pillow before concluding no values are printed:
+  ```python
+  from PIL import Image
+  img = Image.open('var/extract/$SLUG/page-NN.png')
+  w, h = img.size
+  crop = img.crop((left, top, right, bottom))  # bounding box of the chart
+  zoom = crop.resize((crop.width * 5, crop.height * 5), Image.LANCZOS)
+  zoom.save('/tmp/chart_zoom.png')
+  ```
+  Read the zoomed image. Only skip a graph after visually confirming no printed
+  values exist.
 - **Company-internal benchmarks.** If an eval is a proprietary benchmark only
   that one company runs (not a public/shared eval), make that explicit by
   prefixing the owner, e.g. `OpenAI Illicit`, `OpenAI Harassment`, `Anthropic
