@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup 9 — Floating Bottom Bar</title>
+<style>
+body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#111;background:#eef1f5;padding-bottom:70px}
+header{background:#0b1320;color:#fff;padding:10px 22px;display:flex;align-items:baseline;gap:16px}
+header b{font-size:17px}
+.back{color:#9fb3c8;text-decoration:none;font-size:13px}
+.num{margin-left:auto;color:#9fb3c8;font-size:12px}
+main{padding:16px;max-width:1400px;margin:0 auto}
+.card{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:14px 16px;margin:10px 0}
+.muted{color:#566;font-size:13px}
+button,select,input{font:inherit;padding:5px 10px;border:1px solid #b9c2d0;border-radius:7px;background:#fff;cursor:pointer}
+button.on{background:#1565d8;color:#fff;border-color:#1565d8}
+.mwrap{overflow:auto;border:1px solid #d7dee8;border-radius:10px;background:#fff;margin-top:10px;height:calc(100vh - 130px)}
+table.mx{border-collapse:separate;border-spacing:0;font-size:13px}
+table.mx th,table.mx td{border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;padding:6px 10px;white-space:nowrap}
+table.mx thead th{position:sticky;top:0;z-index:2;background:#f1f4f9;vertical-align:bottom}
+.band{background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.mh{position:sticky;left:0;z-index:2;background:#fff;text-align:left;font-weight:700;min-width:150px}
+thead .mh{z-index:5;background:#f1f4f9}
+.cell{text-align:right}
+.cell.sc{background:#eef5ff}
+#bar{position:fixed;bottom:0;left:0;right:0;background:#0b1320;color:#fff;
+  padding:10px 20px;display:flex;gap:14px;align-items:center;z-index:100;
+  box-shadow:0 -2px 16px rgba(0,0,0,.3);flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <b>LLM safety-metrics</b>
+  <a href="index.html" class="back">← all mockups</a>
+  <span class="num">Mockup 9 of 10 — Floating Bottom Bar</span>
+</header>
+<main>
+  <div class="card">
+    <div class="muted">All controls live in a fixed bar at the bottom of the screen. Maximizes table real estate. Click model names in the bar to toggle; use the sort dropdown.</div>
+  </div>
+
+  <div class="mwrap">
+    <table class="mx" id="t" style="width:100%"></table>
+  </div>
+</main>
+
+<div id="bar"></div>
+
+<script>
+const M=['GPT-5','Claude Opus 4.5','Gemini 3 Pro','Grok 4','Kimi K2'];
+const B=[
+  {n:'MMLU',     c:'Knowledge & Reasoning',s:[92.1,90.8,91.5,89.4,88.7]},
+  {n:'GPQA',     c:'Knowledge & Reasoning',s:[67.2,72.4,68.9,71.3,65.8]},
+  {n:'HumanEval',c:'Code & Agentic',       s:[96.5,93.2,94.8,95.1,91.7]},
+  {n:'SWE-Bench',c:'Code & Agentic',       s:[65.8,61.4,59.2,58.7,54.3]},
+  {n:'Cybench',  c:'Safety & Refusal',     s:[42.3,38.7,45.1,36.2,39.8]},
+  {n:'OverRefuse',c:'Safety & Refusal',    s:[87.5,92.3,85.4,82.1,84.6]},
+];
+const CATS=['Knowledge & Reasoning','Code & Agentic','Safety & Refusal'];
+let sel=new Set([0,1,2,3,4]);
+let sortBy=-1;
+
+function getOrder(){
+  let mi=[...sel].sort((a,b)=>a-b);
+  if(sortBy>=0) mi.sort((a,b)=>B[sortBy].s[b]-B[sortBy].s[a]);
+  return mi;
+}
+function renderTable(){
+  const order=getOrder();
+  let h=`<thead><tr><th class="mh band" rowspan=2>model \\ benchmark</th>`;
+  CATS.forEach(c=>{const n=B.filter(b=>b.c===c).length;h+=`<th class=band colspan="${n}">${c}</th>`;});
+  h+=`</tr><tr>`;
+  B.forEach((b,j)=>{
+    const on=sortBy===j;
+    h+=`<th class="${on?'on':''}" onclick="setSort(${j})" style="cursor:pointer;font-weight:600;color:#1b2b44;padding:6px 10px">${b.n} ${on?'▼':'⇅'}</th>`;
+  });
+  h+=`</tr></thead><tbody>`;
+  order.forEach(i=>{
+    h+=`<tr><td class=mh>${M[i]}</td>`;
+    B.forEach((b,j)=>h+=`<td class="cell${sortBy===j?' sc':''}">${b.s[i]}%</td>`);
+    h+=`</tr>`;
+  });
+  h+=`</tbody>`;
+  document.getElementById('t').innerHTML=h;
+}
+function setSort(j){sortBy=sortBy===j?-1:j;afterState();}
+
+function toggle(i){
+  if(sel.has(i)) sel.delete(i); else sel.add(i);
+  afterState();
+}
+
+function afterState(){
+  // Rebuild bar
+  let bh=`<span style="color:#9fb3c8;font-size:12px">Models:</span>`;
+  M.forEach((_,i)=>{
+    const on=sel.has(i);
+    bh+=`<button onclick="toggle(${i})" style="background:${on?'#1565d8':'#1e3a5f'};color:${on?'#fff':'#9fb3c8'};border-radius:12px;padding:3px 12px;font-size:13px;border:none;cursor:pointer">${M[i]}</button>`;
+  });
+  bh+=`<span style="color:#9fb3c8;font-size:12px;margin-left:8px">Sort:</span>`;
+  bh+=`<select id="sortSel" onchange="sortChange()" style="background:#1e3a5f;color:#fff;border:1px solid #2d5a8e;border-radius:6px;padding:4px 8px;font-size:13px"><option value="">— none —</option>`;
+  B.forEach((b,j)=>{bh+=`<option value="${j}"${sortBy===j?' selected':''}>${b.n}</option>`;});
+  bh+=`</select>`;
+  bh+=`<span style="margin-left:auto;color:#9fb3c8;font-size:12px">${sel.size} / ${M.length} models</span>`;
+  document.getElementById('bar').innerHTML=bh;
+  renderTable();
+}
+
+function sortChange(){
+  const v=document.getElementById('sortSel').value;
+  sortBy=v===''?-1:parseInt(v);
+  afterState();
+}
+
+afterState();
+</script>
+</body>
+</html>

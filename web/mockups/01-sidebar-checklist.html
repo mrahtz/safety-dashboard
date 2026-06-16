@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup 1 — Sidebar Checklist</title>
+<style>
+body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#111;background:#eef1f5}
+header{background:#0b1320;color:#fff;padding:10px 22px;display:flex;align-items:baseline;gap:16px}
+header b{font-size:17px}
+.back{color:#9fb3c8;text-decoration:none;font-size:13px}
+.num{margin-left:auto;color:#9fb3c8;font-size:12px}
+main{padding:16px;max-width:1400px;margin:0 auto}
+.card{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:14px 16px;margin:10px 0}
+.muted{color:#566;font-size:13px}
+button,select,input[type=text]{font:inherit;padding:5px 10px;border:1px solid #b9c2d0;border-radius:7px;background:#fff;cursor:pointer}
+button.on{background:#1565d8;color:#fff;border-color:#1565d8}
+.mwrap{overflow:auto;border:1px solid #d7dee8;border-radius:10px;background:#fff;margin-top:10px}
+table.mx{border-collapse:separate;border-spacing:0;font-size:13px}
+table.mx th,table.mx td{border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;padding:6px 10px;white-space:nowrap}
+table.mx thead th{position:sticky;top:0;z-index:2;background:#f1f4f9;vertical-align:bottom}
+.band{background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.model-h{position:sticky;left:0;z-index:2;background:#fff;text-align:left;font-weight:700;min-width:150px}
+thead .model-h{z-index:5;background:#f1f4f9}
+.cell{text-align:right}
+.cell.sorted-col{background:#eef5ff}
+.empty{color:#cfd6e0;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <b>LLM safety-metrics</b>
+  <a href="index.html" class="back">← all mockups</a>
+  <span class="num">Mockup 1 of 10 — Sidebar Checklist</span>
+</header>
+<div style="display:flex;height:calc(100vh - 45px)">
+  <div id="sidebar" style="width:220px;min-width:220px;background:#fff;border-right:1px solid #d7dee8;padding:14px;overflow-y:auto">
+    <div style="font-size:12px;color:#566;text-transform:uppercase;font-weight:700;margin-bottom:8px">Models</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="selectAll()">Select all</button>
+      <button onclick="clearAll()">Clear all</button>
+    </div>
+    <div id="chkList"></div>
+    <hr style="margin:14px 0">
+    <div style="font-size:12px;color:#566;text-transform:uppercase;font-weight:700;margin-bottom:8px">Sort by benchmark</div>
+    <select id="sortSel" onchange="sortChange()" style="width:100%">
+      <option value="">— no sort —</option>
+    </select>
+  </div>
+  <div style="flex:1;overflow:auto;padding:16px">
+    <div class="card">
+      <b>Sidebar Checklist</b>
+      <p class="muted" style="margin:6px 0 0">A persistent sidebar holds model checkboxes and a sort dropdown. Checking/unchecking models instantly updates the table.<br><br><b>Pros:</b> Classic pattern, easy to select any subset, sidebar keeps controls separate from data.<br><b>Cons:</b> Takes up horizontal space; may need scroll if many models.</p>
+    </div>
+    <div class="mwrap">
+      <table id="t" class="mx"></table>
+    </div>
+  </div>
+</div>
+<script>
+const M = ['GPT-5','Claude Opus 4.5','Gemini 3 Pro','Grok 4','Kimi K2'];
+const B = [
+  {n:'MMLU',      c:'Knowledge & Reasoning', s:[92.1,90.8,91.5,89.4,88.7]},
+  {n:'GPQA',      c:'Knowledge & Reasoning', s:[67.2,72.4,68.9,71.3,65.8]},
+  {n:'HumanEval', c:'Code & Agentic',        s:[96.5,93.2,94.8,95.1,91.7]},
+  {n:'SWE-Bench', c:'Code & Agentic',        s:[65.8,61.4,59.2,58.7,54.3]},
+  {n:'Cybench',   c:'Safety & Refusal',      s:[42.3,38.7,45.1,36.2,39.8]},
+  {n:'OverRefuse',c:'Safety & Refusal',      s:[87.5,92.3,85.4,82.1,84.6]},
+];
+
+let sel = new Set([0,1,2,3,4]);
+let sortBy = -1;
+
+function getOrder() {
+  let mi = [...sel].sort((a,b) => a - b);
+  if (sortBy >= 0) mi.sort((a,b) => B[sortBy].s[b] - B[sortBy].s[a]);
+  return mi;
+}
+
+function renderTable() {
+  const order = getOrder();
+  const CATS = ['Knowledge & Reasoning','Code & Agentic','Safety & Refusal'];
+  let cats = CATS.map(c => ({c, n: B.filter(b => b.c === c).length}));
+  let h = `<thead><tr><th class="model-h band" rowspan=2>model \\ benchmark</th>`;
+  cats.forEach(({c,n}) => h += `<th class=band colspan="${n}">${c}</th>`);
+  h += `</tr><tr>`;
+  B.forEach((b,j) => {
+    const isSorted = sortBy === j;
+    h += `<th class="${isSorted?'on':''}" onclick="setSort(${j})" style="cursor:pointer;font-weight:600;color:#1b2b44">${b.n}${isSorted?' ▼':' ⇅'}</th>`;
+  });
+  h += `</tr></thead><tbody>`;
+  if (order.length === 0) {
+    h += `<tr><td colspan="${B.length+1}" class=empty style="padding:20px">No models selected</td></tr>`;
+  } else {
+    order.forEach(i => {
+      h += `<tr><td class=model-h>${M[i]}</td>`;
+      B.forEach((b,j) => h += `<td class="cell${sortBy===j?' sorted-col':''}">${b.s[i]}%</td>`);
+      h += `</tr>`;
+    });
+  }
+  h += `</tbody>`;
+  document.getElementById('t').innerHTML = h;
+}
+
+function setSort(j) { sortBy = sortBy === j ? -1 : j; afterState(); }
+function sortChange() { sortBy = parseInt(document.getElementById('sortSel').value); if(isNaN(sortBy)) sortBy=-1; afterState(); }
+
+function renderChks() {
+  const el = document.getElementById('chkList');
+  el.innerHTML = M.map((m,i) =>
+    `<label style="display:block;margin:6px 0;cursor:pointer"><input type=checkbox ${sel.has(i)?'checked':''} onchange="chkChange()"> ${m}</label>`
+  ).join('');
+}
+
+function chkChange() {
+  sel = new Set();
+  document.querySelectorAll('#chkList input[type=checkbox]').forEach((cb,i) => { if(cb.checked) sel.add(i); });
+  afterState();
+}
+
+function selectAll() {
+  sel = new Set([0,1,2,3,4]);
+  renderChks();
+  afterState();
+}
+
+function clearAll() {
+  sel = new Set();
+  renderChks();
+  afterState();
+}
+
+function afterState() {
+  renderTable();
+}
+
+// init sort select
+const sortSel = document.getElementById('sortSel');
+B.forEach((b,j) => { const o = document.createElement('option'); o.value=j; o.textContent=b.n; sortSel.appendChild(o); });
+
+renderChks();
+renderTable();
+</script>
+</body>
+</html>

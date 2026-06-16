@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup 5 — Native Multi-select Listbox</title>
+<style>
+body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#111;background:#eef1f5}
+header{background:#0b1320;color:#fff;padding:10px 22px;display:flex;align-items:baseline;gap:16px}
+header b{font-size:17px}
+.back{color:#9fb3c8;text-decoration:none;font-size:13px}
+.num{margin-left:auto;color:#9fb3c8;font-size:12px}
+main{padding:16px;max-width:1400px;margin:0 auto}
+.card{background:#fff;border:1px solid #d7dee8;border-radius:10px;padding:14px 16px;margin:10px 0}
+.muted{color:#566;font-size:13px}
+button,select,input[type=text]{font:inherit;padding:5px 10px;border:1px solid #b9c2d0;border-radius:7px;background:#fff;cursor:pointer}
+button.on{background:#1565d8;color:#fff;border-color:#1565d8}
+.mwrap{overflow:auto;border:1px solid #d7dee8;border-radius:10px;background:#fff;margin-top:10px}
+table.mx{border-collapse:separate;border-spacing:0;font-size:13px}
+table.mx th,table.mx td{border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;padding:6px 10px;white-space:nowrap}
+table.mx thead th{position:sticky;top:0;z-index:2;background:#f1f4f9;vertical-align:bottom}
+.band{background:#e7edf6;text-align:left;font-size:11px;color:#3a5273;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.model-h{position:sticky;left:0;z-index:2;background:#fff;text-align:left;font-weight:700;min-width:150px}
+thead .model-h{z-index:5;background:#f1f4f9}
+.cell{text-align:right}
+.cell.sorted-col{background:#eef5ff}
+.empty{color:#cfd6e0;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <b>LLM safety-metrics</b>
+  <a href="index.html" class="back">← all mockups</a>
+  <span class="num">Mockup 5 of 10 — Native Multi-select Listbox</span>
+</header>
+<main>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <label>
+          <b>Select models</b><br>
+          <span class="muted" style="font-size:12px">Ctrl+click / Cmd+click for multi, Shift+click for range</span><br>
+          <select id="modelSelect" multiple size="5" style="width:100%;height:130px;margin-top:6px" onchange="selChange()"></select>
+        </label>
+      </div>
+      <div>
+        <label>
+          <b>Sort by benchmark</b><br>
+          <span class="muted" style="font-size:12px">Highest score first</span><br>
+          <select id="sortSel" style="width:100%;margin-top:6px" onchange="sortChange()">
+            <option value="">— no sort —</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <b>Native Multi-select Listbox</b>
+    <p class="muted" style="margin:6px 0 0">Standard HTML multi-select for model filtering, with a separate sort dropdown. All native browser behavior: Ctrl+click to add/remove, Shift+click for range.<br><br><b>Pros:</b> Native browser multi-select; keyboard-navigable; no custom JS.<br><b>Cons:</b> Ctrl+click is unintuitive; no 'select all' button; limited visual feedback.</p>
+  </div>
+
+  <div class="mwrap">
+    <table id="t" class="mx"></table>
+  </div>
+</main>
+<script>
+const M = ['GPT-5','Claude Opus 4.5','Gemini 3 Pro','Grok 4','Kimi K2'];
+const B = [
+  {n:'MMLU',      c:'Knowledge & Reasoning', s:[92.1,90.8,91.5,89.4,88.7]},
+  {n:'GPQA',      c:'Knowledge & Reasoning', s:[67.2,72.4,68.9,71.3,65.8]},
+  {n:'HumanEval', c:'Code & Agentic',        s:[96.5,93.2,94.8,95.1,91.7]},
+  {n:'SWE-Bench', c:'Code & Agentic',        s:[65.8,61.4,59.2,58.7,54.3]},
+  {n:'Cybench',   c:'Safety & Refusal',      s:[42.3,38.7,45.1,36.2,39.8]},
+  {n:'OverRefuse',c:'Safety & Refusal',      s:[87.5,92.3,85.4,82.1,84.6]},
+];
+
+let sel = new Set([0,1,2,3,4]);
+let sortBy = -1;
+
+function getOrder() {
+  let mi = [...sel].sort((a,b) => a - b);
+  if (sortBy >= 0) mi.sort((a,b) => B[sortBy].s[b] - B[sortBy].s[a]);
+  return mi;
+}
+
+function renderTable() {
+  const order = getOrder();
+  const CATS = ['Knowledge & Reasoning','Code & Agentic','Safety & Refusal'];
+  let cats = CATS.map(c => ({c, n: B.filter(b => b.c === c).length}));
+  let h = `<thead><tr><th class="model-h band" rowspan=2>model \\ benchmark</th>`;
+  cats.forEach(({c,n}) => h += `<th class=band colspan="${n}">${c}</th>`);
+  h += `</tr><tr>`;
+  B.forEach((b,j) => {
+    const isSorted = sortBy === j;
+    h += `<th class="${isSorted?'on':''}" onclick="setSort(${j})" style="cursor:pointer;font-weight:600;color:#1b2b44">${b.n}${isSorted?' ▼':' ⇅'}</th>`;
+  });
+  h += `</tr></thead><tbody>`;
+  if (order.length === 0) {
+    h += `<tr><td colspan="${B.length+1}" class=empty style="padding:20px">No models selected</td></tr>`;
+  } else {
+    order.forEach(i => {
+      h += `<tr><td class=model-h>${M[i]}</td>`;
+      B.forEach((b,j) => h += `<td class="cell${sortBy===j?' sorted-col':''}">${b.s[i]}%</td>`);
+      h += `</tr>`;
+    });
+  }
+  h += `</tbody>`;
+  document.getElementById('t').innerHTML = h;
+}
+
+function setSort(j) { sortBy = sortBy === j ? -1 : j; afterState(); }
+
+function selChange() {
+  const msEl = document.getElementById('modelSelect');
+  sel = new Set();
+  Array.from(msEl.selectedOptions).forEach(opt => sel.add(parseInt(opt.value)));
+  afterState();
+}
+
+function sortChange() {
+  const v = document.getElementById('sortSel').value;
+  sortBy = v === '' ? -1 : parseInt(v);
+  afterState();
+}
+
+function afterState() {
+  renderTable();
+}
+
+// init model select
+const msEl = document.getElementById('modelSelect');
+M.forEach((m,i) => {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = m;
+  o.selected = true;
+  msEl.appendChild(o);
+});
+
+// init sort select
+const sortSel = document.getElementById('sortSel');
+B.forEach((b,j) => { const o = document.createElement('option'); o.value=j; o.textContent=b.n; sortSel.appendChild(o); });
+
+afterState();
+</script>
+</body>
+</html>
