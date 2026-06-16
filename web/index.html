@@ -4,6 +4,8 @@
 <style>
  .kpi{display:flex;gap:26px;flex-wrap:wrap}.kpi b{font-size:24px}.kpi div{color:#566}
  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+ .controls label.minf{display:flex;align-items:center;gap:4px;color:#566;font-size:13px;white-space:nowrap}
+ .controls label.minf input{width:46px;text-align:center}
  .mwrap{overflow:auto;max-height:78vh;border:1px solid #d7dee8;border-radius:10px;background:#fff}
  table.mx{border-collapse:separate;border-spacing:0;font-size:13px}
  table.mx th,table.mx td{border-right:1px solid #eef0f4;border-bottom:1px solid #eef0f4;padding:6px 8px;text-align:center;white-space:nowrap}
@@ -53,6 +55,8 @@
  <div class="card controls">
    <input id=mq placeholder="filter models…" oninput=render() size=16>
    <input id=bq placeholder="filter benchmarks…" oninput=render() size=18>
+   <label class=minf title="Hide benchmarks measured on fewer models than this">≥<input id=minModels type=number min=0 step=1 value=0 oninput=render()> models per benchmark</label>
+   <label class=minf title="Hide models measured on fewer benchmarks than this">≥<input id=minBenches type=number min=0 step=1 value=0 oninput=render()> benchmarks per model</label>
    <button id=trust class=on onclick="toggleTrust(this)">trusted only</button>
    <button id=tpose onclick="toggleTranspose(this)">transpose</button>
    <span id=shown class=muted></span>
@@ -150,6 +154,11 @@ function clearPins() { pinModel = pinBench = null; render(); }
 function render() {
   const mq = document.getElementById("mq").value.toLowerCase();
   const bq = document.getElementById("bq").value.toLowerCase();
+  // Density thresholds: hide benchmarks with too few models / models with too
+  // few benchmarks. Compared against the same full-matrix counts shown in the
+  // header labels, so "≥ 3 models per benchmark" matches the "N models" caption.
+  const minModels = +document.getElementById("minModels").value || 0;
+  const minBenches = +document.getElementById("minBenches").value || 0;
   MREG = []; BREG = [];
   // Count labels: how many models have each benchmark, and how many benchmarks
   // each model has. Computed over the full matrix under the current trust filter
@@ -160,8 +169,8 @@ function render() {
     MBCOUNT.set(m.id, (MBCOUNT.get(m.id) || 0) + 1);
     BMCOUNT.set(b.id, (BMCOUNT.get(b.id) || 0) + 1);
   }
-  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench));
-  const models = MODELS.filter(m => (!mq || m.name.toLowerCase().includes(mq)) && (!pinModel || m.id === pinModel));
+  const benches = BENCHES.filter(b => (!bq || b.name.toLowerCase().includes(bq)) && (!pinBench || b.id === pinBench) && (BMCOUNT.get(b.id) || 0) >= minModels);
+  const models = MODELS.filter(m => (!mq || m.name.toLowerCase().includes(mq)) && (!pinModel || m.id === pinModel) && (MBCOUNT.get(m.id) || 0) >= minBenches);
   const liveB = benches.filter(b => models.some(m => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
   const liveM = models.filter(m => liveB.some(b => visibleEntries(CELL.get(ck(m.id, b.id)) || []).length));
   document.getElementById("shown").innerHTML = `${liveM.length} models × ${liveB.length} columns` +
