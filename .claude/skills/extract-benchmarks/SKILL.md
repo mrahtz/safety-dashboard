@@ -103,6 +103,20 @@ contents. Front matter (title page, TOC, roman-numeral pages) shifts the
 printed numbers out of sync with the files, and the review page pairs each
 table/figure with the page image whose file index matches `page_num`.
 
+**`page_num` is where the *data* is drawn, never where the caption sits.** A row's
+`page_num` is the image file index of the page that **renders that row's own
+cell/bar/point** — not the page that carries the figure's caption or number. These
+differ when a figure spans a page break: a single figure (one `fig_num`) can have
+its panels split across two page images (e.g. one sub-chart on page 25, another on
+page 26), with the "Figure N" caption printed on only one of them. That is **not**
+an error — assign each row the page its own bar is drawn on, so a figure's rows may
+legitimately carry **different `page_num` values under the same `fig_num`**. Do
+**not** snap every row of a figure to the caption's page; the review page lines each
+number up against the page image it was read from, so a Long-form-virology bar drawn
+on page 25 must stay `page_num=25` even though "[Figure 2.2.4.1.A]" is captioned on
+page 26. (Real example that bit us: all of `fig-2.2.4.1.A`'s rows got snapped to the
+caption page, mis-aligning the page-25 bars against the page-26 image.)
+
 Read the **whole** source before you decide you're done — tables and graphs are
 often in an appendix.
 
@@ -123,7 +137,7 @@ subset, benchmark) data point. Column rules:
 | `fig_num` | **always set** (tables *and* graphs): the table/figure the row came from, **namespaced by kind** — `tbl-<n>` for a table, `fig-<n>` for a graph. Use the source's printed number (Table 3 → `tbl-3`, Figure 2 → `fig-2`); if the source doesn't number them, count from `1` in reading order, tables and figures each in their own sequence (`tbl-1`, `tbl-2`, …; `fig-1`, `fig-2`, …). This value becomes the row's `section_key`, so it must be unique per source table/figure (see below). |
 | `row_idx` | **tables only**: 0-based row of the cell within its table (so the table can be reconstructed). Empty for graph rows. |
 | `col_idx` | **tables only**: 0-based column of the cell within its table. Empty for graph rows. |
-| `page_num` | **always set**: the 1-based **image file index** the table/figure appears on (`page-01.png` → `1`, `page-002.png` → `2`) — the file number, *not* the page number printed in the PDF. The review page aligns each table/figure to its page image by this value. |
+| `page_num` | **always set**: the 1-based **image file index** the row's own cell/bar/point is **drawn on** (`page-01.png` → `1`, `page-002.png` → `2`) — the file number, *not* the page number printed in the PDF, and *not* the page the figure's caption sits on. The review page aligns each row to its page image by this value. A figure that spans a page break keeps **one `fig_num`** but its rows take **different `page_num`s** — page each row by where its bar is drawn, not by the caption (see §2). |
 
 So **every** row carries a `fig_num` identifying its source table/figure; a
 **table** row additionally sets `row_idx`/`col_idx`, a **graph** row leaves them
@@ -190,7 +204,10 @@ Do **not** trust the first pass. Loop:
 1. **Double-check every number.** Go cell-by-cell / point-by-point back to the
    page image and confirm the `value` (and its `units`, `condition`, `subset`,
    `fig_num`, `page_num`, and for tables its `row_idx`/`col_idx`) matches. Fix
-   any mismatch.
+   any mismatch. For `page_num`, confirm the row's **own bar/cell is visibly drawn
+   on that page image** — don't trust that a figure lives on one page. For any
+   `fig_num` whose rows span a page break (panels on two page images), verify each
+   row is paged to *its* panel's image, not snapped to the caption's page.
 2. **Double-check every name** (`benchmark` and `model`). For each, confirm:
    - it **matches what the paper actually calls it** (right eval, right model —
      not a look-alike);
